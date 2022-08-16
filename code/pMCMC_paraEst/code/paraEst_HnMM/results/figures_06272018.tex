@@ -1,0 +1,313 @@
+% This document serves putting multiple figures into one pdf. 
+% By Fei Lu 2018-6-26
+\documentclass[12pt]{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   packages    %%%%%%%%%
+\usepackage[small,compact]{titlesec}
+\usepackage{amsmath,amssymb,amsfonts,mathabx,setspace}
+\usepackage{graphicx,epsfig,wrapfig,caption,epsfig,subcaption}
+\usepackage{url,color,verbatim,algorithmic}
+\usepackage[sort,compress]{cite}
+\usepackage[ruled,boxed]{algorithm}
+\usepackage[scaled]{helvet}
+\usepackage[T1]{fontenc}
+\usepackage[bookmarks=true, bookmarksnumbered=true, colorlinks=true,   pdfstartview=FitV,
+linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+
+
+%%%%%%%%%%%----   page settings   ----- %%%%%%%%%
+\marginparwidth 0pt
+\oddsidemargin  -0.35in   % = 0.38 cm
+\evensidemargin  -0.35in % = 0.38 cm
+\marginparsep 0pt
+\topmargin   -.55in   % = 1.40 cm
+\textwidth   7.5in      % = 19.05 cm
+\textheight  9.3in      % = 23.87 cm
+%\footskip 3mm
+%\setstretch{1.05}  \hoffset=-0.1in  \voffset= -0.8in
+\parskip=0.0in
+
+
+%%%%%%%%%%%----  new commands/defs   ----- %%%%%%%%%
+\def\wv{\widetilde{v}}
+\def\clattice{c_{\mathrm{lat}}}           
+\def\Rn{\mathbb{R}^n}
+\def\R{\mathbb{R}}                            
+\def\P{\mathbb{P}}
+\def\bbeta{\bm \beta}
+\def\Rey{\rm{Re}}                        
+\newcommand{\E}[1]{\mathbb{E}\left[{#1}\right]}
+\newcommand{\rbracket}[1]{\left(#1\right)}
+\newcommand{\sbracket}[1]{\left[#1\right]}
+\newcommand{\norm}[1]{\left\|#1\right\|}
+\newcommand{\normv}[1]{\left| #1\right|}
+\newcommand{\innerp}[1]{\langle{#1}\rangle}
+\newcommand{\dbinnerp}[1]{\langle\langle{#1}\rangle\rangle}
+\newcommand{\vect}[1] {\pmb{#1}}
+\newcommand{\mat}[1]{\pmb{#1}}
+\newcommand{\floor}[1]{\lfloor{#1}\rfloor}
+
+\newcommand{\Ito}{It\^o}
+
+%% Note commands
+% \usepackage{soul,array}
+%% margin notes
+%\newcommand{\note}[1]{\marginpar{\renewcommand{\baselinestretch}{1.0}{\scriptsize{\parbox{0.5in}{\raggedright{\bf{\sffamily #1}}}}}}}
+%\newcommand{\fnote}[1]{\note{Fei: {#1}}}
+%\newcommand{\frem}[1]{{\textcolor{cyan}{[Fei: {#1}]}}}
+%\newcommand{\fnew}[1]{{\textcolor{blue}{#1}}}
+\newcommand{\fpar}[1]{\bigskip\noindent{\em {#1}}}
+\newcommand{\fblue}[1]{\textcolor{blue}{{#1}}}
+\newcommand{\frem}[1]{{\textcolor{cyan}{[Remark: {#1}]}}}
+\newcommand{\fqes}[1]{{\textcolor{red}{[{\bf Question:} {#1}]}}}
+
+%%%%%%%%%%%---- new environments  
+\newtheorem{theorem}{Theorem}
+\newtheorem{acknowledgement}[theorem]{Acknowledgement}
+% \newtheorem{algorithm}[theorem]{Algorithm}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newenvironment{proof}[1][Proof]{\noindent\textbf{#1.} }{\ \rule{0.5em}{0.5em}}
+% \import{/Users/feilu/Documents/ref_Fei17_11}
+
+
+
+
+\begin{document}
+
+%%% ============== Title  =======
+\begin{center}
+\textbf{\Large Plots of pMCMC for state and parameter estimation} \\[0pt]
+\vspace{4mm} Fei Lu\\
+ feilu@math.jhu.edu \\
+Last updated: \today  
+\end{center}
+ 
+% \title{Reduction using local average and rescaling}
+% \author{}  \maketitle
+%\begin{abstract} %  \end{abstract}
+\textbf{Abstract:} We test the pMCMC for state and parameter estimation on. Consider \\
+ different observation functions: even $0.05x^2$ and odd $0.05x^3$;\\
+ different priors: uniform and Gaussian. 
+
+ % \tableofcontents
+
+\section{State and Parameter estimation with oddObs + Uniform-prior}
+{\bf Setting:} Uniform prior. The true parameter is sampled from the prior distribution. $tN=100$. 
+\begin{figure}[h!]
+   \caption{Parameter estimation}\label{fig:traj} \vspace{-2mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}        \caption{Marginal density}\vspace{-2mm}
+        \includegraphics[width=1.0\textwidth]{./figures/fig_thetaBayesSIR_unif_tN100} % \vspace{-5mm} 
+        \label{fig:gull}
+    \end{subfigure}
+    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+      %(or a blank line to force the subfigure onto a new line)
+    \begin{subfigure}[b]{0.45\textwidth}          \caption{Scatter plots}\vspace{-2mm}
+        \includegraphics[width=1.0\textwidth]{./figures/fig_scatterBayesSIR_unif_tN100} %\vspace{-5mm}
+        \label{fig:tiger}
+    \end{subfigure}
+    %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+    %(or a blank line to force the subfigure onto a new line)
+  \caption{State estimation} \label{fig:traj} \vspace{-4mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}
+        \includegraphics[width=1.1\textwidth]{./figures/fig_trajEnsBayesSIR_unif_tN100}
+        \caption{Ensemble trajectories}
+        \label{fig:gull}
+    \end{subfigure}
+    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+      %(or a blank line to force the subfigure onto a new line)
+    \begin{subfigure}[b]{0.45\textwidth}
+        \includegraphics[width=0.95\textwidth]{./figures/fig_stateBayesSIR_unif_tN100}
+          \caption{The last few steps in the chain}
+        \label{fig:tiger}
+    \end{subfigure}
+    %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+    %(or a blank line to force the subfigure onto a new line)
+\end{figure}
+
+\begin{figure}[h!]
+   \caption{Update rate}\label{fig:traj} \vspace{-2mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}       % \caption{update rate}\vspace{-2mm}
+        \includegraphics[width=1.05\textwidth]{./figures/fig_rateBayesSIR_unif_tN100} % \vspace{-5mm} 
+        \label{fig:gull}
+    \end{subfigure}
+\end{figure}
+Summary: the parameter is not well identified, especially, the distribution of $\theta_3, \theta_3$ seems unreasonable.  
+
+\newpage
+\section{State and Parameter estimation with EvenObs + Uniform-prior}
+{\bf Setting:} Uniform prior. The true parameter is sampled from the prior distribution. $tN=100$. 
+\begin{figure}[h!]
+   \caption{Parameter estimation}\label{fig:traj} \vspace{-2mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}        \caption{Marginal density}\vspace{-2mm}
+        \includegraphics[width=1.0\textwidth]{./figures/fig_thetaeven_unif_tN100} % \vspace{-5mm} 
+        \label{fig:gull}
+    \end{subfigure}
+    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+      %(or a blank line to force the subfigure onto a new line)
+    \begin{subfigure}[b]{0.45\textwidth}          \caption{Scatter plots}\vspace{-2mm}
+        \includegraphics[width=1.0\textwidth]{./figures/fig_scattereven_unif_tN100} %\vspace{-5mm}
+        \label{fig:tiger}
+    \end{subfigure}
+    %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+    %(or a blank line to force the subfigure onto a new line)
+\end{figure}
+\begin{figure}[h!]
+  \caption{State estimation} \label{fig:traj} \vspace{-4mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}
+        \includegraphics[width=1.1\textwidth]{./figures/fig_trajEnseven_unif_tN100}
+        \caption{Ensemble trajectories}
+        \label{fig:gull}
+    \end{subfigure}
+    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+      %(or a blank line to force the subfigure onto a new line)
+    \begin{subfigure}[b]{0.45\textwidth}
+        \includegraphics[width=0.95\textwidth]{./figures/fig_stateeven_unif_tN100}
+          \caption{The last few steps in the chain}
+        \label{fig:tiger}
+    \end{subfigure}
+    %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+    %(or a blank line to force the subfigure onto a new line)
+\end{figure}
+
+\begin{figure}[h!]
+   \caption{Update rate}\label{fig:traj} \vspace{-2mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}       % \caption{update rate}\vspace{-2mm}
+        \includegraphics[width=1.05\textwidth]{./figures/fig_rateeven_unif_tN100} % \vspace{-5mm} 
+        \label{fig:gull}
+    \end{subfigure}
+\end{figure}
+
+Summary: the parameter is not well identified, especially, the distribution of $\theta_3, \theta_3$ seems unreasonable.  
+
+
+\newpage
+\section{State and Parameter estimation with OddObs + Gaussian-prior}
+{\bf Setting:} Uniform prior. The true parameter is sampled from the prior distribution. $tN=100$. 
+\begin{figure}[h!]
+   \caption{Parameter estimation}\label{fig:traj} \vspace{-2mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}        \caption{Marginal density}\vspace{-2mm}
+        \includegraphics[width=1.0\textwidth]{./figures/fig_thetaOdd_Gauss_tN100} % \vspace{-5mm} 
+        \label{fig:gull}
+    \end{subfigure}
+    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+      %(or a blank line to force the subfigure onto a new line)
+    \begin{subfigure}[b]{0.45\textwidth}          \caption{Scatter plots}\vspace{-2mm}
+        \includegraphics[width=1.0\textwidth]{./figures/fig_scatterOdd_Gauss_tN100} %\vspace{-5mm}
+        \label{fig:tiger}
+    \end{subfigure}
+    %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+    %(or a blank line to force the subfigure onto a new line)
+\end{figure}
+\begin{figure}[h!]
+  \caption{State estimation} \label{fig:traj} \vspace{-4mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}
+        \includegraphics[width=1.1\textwidth]{./figures/fig_trajEnsOdd_Gauss_tN100}
+        \caption{Ensemble trajectories}
+        \label{fig:gull}
+    \end{subfigure}
+    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+      %(or a blank line to force the subfigure onto a new line)
+    \begin{subfigure}[b]{0.45\textwidth}
+        \includegraphics[width=0.95\textwidth]{./figures/fig_stateOdd_Gauss_tN100}
+          \caption{The last few steps in the chain}
+        \label{fig:tiger}
+    \end{subfigure}
+    %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+    %(or a blank line to force the subfigure onto a new line)
+\end{figure}
+
+\begin{figure}[h!]
+   \caption{Update rate}\label{fig:traj} \vspace{-2mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}       % \caption{update rate}\vspace{-2mm}
+        \includegraphics[width=1.05\textwidth]{./figures/fig_rateOdd_Gauss_tN100} % \vspace{-5mm} 
+        \label{fig:gull}
+    \end{subfigure}
+\end{figure}
+
+Summary: the parameters are in wrong range -- Gaussian prior does not put strong enough constraint. Or, \textcolor{red}{Check for mistake in the sampling of the parameters. }
+
+
+\newpage
+\section{State and Parameter estimation with EvenObs + Gaussian-prior}
+{\bf Setting:} Uniform prior. The true parameter is sampled from the prior distribution. $tN=100$. 
+\begin{figure}[h!]
+   \caption{Parameter estimation}\label{fig:traj} \vspace{-2mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}        \caption{Marginal density}\vspace{-2mm}
+        \includegraphics[width=1.0\textwidth]{./figures/fig_thetaEven_Gauss_tN100} % \vspace{-5mm} 
+        \label{fig:gull}
+    \end{subfigure}
+    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+      %(or a blank line to force the subfigure onto a new line)
+    \begin{subfigure}[b]{0.45\textwidth}          \caption{Scatter plots}\vspace{-2mm}
+        \includegraphics[width=1.0\textwidth]{./figures/fig_scatterEven_Gauss_tN100} %\vspace{-5mm}
+        \label{fig:tiger}
+    \end{subfigure}
+    %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+    %(or a blank line to force the subfigure onto a new line)
+\end{figure}
+\begin{figure}[h!]
+  \caption{State estimation} \label{fig:traj} \vspace{-4mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}
+        \includegraphics[width=1.1\textwidth]{./figures/fig_trajEnsEven_Gauss_tN100}
+        \caption{Ensemble trajectories}
+        \label{fig:gull}
+    \end{subfigure}
+    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+      %(or a blank line to force the subfigure onto a new line)
+    \begin{subfigure}[b]{0.45\textwidth}
+        \includegraphics[width=0.95\textwidth]{./figures/fig_stateEven_Gauss_tN100}
+          \caption{The last few steps in the chain}
+        \label{fig:tiger}
+    \end{subfigure}
+    %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+    %(or a blank line to force the subfigure onto a new line)
+\end{figure}
+
+\begin{figure}[h!]
+   \caption{Update rate}\label{fig:traj} \vspace{-2mm}
+    \centering
+    \hspace{-20mm}
+    \begin{subfigure}[b]{0.45\textwidth}       % \caption{update rate}\vspace{-2mm}
+        \includegraphics[width=1.05\textwidth]{./figures/fig_rateEven_Gauss_tN100} % \vspace{-5mm} 
+        \label{fig:gull}
+    \end{subfigure}
+\end{figure}
+
+Summary: the parameter is not well identified, especially, the distribution of $\theta_3, \theta_3$ seems unreasonable.  
+
+% \bibliographystyle{alpha}
+%\bibliography{references}
+
+\bigskip
+
+
+\end{document}

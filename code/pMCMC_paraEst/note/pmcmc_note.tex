@@ -1,0 +1,462 @@
+
+
+\documentclass[12pt]{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%  packages    %%%%%%%%%
+\usepackage[small,compact]{titlesec}
+\usepackage{amsmath,amssymb,amsfonts,mathabx,setspace, mathtools}
+\usepackage{graphicx,caption,epsfig,subfigure,epsfig,wrapfig}
+\usepackage{url,color,verbatim,algorithmic}
+\usepackage[sort,compress]{cite}
+\usepackage[bookmarks=true, bookmarksnumbered=true, colorlinks=true,   pdfstartview=FitV,
+linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+\usepackage{soul}  %  strikethrough
+
+\usepackage[ruled]{algorithm}
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}} 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Set Helvetica Font in Text and Math in LaTeX %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[T1]{fontenc}  % font encoding for latin letter, \"o etc
+\usepackage[scaled=1]{helvet}
+ % \usepackage[helvet]{sfmath}   % set Helvetica Font in Math
+% \renewcommand{\familydefault}{\sfdefault} % Helvectica/arial as default font in text
+
+%%%%%%%%%%%----   page settings   ----- %%%%%%%%%
+\marginparwidth 0pt
+\oddsidemargin  -0.15in   % = 0.38 cm
+\evensidemargin  -0.15in % = 0.38 cm
+\marginparsep 0pt
+\topmargin   -.55in   % = 1.40 cm
+\textwidth   6.8in      % = 17.27 cm
+\textheight  9.3in      % = 23.87 cm
+%\footskip 3mm
+%\setstretch{1.05}  \hoffset=-0.1in  \voffset= -0.8in
+\parskip=0.0in
+
+
+%%%%%%%%%%%----  new commands/defs   ----- %%%%%%%%%
+\def\clattice{c_{\mathrm{lat}}}
+\def\Rn{\mathbb{R}^n}
+\def\R{\mathbb{R}}
+\def\P{\mathbb{P}}
+\def\bbeta{\bm \beta}
+\newcommand{\E}[1]{\mathbb{E}\left[{#1}\right]}
+\newcommand{\rbracket}[1]{\left(#1\right)}
+\newcommand{\sbracket}[1]{\left[#1\right]}
+\newcommand{\norm}[1]{\left\|#1\right\|}
+\newcommand{\normv}[1]{\left| #1\right|}
+\newcommand{\innerp}[1]{\langle{#1}\rangle}
+\newcommand{\dbinnerp}[1]{\langle\langle{#1}\rangle\rangle}
+\newcommand{\floor}[1]{{\lfloor{#1}\rfloor}}
+
+%\newcommand{\b}[1]{{\bf{#1}}}
+\newcommand{\vect}[1] {\pmb{#1}}
+\newcommand{\mat}[1]{\pmb{#1}}
+\newenvironment{smallbmatrix}{\left[\begin{smallmatrix}}{\end{smallmatrix}\right]}
+\newcommand{\ellv}[0]{\ensuremath{\boldsymbol{\ell}}\xspace}
+\newcommand{\itemss}[1]{\noindent{\bf{#1}}}
+\newcommand{\sectionskip}{\vskip-0.1cm}
+\newcommand{\subsectionskip}{\vskip-0.1cm}
+\definecolor{mygrey}{gray}{0.75}
+\def\comparisonfigwidth{0.4\textwidth}
+
+%%%------------ Note commands  ----- %%%%%%%%%
+% \usepackage{array}
+%% margin notes
+%\newcommand{\note}[1]{\marginpar{\renewcommand{\baselinestretch}{1.0}{\scriptsize{\parbox{0.5in}{\raggedright{\bf{\sffamily #1}}}}}}}
+\newcommand{\fblue}[1]{\textcolor{blue}{{#1}}}
+\newcommand{\fst}[1]{\textcolor{red}{\st{#1}}}
+\newcommand{\frem}[1]{{\textcolor{cyan}{[Remark: {#1}]}}}
+\newcommand{\fqes}[1]{{\textcolor{red}{[{\bf Question:} {#1}]}}}
+\newcommand{\fpar}[1]{\bigskip\noindent{\textbf{\emph{#1}}}}
+
+
+%%%%%%%%%%%---- new environments   ----- %%%%%%%%%
+\newtheorem{theorem}{Theorem}
+\newtheorem{acknowledgement}[theorem]{Acknowledgement}
+\newtheorem{axiom}[theorem]{Axiom}
+\newtheorem{case}[theorem]{Case}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{conclusion}[theorem]{Conclusion}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{criterion}[theorem]{Criterion}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{solution}[theorem]{Solution}
+\newtheorem{summary}[theorem]{Summary}
+\newenvironment{proof}[1][Proof]{\noindent\textbf{#1.} }{\ \rule{0.5em}{0.5em}}
+% \import{/Users/feilu/Documents/17/CDSE/my topics17/draft/ref_Fei17_11}
+
+
+
+%%%%%%%======= shortcuts for this note ======== %%%%%%%
+\def\phat{\widehat{p}}
+\def\prob{\mathbb{P}}
+\def\bx{\mathbf{x}}
+\newcommand{\pw}[1]{\mathbb{P}_{W_{#1}}}
+
+
+\begin{document}
+
+%%% ============== Title  =======
+\begin{center}
+\textbf{\Large Brief introduction of particle MCMC} \\[0pt]
+\vspace{4mm} Fei Lu\\
+ feilu@math.jhu.edu \\
+ Started: 5/10/2018, \ Last Updated:  6/19/2018
+\end{center}
+
+% \title{Model reduction}
+% \author{}
+% \maketitle
+% \date{\today}
+%\begin{abstract}
+% \end{abstract}
+\noindent{\bf Abstract:} Introduction to particle MCMC algorithms\cite{andrieu2010particle}, especially, the particle Gibbs with ancestor sampling\cite{lindsten2014particle}. 
+
+
+ \tableofcontents
+ 
+ 
+\vspace{6mm}
+%
+\section{Review of SMC and MCMC}
+%
+\subsection{Example problem: Bayesian inference of SSM}
+For simplicity, we introduce the framework of PMCMC considering the inference in state-space models (SSMs), also known as hidden Markov models (HMMs). Hereby we use the convention that capital letters denote random variables and lower case letter denote the values of the random variables in corresponding capital letters. The state is a hidden Markov process $X_{1:N}$ with initial distribution $X_1\sim p_\theta(x_1)$ and transition probability density 
+\[
+X_{n+1} | (X_n=x_n) \sim p_\theta(x_{n+1}|x_n),
+\]
+for some static parameter $\theta\in \Theta$. Hereafter we use $p(z)$ to denote the density of the random variables $Z$.  This process can be a times series or a dynamical system. The process is observed through another process $Y_{1:N}$ (often resulted from nonlinear measurement functions with measurement errors) , which is assumed to be conditionally independent given $X_{1:N}$ with1:N marginal probability density 
+\[
+Y_n| (X_n=x_n) = p_\theta(y_n|x_n).
+\]
+\fblue{For example, if the state-space model is of the form
+\begin{eqnarray}
+X_{n} &=&f(\theta,X_{n-1})+V_{n},  \label{nMM}
+\\
+Y_{n} &=&g(\theta, X_{n})+W_{n}, \label{obs}
+\end{eqnarray}%
+with $V_n\sim \mathcal{N}(0,\sigma^2_V)$ independent of $W_n\sim \mathcal{N}(0,\sigma^2_W)$, then 
+\[
+ p_\theta(x_{n}|x_{n-1}) \propto \  e^{-\frac{|x_{n}- f(\theta,x_{n-1})|^2}{2\sigma^2_V}}, \quad  
+ p_\theta(y_n|x_n) \propto \  e^{-\frac{|y_{n}- g(\theta,x_{n})|^2}{2\sigma^2_W}}.
+\]
+In the evaluation of these densities, we evaluate the deterministic maps $f$ and $g$.
+}
+
+The goal is to estimate the states and the parameter from the observations $y_{1:N}$. In Bayesian inference, we estimate the posterior of $(\theta, x_{1:N})$ conditional on $y_{1:N}$:
+\[
+p(\theta, x_{1:N} | y_{1:N}) \propto p_\theta(x_{1:N} | y_{1:N}) p(\theta),
+\]
+where $p_\theta(x_{1:N} | y_{1:N})$ denote the density of $X_{1:N}$ conditional on $y_{1:N}$ and $\theta$, i.e. 
+\[
+p_\theta(x_{1:N} | y_{1:N}) = p_\theta(x_1) \prod_{n=2}^T p_\theta(x_{n}|x_{n-1})  \prod_{n=1}^T p_\theta(y_{n}|x_{n}). 
+\]
+If the parameter is know, then the goal is to estimate $p_\theta(x_{1:N} | y_{1:N}) $. 
+
+
+There are various SMC and MCMC methods to sample from $p(\theta, x_{1:N} | y_{1:N})$, commonly used strategies are (i) by alternatively updating the state components $x_{1:N}$ conditional on $\theta$ and $\theta$ conditional on $x_{1:N}$, or (ii) by adding artificial dynamics to $\theta$. We focus on the sampling of $p_\theta(x_{1:N} | y_{1:N}) $, since sampling from $p(\theta|y_{1:N}, x_{1:N})$ is often feasible. 
+
+%
+\subsection{Sequential Monte Carlo.}  
+%
+SMC methods approximate the target density $p_\theta(x_{1:N} | y_{1:N}) $  sequentially by weighted random samples called particles, (hereafter in this subsection we drop the subindex $\theta$ to simplify the notation)
+\[
+\phat(x_{1:n} | y_{1:n}) :=\sum_{m=1}^M W_n^m \delta_{X^m_{1:n}} (dx_{1:n}).
+\]
+These weighted samples are generated sequentially by importance sampling based on the recurrent formation 
+ \begin{equation}
+p(x_{1:n}|y_{1:n})=p(x_{1:n-1}|y_{1:n-1})\frac{p\left( y_{n}|x_{n}\right)
+p(x_{n}|x_{n-1})}{p(y_{n}|y_{1:n-1})}.  \label{RecHMM}
+\end{equation}
+That is, at each time $n$, one first draws a sample of $X_n^m$ for each $m=1,\dots,M$ from an easy to sample importance density $q(x_n|y_n, X_{n-1}^m)$ ( approximating the ``incremental density'' which is proportional to $p\left( y_{n}|x_{n}\right)p(x_{n}|X^m_{n-1})$\ ), and computes incremental weights 
+\begin{equation*}\label{eq:wt_incr_smc}
+w_n^m= \frac{p(X_n^m|X_{n-1}^m)p(y_n|X_n^m))}{q(X_n^m|y_n, X_{n-1}^m)}, %W_{n}^m= \frac{w_n^m}{\sum_{k=1}^Mw_{n}^k}
+\end{equation*}
+which take account the discrepancy between the two densities. One then assigns normalized weights $\{W_n^m \propto W_{n-1}^m w_n^m\}_{m=1}^M$ to the concatenated sample trajectories $\{X_{1:n}^m\}_{m=1}^M$. 
+% More precisely, at time $1$, one draws $M$ samples from an importance density $q_1(x_1)$, and assigns importance weights $\{W_1^m\}$ which takes account the importance of the samples (or the discrepancy between  $q_1(x_1)$ and $p(x_1|y_1)$). Then at time $n\geq 2$,   $= \frac{p_\theta(x_1)p(y_1|x_1))}{q_1(x_1)}$
+
+A clear drawback of the above procedure is that all but one of the weights $\{W_n^m\}$ will become close to zero as the number of iterations increases, due to the multiplication and normalization operations. To avoid this, one replaces the unevenly weighted samples  $\{(X_{n-1}^m, W_{n-1}^m)\}$ by uniformly weighted samples from the approximate density $\phat_\theta(x_{n-1} | y_{1:n-1} )$. This is the well-known resampling step. More precisely, this is carried out as follows:
+\begin{itemize}
+\item [(i)] draw random indices $\{A_{n-1}^m\}_{m=1}^M$ according the discrete probability distribution $\mathbb{F}(\cdot|\mathbf{W}_{n-1})$ on the set  $\{1,\dots,M\}$, which is defined as
+ \[
+ \mathbb{F}(A_{n-1}=k | {\mathbf{W}_{n-1}}) = W_{n-1}^k, \text{ for } k=1,\dots, M.
+ \]
+\item [(ii)] for each $m$, draw a sample $X_n^m$ from $q(x_n | y_n, X_{n-1}^{A_{n-1}^m})$ and set $X_{1:n}^{m} := (X_{n-1}^{A_{n-1}^m}, X_n^m)$;
+\item [(iii)] compute and normalize the weights
+\begin{equation}\label{eq:wt_smc}
+w_n^m:=w_n(X_{1:n}^m)= \frac{p(X_n^m|X_{n-1}^{A_{n-1}^m} )p(y_n|X_n^m))}{q(X_n^m|y_n, X_{n-1}^{A_{n-1}^m} )},\quad W_{n}^m= \frac{w_n^m}{\sum_{k=1}^Mw_{n}^k}.
+\end{equation}
+ \end{itemize}
+ 
+ The above SMC sampler is summarized in Algorithm \ref{alg:smc}. 
+ \begin{algorithm} % enter the algorithm environment
+\caption{Sequential Monte Carlo with resampling. (Each step is for $m=1,\dots, M$.)  } % give the algorithm a caption
+\label{alg:smc} % and a label for \ref{} commands later in the document
+\begin{algorithmic}% [1]  % show line number every 1 line  % enter the algorithmic environment
+ %   \REQUIRE $n \geq 0 \vee x \neq 0$
+    \ENSURE Samples $\{(X_{1:N}^m, W_{T}^m)\}_{m=1}^M$ 
+    \STATE  Draw samples $X_{1}^m\sim q(x_{1}|y_1)$. \\
+    \STATE Compute and normalize the weights: % the incremental weights and the normalized weights
+     $w_{1}^m =\frac{p_\theta(X^m_1)p_\theta(y_1|X_1^m))}{q(X_1^m|y_1)},\, W_{1}^m= \frac{w_1^m}{\sum_{k=1}^Mw_{1}^k}$.  
+    \FOR{$n=2:N$}
+            \STATE  Draw samples $A_{n-1}^m\sim \mathbb{F}(\cdot | \mathbf{W}_{n-1})$. 
+            \STATE  Draw samples $X_{n}^m\sim  q(x_n|y_n, X_{n-1}^{A_{n-1}^m} )$ and set $X_{1:n}^{m} := (X_{n-1}^{A_{n-1}^m}, X_n^m)$.
+            \STATE Compute the normalized weights $W_n^m$ according to \eqref{eq:wt_smc}. 
+    \ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+ 
+\fpar{Drawbacks of SMC.} Note that while the resampling technique prevents $W_T^m$ from being degenerate, the SMC approximation suffers the  degeneracy (or depletion) problem: the marginal distribution $\phat(x_n|(y_{1:N}))$ gets to concentrated on a single particle as $N-n$ increases because each resampling step reduces the number of distinct particles of $x_n$. Therefore, the joint density $p(x_{1:N}|y_{1:N})$ deteriorates as time $N$ increases. 
+
+%
+\subsection{Standard Markov Chain Monte Carlo}
+MCMC approximates the target density $p_\theta(x_{1:N}|y_{1:N})$ by constructing a Markov chain $(X_{1:N}(i), i \geq 1)$ with the target distribution as invariant distribution. The major difficulty is the design of high-dimensional proposal densities $p(x_{1:N}'|x_{1:N})$ for possible moves of the chain. Local strategies are often used, and a standard practice consists of dividing the high-dimensional distribution into small blocks and updating each of these blocks in turn. For example, we can divide $x_{1:N}$ into blocks of length $K$ and update each block $x_{n+1:n+K}$ according to an MCMC step of invariant density 
+\[
+p(x_{n+1:n+K} |y_{1:N}, x_{1:n}, x_{n+K+1:N})\propto \prod_{k=n}^{n+K} p(x_{k+1}|x_{k}) \prod_{k=n+1}^{n+K} p(y_k|x_k). 
+\] To design efficient proposal densities (in a Metropolis-Hastings update) for this density, the size $K$ of the block is often limited, and this slows down the exploration of the support of $p_\theta(x_{1:N}|y_{1:N})$. 
+
+\fpar{Comparison of MCMC and SMC:} in the above MCMC local strategy, the distribution of the local block $p(x_{n+1:n+K} |y_{1:N}, x_{1:n}, x_{n+K+1:N})$ depends on all the observations and the other parts of the trajectory, and it can be costly to compute the proposal density; 
+in SMC (when viewed as a local strategy),  the distribution of each ``local block'' $p(x_n|y_{1:n}, x_{1:n-1})$ only conditional on the past, and it can be easily computed but pays the price of leading to degeneracy.  
+
+\section{Particle MCMC}
+The framework of particle MCMC (PMCMC) introduced in \cite{andrieu2010particle} is a systematic combination of sequential Monte Carlo (SMC) and MCMC methods, exploiting the strengths of both techniques.\footnote{Key point: When sampling high-dimensional distribution, both SMC and MCMC methods use \emph{local strategies} (such as sequential sampling or Gibbs methods, all based on conditional sampling) to break up the original sampling problem into smaller and simpler ones. Such local strategies ignore some of the \emph{global features} of the target distribution, resulting potentially poor performance (e.g. degeneracy of SMC, and XXX of Gibbs MCMC). How global features are captured in MCMC? How pMCMC overcome this problem?}
+
+
+ The PMCMC samplers use SMC algorithms to design efficient high-dimensional proposal distributions for MCMC algorithms, and use Markov chain moves to guide the trajectories proposed by the SMC algorithms to explore the target distribution. Two types of methods have been proposed for the Markov move chain step, and they lead to two types of PMCMC samplers: 
+ \begin{itemize}
+ \item The \emph{particle marginal Metropolis-Hastings samplers} (PMMH) that use the accept-reject algorithm involving the marginal density $p(\theta| y_{1:N}) \propto p_\theta(y_{1:N}) p(\theta)$, and this justifies the name PMMH. Here $p(\theta)$ is  the prior, and the marginal likelihood $p_\theta(y_{1:N})$ is estimated by SMC algorithms. 
+  \item The \emph{particle Gibbs sampler} (PG) that uses a novel a conditional SMC update \cite{andrieu2010particle}, as well as its variant, the \emph{\textbf{particle Gibbs with ancestor sampling}} (PGAS) sampler \cite{lindsten2014particle} which improves the conditional SMC update. 
+ \end{itemize}
+ 
+These samplers can be directly used for inference in state-space models and has been extended to various model settings. The PGAS has shown to outperform PMMH and PG (when the SMC step uses the simple sequential importance sampling with resampling algorithm, in which the importance densities are the prior densities from the state model, see e.g. \cite{andrieu2010particle,lindsten2014particle}). Therefore we focus on PGAS and PG below and leave the description of the PMMH in Appendix \ref{sec-pmmh}. 
+
+\subsection{Particle Gibbs with ancestor sampling (PGAS)}
+The PGAS and PG samplers use a conditional SMC update step to realize the transition between two steps of the Markov chain, admitting the target distribution invariant and avoiding the accept-reject step in MH. The framework of these samplers is as follows:
+\begin{itemize} \setlength\itemsep{0mm}
+\item  Initialization: set $\theta(1)$ \fst{,$ X_{1:N}(1)$} arbitrarily. \fblue{Run an SMC to generate weighted samples $\{X_{1:N}^m, W_N^m\}_{m=1}^M$ for $p_{\theta(1)} (x_{1:N}|y_{1:N}) $ and draw $X_{1:N}(1)$ from these weighted samples. } 
+\item Iteration: for $t\geq 1:$ 
+\begin{itemize}\setlength\itemsep{0mm} \vspace{-1mm}
+\item[1.] Sample $\theta(t+1)\sim p(\cdot| y_{1:N}, X_{1:N}(t))$ 
+\item[2.] Run a conditional SMC algorithm conditional on $X_{1:N}(t)$ (this method will be explained below): to generate weighted samples $\{X_{1:N}^m, W_N^m\}_{m=1}^M$ for the approximate target density
+\[ \phat_{_{\theta(t+1),X_{1:N}(t)}} (x_{1:N}|y_{1:N}) = \sum_{m=1}^M W_N^m \delta_{X_{1:N}^m}(dx_{1:N}),\]
+and to draw a sample $X_{1:N}(t+1) \sim \phat_{_{\theta(t+1),X_{1:N}(t)}} (x_{1:N}|y_{1:N}) $.
+\end{itemize}
+\end{itemize}
+
+\bigskip
+The core of PGAS and PG  samplers is the conditional SMC algorithm. Intuitively, the conditional SMC algorithm is a standard SMC such that in each time step, one of the $M$ particle is taken from the reference path, and the remaining $M-1$ particles are generated as usual, therefore the $M-1$ particles interact with the reference path through the resampling steps. 
+
+In the PG sampler, the reference path $X_{1:N}(t)$ is retained through the resampling steps. This is accomplished by deterministically setting $X_{1:N}^M=X_{1:N}(t)$ and $A_{n}^M = M$ for all $n$, and by sampling the remaining $M-1$ particles according a standard SMC algorithm. The reference path interacts with the other paths by contributing a weight $w_n^M$. This is the key to ensure the PG Markov chain converge to the target distribution. However, since the reference path is always retained, the resampling steps tend to direct the other particles towards the reference path therefore lead to poor mixing. 
+
+The PGAS sampler increases the mixing of the chain by allowing the reference path to be connected with other particles, i.e. assigning a history to the partial reference path $X_{n:N}(t)$. This is accomplished by sampling a random value for the index variable $A^M_{n-1}$, which is referred as an \emph{ancestor sampling step}. The distribution of the index $A^M_{n-1}$ is determined by the likelihood of connecting $X_{n:N}(t)$ to the particles $\{X_{1:n-1}^m\}_{m=1}^M$ which leads to weights
+\begin{equation}\label{eq:aswt}
+\widetilde{w}_{n-1 |N}^m = w_{n-1}^m \frac{p_{_{\theta(t+1)}}(X^m_{1:n-1}, X_{n:N}(t)| y_{1:N})}{p_{_{\theta(t+1)}}(X^m_{1:n-1}| y_{1:n-1})}, \, \widetilde{W}_{n-1|N}^m = \frac{\widetilde{w}_{n-1}^m}{\sum_{k=1}^M \widetilde{w}_{n-1}^k}
+\end{equation}
+Here the expression of the weights can be seen as an application of the Bayes' theorem, where the importance weight $w_{n-1}^m$ is the prior probability of the particle $X_{1:n-1}^m$, and the ratio between the target densities is the likelihood of that $X_{n:N}(t)$ is originated from $X_{1:n-1}^m$ (see Remark \ref{rmk:ratio} about its computation).  
+In short, $A^M_{n-1}$ will be drawn from $\mathbb{F}(A^M_{n-1}=k | \widetilde{\mathbf{W}}_{n-1|N}) = \widetilde{W}_{n-1|N}^k$. 
+
+The above procedure for conditional SMC with ancestor sampling of PGAS  is summarized in Algorithm \ref{alg:pgas}. Removing line \ref{lnum:pgas}, the ancestor sampling step, we get the PG sampler. \textcolor{blue}{While the PG sampler retains the reference path, the PGAS sampler tends to break the reference path into pieces, due to allowing the past of the reference path to be resampled. }
+
+
+\begin{algorithm} % enter the algorithm environment
+\caption{Conditional SMC in PGAS.} 
+\label{alg:pgas} % and a label for \ref{} commands later in the document
+\begin{algorithmic} [1]  % show line number every 1 line  % enter the algorithmic environment
+    \REQUIRE  $X_{1:N}(t)$ and  $\theta:=\theta(t+1)$. 
+     \ENSURE $X_{(1:N)}(t+1)$.  \\
+    % \STATE 
+     Initialize the particles in SMC: 
+     \STATE \hspace{3mm}  Set $X_1^M= X_{1}(t)$ and draw samples $\{X_1^m\}_{m=1}^{M-1} \sim q_\theta(x_1| y_1)$.
+     \STATE \hspace{3mm}   Compute the weights % the incremental weights and the normalized weights
+     $w_{1}^m =\frac{p_\theta(X^m_1)p_\theta(y_1|X_1^m))}{q_\theta(X_1^m |y_1)},\, W_{1}^m= \frac{w_1^m}{\sum_{k=1}^Mw_{1}^k}$ for $m=1:M$.
+    \FOR{$n=2:N$}
+            \STATE  Draw samples $\{A_{n-1}^m\}_{m=1}^{M-1}\sim \mathbb{F}(\cdot | \mathbf{W}_{n-1})$. 
+            \STATE  Set $X_{n}^M= X_{n}(t)$ and draw samples $X_{n}^m\sim q(x_n|y_n, X_{n-1}^{A_{n-1}^m} )$ for $m=1:M-1$.
+            \STATE Draw $A_{n-1}^M \sim  \mathbb{F}(\cdot | \widetilde{\mathbf{W}}_{n-1|N})$, where the weights in $ \widetilde{\mathbf{W}}_{n-1|N}$ are computed in \eqref{eq:aswt}.  \label{lnum:pgas}
+            \STATE Set $X_{1:n}^{m} := (X_{n-1}^{A_{n-1}^m}, X_n^m)$ for $m=1:M$. 
+            \STATE Compute the normalized weights $W_n^m$ according to \eqref{eq:wt_smc}. 
+    \ENDFOR     
+    \STATE Draw $A_N$ with  $\mathbb{F}(\cdot | \mathbf{W}_{N})$.
+    \RETURN $X_{(1:N)}(t+1) = X_{1:N}^{A_N}$. 
+     \end{algorithmic}
+\end{algorithm}
+
+\begin{remark}\label{rmk:ratio}
+When the observation model is $Y_n= f(X_n) + W_n$, the ratio $\frac{p_{_\theta}(X^m_{1:n-1}, X_{n:N}(t)| y_{1:N})}{p_{_\theta}(X^m_{1:n-1}| y_{1:n-1})}$ in the ancestor sampling is straightforward to evaluate as follows. Note that: 
+\begin{align*}
+& \frac{p(x_{1:N}| y_{1:N})}{p(x_{1:n-1}| y_{1:n-1})} = \frac{p(x_{1:N}, y_{1:N})}{p(x_{1:n-1}, y_{1:n-1}) p(y_{1:N} | y_{1:n-1})} \\
+\propto &  \frac{p(y_{1:N} | x_{1:N}) p(x_{1:N})} {p(y_{1:n-1} | x_{1:n-1}) p(x_{1:n-1})} = p(y_{n:N} | x_{n:N}) p(x_{n:N} |x_{1:n-1}), 
+\end{align*}
+where the conditional independence between observations has been used, i.e. $p(y_{1:k} | x_{1:k}) = \prod_{i=1}^k p(y_i|x_i)$. Note further that $p(y_{n:N} | X_{n:N}(t))$ does not depend on $m$, therefore,  
+\[
+\frac{p_{_\theta}(X^m_{1:n-1}, X_{n:N}(t)| y_{1:N})}{p_{_\theta}(X^m_{1:n-1}| y_{1:n-1})} \propto p(X_{n:N}(t) |X^m_{1:n-1}). 
+\]
+If the state model is Markov, then the ratio equals to $p_{_{\theta(t+1)}}(X_{n}(t) |X_{n-1}^m )$; if the state model is non-Markov, then the ratio equals to $p_{_{\theta(t+1)}}(X_{n:N}(t) |X_{1:n-1}^m )$.
+
+Similar computation goes to the case when the observation depends on multiple time steps of the states, e.g. 
+\[Y_{n_i} = f(x_{n_{i-1}+1:n_i} )+ W_{n_i}, \ \  n_i-n_{i-1} >1, i = 1,\cdots, L,\]
+and the major difference is how one updates the particles in SMC. \textcolor{red}{\rm{ [TO Nils: I think we should use the above function for observation, which can be viewed as a right-point approximation of the integral: $\int_{x_{n_{i-1}}}^{x_{n_i}} g(x)dx \approx \sum_{j=n_{i-1}+1}^{n_i} g(x_j) \Delta x$. We can also use left-point approximation. The point is that $y_{n_i}$ depends on either $x_{n_{i-1}}$ or $x_{n_{i}}$, but not both. Otherwise, we may have more complicated SMC updates. ]}}
+
+In this case, upon observing $y_{n_i}$ at time $n_{i}$, the SMC draws samples $X^m_{n_{i-1}+1:n_i}$  (the states that $y_{n_i}$ depends on) from an importance density $q(x_{n_{i-1}+1:n_i}|y_{n_i}, x_{1:n_{i-1}})$ and assigns weights 
+\begin{equation}  \label{eq:wt_smc_sparse}
+w_{n_i}^m:=w_{n_i}(X_{1:n_i}^m)= \frac{p(X_{n_{i-1}+1:n_i}^m|X_{1:n_{i-1}}^{A_{n_{i-1}}^m} )p(y_{n_i}|X_{n_{i-1}+1:n_i}^m))}{q(X_{n_{i-1}+1:n_i}^m|y_{n_i}, X_{n_{i-1}}^{A_{n_{i-1}}^m} )},\quad W_{n_i}^m= \frac{w_{n_i}^m}{\sum_{k=1}^Mw_{n_i}^k}.
+\end{equation}
+In the ancestor sampling step, the weights that provides a distribution of the ancestor are
+\begin{equation}\label{eq:aswt_sparse}
+\widetilde{w}_{n_{i-1} |N}^m = w_{n_{i-1}}^m \frac{p_{_{\theta(t+1)}}(X^m_{1:n_{i-1}}, X_{n_{i-1}+1:N}(t)| y_{n_{1:L}})}{p_{_{\theta(t+1)}}(X^m_{1:n_{i-1}}| y_{n_{i-1}})}, \, \widetilde{W}_{n_{i-1}|N}^m = \frac{\widetilde{w}_{n_{i-1}}^m}{\sum_{k=1}^M\widetilde{w}_{n_{i-1}}^k}. 
+\end{equation}
+The algorithm is summarized in Algorithm \ref{alg:pgas_sparse}.  As before, the ratio between the target distributions is the likelihood of connecting the partial reference path $X_{n_{i-1}+1:N}(t)$ with the samples $X^m_{1:n_{i-1}}$, and its computation becomes 
+\begin{align*}
+& \frac{p(x_{1:n_{i-1}}, x_{n_{i-1}+1:N}| y_{n_{1:L}})}{p(x_{1:n_{i-1}}| y_{n_{1:i-1})} }= \frac{p(x_{1:n_{i-1}}, x_{n_{i-1}+1:N}, y_{n_{1:L}})}{p(x_{1:n_{i-1}}, y_{n_{1:i-1}}) p(y_{n_{1:L}} | y_{n_{1:i-1}})} \\
+\propto &  \frac{p(y_{n_{1:L}} | x_{1:n_{i-1}}, x_{n_{i-1}+1:N}) p(x_{n_{i-1}+1:N})} {p(y_{n_{1:i-1}} | x_{1:n_{i-1}}) p(x_{1:n_{i-1}})} = p(y_{n_{i:L}} | x_{n_{i-1}+1:N}) p(x_{n_{i-1}+1:N} |x_{1:n_{i-1}}), 
+\end{align*}
+where the conditional independence between observations has been used, i.e. $p(y_{n_{j:k}} | x_{n_j+1:n_k}) = \prod_{i=j}^{k-1} p(y_{n_i}|x_{n_i+1:n_{i+1}} )$. Noticing again that that $p(y_{n_{i:L}} | X_{n_{i-1}+1:N} )$ does not depend on $m$, we obtain  
+\[
+\frac{p_{_{\theta(t+1)}}(X^m_{1:n_{i-1}}, X_{n_{i-1}+1:N}(t)| y_{n_{1:L}})}{p_{_{\theta(t+1)}}(X^m_{1:n_{i-1}}| y_{n_{i-1}})} \propto p(X_{n_{i-1}+1:N}(t) |X^m_{1:n_{i-1}}). 
+\]
+If the state model is Markov, then the ratio equals to $p_{_{\theta(t+1)}}(X_{n_{i-1}+1}(t) |X_{n_{i-1}}^m )$; if the state model is non-Markov, then the ratio equals to $p_{_{\theta(t+1)}}(X_{n_{i-1}+1:N}(t) |X_{1:n_{i-1}}^m )$. 
+\end{remark}
+%\textcolor{red}{For Nils: 1. My previous mistake: I computed the multi-step probability $p_{_{\theta(t+1)}}(X_{n_{i-1}+1:n_i }(t) |X_{n_{i-1}:n_i}^m )$. But the likelihood of the move should be the above one-step probability. }
+
+\begin{remark} [About splitting the state model to deterministic + random parts]. In computation, one can run 1-step the deterministic part of the state model (i.e. $f$ in $X_{n} =f(\theta,X_{n-1})+V_{n}$), and use it in both the sample drawing (by adding the random forces to it) and the evaluation of $p_{_{\theta(t+1)}}(X_{n_{i-1}+1}(t) |X_{n_{i-1}}^m )$ in the ancestor sampling. However, for observations with time gap, we should note that samples of a block of states $X^m_{n_{i-1}+1:n_{i}}$ have to be generated by iterating the stochastic state model, and NOT by iterating the deterministic map $f$ and add multi-step noise. 
+ % For the above SSM with observations at every time step, the values $\{f(\theta,X_{n_{i-1}}^m)\}$ can be computed in the SIR-SMC and be reused in the ancestor sampling, and the random samples of $\{X_n^m\}$ of the SIR can be drawn by adding noise to these values.  However, for observations with time gap, we should note that samples of a block of states $X^m_{n_{i-1}+1:n_{i}}$ have to be generated by iterating the stochastic state model, and NOT by iterating the deterministic map $f$ and add multi-step noise. 
+\end{remark}
+
+\begin{remark}[Avoiding singular weights in computation] In practice, the weights $\{w_n^m\}_{m=1}^M$ and the ratios (or increment weights in other types of SMC that do not resample every step) $\{\alpha_n^m\}_{m=1}^M$ in \eqref{eq:wt_smc} and  \eqref{eq:wt_smc_sparse} can be singular in the sense that $\sum_{m=1}^M w_n^m\alpha_n^m =0$ due to numerical precision. This would happen very often if any probability function is highly concentrated and the normalization step only makes the situation worse. One way to avoid such a problem is to store the logarithm exponents and minus the maximum of these exponents before normalization. That is, we store $c_n^m, a_n^m$'s of $w_n^m = \frac{e^{c_n^m}}{\sum_{k=1}^M e^{c_n^k}}$ and $\alpha_n^m = \frac{e^{a_n^m}}{\sum_{k=1}^M e^{a_n^k}}$, and compute $\widetilde{w}_n^m \ \propto\  e^{c_n^m + a_n^m  - \max_k\{c_n^k + a_n^k\} }$. 
+\end{remark}
+
+
+\begin{algorithm} % enter the algorithm environment
+\caption{Conditional SMC in PGAS with sparse observations $Y_{n_i} = f(x_{n_{i-1}+1:n_i} )+ W_{n_i}$.} 
+\label{alg:pgas_sparse} % and a label for \ref{} commands later in the document
+\begin{algorithmic} [1]  % show line number every 1 line  % enter the algorithmic environment
+    \REQUIRE  $X_{1:N}(t)$ and  $\theta:=\theta(t+1)$. 
+     \ENSURE $X_{(1:N)}(t+1)$.  \\
+    % \STATE 
+     Initialize the particles in SMC: 
+     \STATE \hspace{3mm}  Set $X_{1:n_1}^M= X_{1:n_1}(t)$ and draw samples $\{X_{1:n_1}^m\}_{m=1}^{M-1} \sim q_\theta(x_{1:n_1}| y_{n_1})$.
+     \STATE \hspace{3mm}   Compute the weights % the incremental weights and the normalized weights
+     $w_{n_1}^m =\frac{p_\theta(X_{1:n_1}^m)p_\theta(y_{n_1}|X_{1:n_1}^m))}{q_\theta(X_{1:n_1}^m |y_{n_1})},\, W_{n_1}^m= \frac{w_{n_1}^m}{\sum_{k=1}^Mw_{n_1}^k}$ for $m=1:M$.
+    \FOR{$i=2:L$}
+            \STATE  Draw samples $\{A_{n_{i-1}}^m\}_{m=1}^{M-1}\sim \mathbb{F}(\cdot | \mathbf{W}_{n_{i-1}})$. 
+            \STATE  Set $X_{n_{i-1}+1:n_i}^M= X_{n_{i-1}+1:n_i}(t)$ and draw samples $X_{n_{i-1}+1:n_i}^m\sim q(x_{n_{i-1}+1:n_i}|y_{n_i}, X_{n_{i-1}}^{A_{n_{i-1}}^m} )$ for $m=1:M-1$.
+            \STATE Draw $A_{n_{i-1}}^M \sim  \mathbb{F}(\cdot | \widetilde{\mathbf{W}}_{n_{i-1}|N})$, where the weights in $ \widetilde{\mathbf{W}}_{n-1|N}$ are computed in \eqref{eq:aswt_sparse}. 
+            \STATE Set $X_{1:n_i}^{m} := (X_{1:n_{i-1}}^{A_{n_{i-1}}^m}, X_{n_{i-1}+1:n_i}^m)$ for $m=1:M$. 
+            \STATE Compute the normalized weights $W_{n_i}^m$ according to \eqref{eq:wt_smc_sparse}. 
+    \ENDFOR     
+    \STATE Draw $A_N$ with  $\mathbb{F}(\cdot | \mathbf{W}_{N})$.
+    \RETURN $X_{(1:N)}(t+1) = X_{1:N}^{A_N}$. 
+     \end{algorithmic}
+\end{algorithm}
+
+
+
+ 
+\newpage
+\section{Appendix}
+\subsection{MCMC: the Metropolis-Hastings Algorithm}
+% The Metropolis algorithm (1953) prescribes a transition rule for the a Markov chain, by using a symmetric proposal function to suggest possible moves and by an acceptance-rejection rule to ensure the invariant distribution is the target distribution $\pi$. Suppose that the chain starts with an initial state $x^{(0)}$, the Metropolis algorithm iterates the following two steps: 
+%\begin{itemize}
+%\item Perturb the original state to a new state $x'$. That is, generate a new state $x'$ from a symmetric probability transition function $T(x^{(n)},x')$. 
+%\item Accept the state with rate $r(x,x'):= \pi(x')/\pi(x)$. That is, generate a random number $U\sim \mathrm{ Uniform[0,1]}$, and let $x^{(n+1)} = x'$  if $U\leq r(x,x') $ and $x^{(n+1)} = x^{(n)}$ otherwise. 
+%\end{itemize}
+%The symmetric probability transition function $T(x^{(n)},x')$ is called proposal density. 
+
+The most widely used MCMC algorithm is the Metropolis-Hastings algorithm \cite{hastings1970}, and we refer to \cite{Liu01} for an overview of MCMC methods. It prescribes a transition rule for the a Markov chain, by using a proposal function (a probability transition function) to suggest possible moves and by an acceptance-rejection rule to ensure the invariant distribution is the target distribution $\pi$. Suppose that the chain starts with an initial state $x^{(0)}$, the Metropolis algorithm iterates the following two steps: 
+
+\begin{itemize} 
+\item Perturb the original state to a new state $x'$. That is, generate a new state $x'$ from a probability transition function $p(x(t),x')$. 
+\item Accept the state with rate $r(x(t),x')$, where 
+\[
+r(x,x'):= \min\left\{1, \frac{\pi(x')p(x',x)}{\pi(x) p(x,x')}\right\}.
+\] That is, generate a random number $U\sim \mathrm{ Uniform[0,1]}$, and let $x(t+1) = x'$  if $U\leq r(x(t),x') $ and $x(t+1) = x(t)$ otherwise. 
+\end{itemize}
+Note that the probability transition function $p$ does not have to be symmetric, and the only requirement is that $p(x,y)>0$ if and only if $p(y,x)>0$. 
+
+ \begin{algorithm} % enter the algorithm environment
+\caption{Metropolis-Hastings algorithm. } % give the algorithm a caption
+\label{alg:MH} % and a label for \ref{} commands later in the document
+\begin{algorithmic}% [1]  % show line number every 1 line  % enter the algorithmic environment
+ %   \REQUIRE $n \geq 0 \vee x \neq 0$
+    \ENSURE A Markov chain $x(1:T)$ (with the target density $\pi(x)$ as invariant density). 
+    \STATE  Initialize the chain $x(1)$. \\ 
+    \FOR{$t=2:T$} 
+            \STATE Draw a sample from the proposal distribution $x'\sim p(x(t-1),x')$. 
+            \STATE Draw $U\sim \mathrm{ Uniform[0,1]}$ and let 
+                    \[
+                      x(t) = \left\{ 
+                        \begin{array}{ll}
+                            x',         & \textrm{ if } U\leq r(x(t-1),x');  \\
+                            x(t-1),  & \textrm{ otherwise}.      
+                        \end{array} \right.    
+                  \]  
+                  where the acceptance ratio is  $r(x,x'):= \min\left\{1, \frac{\pi(x')p(x',x)}{\pi(x) p(x,x')}\right\}$.  
+    \ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+
+\subsection{PMMH: particle marginal Metropolis-Hastings samplers} \label{sec-pmmh}
+To sample $p(\theta, x_{1:N} | y_{1:N})=p(\theta | y_{1:N})p_\theta(x_{1:N} | y_{1:N})$, the PMMH sampler jointly update $\theta$ and $x_{1:N}$ by the proposal density 
+\[
+q(\theta^*, x^*_{1:N} | \theta, x_{1:N} ) = q(\theta^*|\theta) p_{\theta^*}(x^*_{1:N} | y_{1:N}). 
+\]
+That is, one first draw a sample $\theta^*$ from $q(\theta^*|\theta)$, then draw a sample $x^*_{1:N}$ from the approximate density  $\phat_{\theta^*}(x_{1:N} | y_{1:N})$ generated by SMC.  The MH acceptance ratio is 
+\[
+\frac{p(\theta^*, x^*_{1:N} | y_{1:N} )  q( \theta, x_{1:N}|\theta^*, x^*_{1:N} ) }{p(\theta, x_{1:N} | y_{1:N} )  q(\theta^*, x^*_{1:N} | \theta, x_{1:N} ) } = \frac{p_{\theta^*}( y_{1:N} ) p(\theta^*) q(\theta | \theta^*) }{p_\theta ( y_{1:N} ) p(\theta) q(\theta^*|\theta) }.
+\]
+ Note that this ratio effectively uses the marginal density $p(\theta| y_{1:N}) \propto p_\theta(y_{1:N}) p(\theta)$, and this justifies the name PMMH. \fblue{The likelihood $p_{\theta^*}( y_{1:N})$ is approximated by  XXXX} 
+
+
+ The PMMH sampler is as follows. 
+ 
+ \begin{algorithm} % enter the algorithm environment
+\caption{particle marginal Metropolis-Hastings sampler (PMMH). } % give the algorithm a caption
+\label{alg:pmmh} % and a label for \ref{} commands later in the document
+\begin{algorithmic} [1]  % show line number every 1 line  % enter the algorithmic environment
+ %   \REQUIRE $n \geq 0 \vee x \neq 0$
+     % \ENSURE A Markov chain $x^{(1:N)}$ (with the target density $\pi(x)$ as invariant density). 
+    \STATE  Initialize the chain: 
+     \STATE \hspace{3mm} Draw a sample $\theta(1) \sim p(\theta)$; 
+     \STATE \hspace{3mm} Run an SMC algorithm to generate $\phat_{\theta(1)} (x_{1:N}|y_{1:N}) $. Draw a sample $X_{1:N}(1) \sim \phat_{\theta(1)} (\cdot |y_{1:N}) $ and compute $\phat_{\theta(1)}(y_{1:N})$.  
+     \FOR{$t=2:T$} 
+            \STATE Sample $\theta^* \sim  q(\cdot | \theta(t-1))$;  
+            \STATE Run an SMC algorithm to generate $\phat_{\theta^*} (x_{1:N}|y_{1:N}) $. Draw a sample $X_{1:N}^* \sim \phat_{\theta^*} (\cdot|y_{1:N}) $ and compute $\phat_{\theta^*}(y_{1:N})$. 
+            \STATE Accept $(\theta^*, X_{1:N}^*)$ with probability 
+            \[ r := \frac{\phat_{\theta^*}( y_{1:N} ) p(\theta^*) q(\theta(t-1) | \theta^*) }{\phat_{\theta(t-1)} ( y_{1:N} ) p(\theta(t-1)) q(\theta^*|\theta(t-1) ) }
+            \]
+             That is, draw $U\sim \mathrm{ Uniform[0,1]}$ and let 
+              $
+                     \textcolor{blue}{(\theta(t), X_{1:N}(t) ) = \left\{ 
+                        \begin{array}{ll}
+                           (\theta^*, X_{1:N}^*),         & \textrm{ if } U\leq r;  \\
+                           (\theta(t-1), X_{1:N}(t-1) ),  & \textrm{ otherwise}.      
+                        \end{array} \right.    }
+                $
+    \ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+%
+\subsection{Convergence of PG and PGAS}
+
+
+\bibliographystyle{alpha}
+ \bibliography{ref_Fei18_5}
+% \bibstyle{plain}
+
+\end{document}

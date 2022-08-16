@@ -1,0 +1,282 @@
+\documentclass[12pt]{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   packages    %%%%%%%%%
+\usepackage[small,compact]{titlesec}
+\usepackage{amsmath,amssymb,amsfonts,mathabx,setspace}
+\usepackage{graphicx,caption,epsfig,subfigure,epsfig,wrapfig}
+\usepackage{url,color,verbatim,algorithmic}
+\usepackage[sort,compress]{cite}
+\usepackage[ruled,boxed]{algorithm}
+\usepackage[scaled]{helvet}
+\usepackage[T1]{fontenc}
+\usepackage[bookmarks=true, bookmarksnumbered=true, colorlinks=true,   pdfstartview=FitV,
+linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+
+
+%%%%%%%%%%%----   page settings   ----- %%%%%%%%%
+\marginparwidth 0pt
+\oddsidemargin  -0.15in   % = 0.38 cm
+\evensidemargin  -0.15in % = 0.38 cm
+\marginparsep 0pt
+\topmargin   -.55in   % = 1.40 cm
+\textwidth   6.8in      % = 17.27 cm
+\textheight  9.3in      % = 23.87 cm
+%\footskip 3mm
+%\setstretch{1.05}  \hoffset=-0.1in  \voffset= -0.8in
+\parskip=0.0in
+
+
+%%%%%%%%%%%----  new commands/defs   ----- %%%%%%%%%
+\def\R{\mathbb{R}}
+\def\P{\mathbb{P}}
+\def\bbeta{\bm \beta}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Ebr}[1]{\mathbb{E}\left[{#1}\right]}
+\newcommand{\rbracket}[1]{\left(#1\right)}   % round brackets 
+\newcommand{\sbracket}[1]{\left[#1\right]}   % square brackets
+\newcommand{\norm}[1]{\left\|#1\right\|}
+\newcommand{\normv}[1]{\left| #1\right|}
+\newcommand{\innerp}[1]{\langle{#1}\rangle}
+\newcommand{\dbinnerp}[1]{\langle\langle{#1}\rangle\rangle}
+\newcommand{\fpar}[1]{\bigskip\noindent{\textbf {#1}}}
+
+\newcommand{\argmin}[1]{\underset{#1}{\operatorname{argmin}}\;}
+\newcommand{\argmax}[1]{\underset{#1}{\operatorname{argmax}}\;}
+% \DeclareMathOperator*{\argmax}{argmax}
+
+%\newcommand{\b}[1]{{\bf{#1}}}
+\newcommand{\vect}[1] {\pmb{#1}}
+\newcommand{\mat}[1]{\pmb{#1}}
+\newenvironment{smallbmatrix}{\left[\begin{smallmatrix}}{\end{smallmatrix}\right]}
+\newcommand{\ellv}[0]{\ensuremath{\boldsymbol{\ell}}\xspace}
+\newcommand{\sectionskip}{\vskip-0.1cm}
+\newcommand{\subsectionskip}{\vskip-0.1cm}
+\definecolor{mygrey}{gray}{0.75}
+\def\comparisonfigwidth{0.4\textwidth}
+
+
+%% Note commands
+% \usepackage{soul}
+% \usepackage{array}
+%% margin notes
+%\newcommand{\note}[1]{\marginpar{\renewcommand{\baselinestretch}{1.0}{\scriptsize{\parbox{0.5in}{\raggedright{\bf{\sffamily #1}}}}}}}
+%\newcommand{\fnote}[1]{\note{Fei: {#1}}}
+%\newcommand{\frem}[1]{{\textcolor{cyan}{[Fei: {#1}]}}}
+%\newcommand{\fnew}[1]{{\textcolor{blue}{#1}}}
+% \newcommand{\floor}[1]{{\lfloor{#1}\rfloor}}
+\newcommand{\fblue}[1]{\textcolor{blue}{{#1}}}
+\newcommand{\frem}[1]{{\textcolor{cyan}{[Remark: {#1}]}}}
+\newcommand{\fqes}[1]{{\textcolor{red}{[{\bf Question:} {#1}]}}}
+\newcommand{\fnew}[1]{{\textcolor{cyan}{#1}}}
+
+\definecolor{dgreen}{RGB}{0,153,76}
+
+
+%%%%%%%%%%%---- new environments  
+\newtheorem{theorem}{Theorem}
+\newtheorem{acknowledgement}[theorem]{Acknowledgement}
+% \newtheorem{algorithm}[theorem]{Algorithm}
+\newtheorem{axiom}[theorem]{Axiom}
+\newtheorem{case}[theorem]{Case}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{conclusion}[theorem]{Conclusion}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{criterion}[theorem]{Criterion}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{solution}[theorem]{Solution}
+\newtheorem{summary}[theorem]{Summary}
+\newenvironment{proof}[1][Proof]{\noindent\textbf{#1.} }{\ \rule{0.5em}{0.5em}}
+
+\numberwithin{equation}{section}
+\numberwithin{theorem}{section}
+
+\begin{document}
+%% === the title page  ------ %%%%%%%%%%%%%%%%
+%\author{Fei Lu}  
+%\title{Learning the interaction kernels} 
+% \date{\today} 
+% \maketitle
+\begin{center}
+\textbf{\Large About the tests: parameter estimation for HnMM} \\[0pt]
+\vspace{4mm} Fei Lu\\
+Started: June 2018, Last updated: \today 
+\end{center}
+
+%%%%%  ---- abstract ---------------------------
+\begin{abstract}  
+Estimate parameter by Particle Gibbs with Ancestor Sampling (PGAS) algorithm,
+ \end{abstract}
+
+\section{The hidden non-Markov model}
+
+ 
+The script generates a batch of data $y_{1:T}$ from the the standard nonlinear time series model,
+\begin{align}
+ x_{t} &= a_1 x_{t-1} + a_2 x_{t-2} + b_1x_{t-1}/(1+x_{t-1}^2)+8\cos(1.2(t-1))+d_1v_{t-1}+ v_t, \\
+ y_t &= 0.05*x_t^2 + e_t,
+ \end{align}
+with $v_t \sim N(0,q)$ and $e_t \sim N(0,r)$. 
+
+We assume that the variances of the model noise and the measurement noise  $(q,r)$ are known ( they can also be estimated often with inverse Gamma priors, but here we assume that they are known for simplicity---- Maybe they are easier to estimate?). The parameters to be estimated are 
+\[
+\theta = (a_1,a_2,b_1,d_1). 
+\]
+
+The PGAS algorithm generates a Markov chain which has the posterior $p(\theta, x_{1:T} | y_{1:T})$ as invariant density. 
+
+
+Here we consider the following estimators
+\begin{itemize}
+\item MLE-true states: MLE from true state is close to the true values of the parameters
+\item online EM: MLE of the noisy observation by online EM 
+\item Bayes estimator is close to the MLE from reference trajectories
+\end{itemize}
+
+% Previous bug: Numerical tests show that this model is NOT identifiable by regression even if we have perfect observation of $X$ and $V$.  \fblue{This is strange!!!} --- Fixed. This is caused by a indexing error in the noise term (used $v_{t+1}$, but should be $v_t$) in the codes for state-space model. Here one missing noise instance shifts the whole trajectory. 
+ 
+\section{ Likelihood, Prior and Posterior of the parameters.} In simulations, the true parameter are sampled from a prior, either Gaussian or uniform. 
+In the Gibbs sampling, we sample parameters from the posterior 
+\[
+p(\theta | y_{1:T},x_{1:T}) \ \propto \  p_{prior}(\theta) p_{\theta}(x_{1:T}|y_{1:T}) \propto\  p_{prior}(\theta) p_{\theta}(x_{1:T}),
+\]
+where in the second step we use the fact that the parameters are from the state model (one can also replace these proportional to by equalities using Bayesian formula).  Note that  
+\[ 
+p_{\theta}(x_{1:T}) = (\sqrt{2q\pi})^{-(T-2)} e^{-\sum_{t=2}^{T-1} \| x_{t+1} -f(t)- \sum_i \theta_i \phi_i(X_{t-1:t})\|^2/(2q) }. 
+\]
+This can be viewed as a distribution of $\theta$ in form of $\mathcal{N}(\mu_1, \Sigma_1 )$ with 
+\[\Sigma_1^{-1} = \sum_{t=2}^{T-1} \Phi'_t \Sigma_V^{-1} \Phi_t, \text{ and } \mu_1= \Sigma_1 \sum_{t=2}^{T-1} \Phi'_t \cdot (x_{t+1}-f(t)),\]
+where we denoted $\Phi_t= (\phi_1(X_{t-1:t}), \dots, \phi_4(X_{t-1:t}) )$.  
+\begin{itemize}\setlength\itemsep{-1mm}
+\item  \emph{Gaussian prior.} Combing it with a Gaussian prior $\mathcal{N}(\mu_0, \Sigma_0 )$, we obtain that the posterior of $\theta$ is $\mathcal{N}(\mu, \Sigma )$ with  
+\[ \Sigma^{-1} = (\Sigma_0^{-1} + \Sigma_1^{-1} ) , \text{ and } \mu= \Sigma (\Sigma_0^{-1}\mu_0 + \Sigma_1^{-1}\mu_1). \]
+\item \emph{Uniform prior.} When the likelihood is combined with a uniform prior $\otimes_{i=1}^4 [a_i,b_i]$, the posterior becomes difficult to sample. This is because the likelihood Gaussian can be very skewed and far from these prior intervals. 
+ \end{itemize}
+%Remark: when $x$ is a vector, $p_{\theta}(x_{1:T})$ is often in the form 
+%\[- \log p_{\theta}(x_{1:T}) = \frac{T-2}{2} \log(2q\pi) + c_T + (\theta-\mu_1)' \Sigma_1 (\theta-\mu_1) \]
+% where $\Sigma_1 = \sum_{t=2}^{T-1} \phi'_t \Sigma_V^{-1} \phi_t$ and $\mu_1= \Sigma_1 \sum_{t=2}^{T-1} \phi'_t x_{t+1}$. 
+Remark:  when partial of $\theta$ is known (e,g. suppose $\theta_3,\theta_4$ are known, and we only need to estimate $\theta_1,\theta_2$), the likelihood needs to be slightly changed. . 
+
+
+\fpar{\bf MLE by Expectation-Maximization} Online EM algorithm
+
+
+\section{Identifiability, Stability and constraints on the parameters}
+\fpar{\bf About stability and parameter range: } \\ One may consider
+stability of the linear parts (unclear if necessary/sufficient)
+\footnote{Stability can be discussed by the standard local stability argument: find critical points and study the local, global features, Lyapunov functions, energy potentials.}
+  $$       x_{t+1} = a_1 x_t + a_2 x_{t-1} $$
+to put constraints on the coefficients. Recall that for the linear parts
+to be stable, one needs that the roots of
+  $$        p(z) = 1-a_1 z - a_2 z^2    $$
+to be outside the unit disk. The roots are:
+  $$       \frac{a_1 \pm \sqrt{a_1^2+ 4 a_2}}{-2a_2}   $$
+A sufficient condition: $-a_1^2/4 < a_2 <0, a_1$
+
+
+\fpar{\bf Identifiability}
+The likelihood inverse is well-posed. When estimating all the parameters from true states, the smallest eigenvalue of the regression matrix is about 0.04 for all four parameters. 
+
+\begin{table}[b]
+\center
+\begin{tabular}{c| c cc}
+   & MLE-true states        & online EM & Bayes  \\   \hline
+   $a_1, a_2$  & well-posed& TBD & TBD  \\
+  $a_1, a_2,\sigma_W$  & well-posed& TBD & TBD \\
+  $ a_1,a_2,b_1,d_1$  & well-posed & TBD &TBD       
+\end{tabular}
+\end{table}
+\begin{itemize}
+\item MLE-true state: consistent estimators
+\item online EM: 
+\item Bayes estimator is close to the MLE from reference trajectories, and tend to 
+\begin{itemize}
+\item underestimate $\sigma_W$, $d_1$, $b_1$
+\item over estimate $a_1,a_2$
+\end{itemize}
+\end{itemize}
+
+ True:   0.70   -0.20   25.00   0.75   1.00   \\
+ MLE :   0.74   -0.14   20.55   0.30   0.91   \\
+ Bayes:  0.72   -0.14   21.06   0.36   0.92  
+
+
+\subsection{Initialize the ensemble of particles}
+Unlike the Markov models which forgets the past, non-Markov model depend heavily on the past, therefore, the initial conditions become very important. For the NARMA, we need $t_0=\max\{p,q\}$ step initial conditions. We may use maximum posterior of $x_{1:t_0}$ as initial conditions, 
+
+\section{EM algorithms for HnMMs}
+Consider an HnMM with transition probability density $p(x_k|x_{1:k-1},v_{1:q},\theta)$ and observation pdf $p(y_k|x_k,\theta)$ for each time $k$. Assume that  $p(x_k|x_{1:k-1},v_{1:q},\theta)p(y_k|x_k,\theta)$ is of the form 
+ \[p(x_k|x_{1:k-1},v_{1:q},\theta)p(y_k|x_k,\theta)=h(x_{1:k},v_{1:q},y_k)\exp(-\psi(\theta)+\langle S(x_{k-p:k},v_{k-q:k-1},y_k),\phi(\theta)\rangle),\]
+ so that the complete-data joint distribution $p(x_{1:n},y_{1:n}|\theta)$ belongs to an exponential family, 
+ \begin{align*}
+ \log p(x_{1:n},y_{1:n}|\theta)&=\log\prod_{k=1}^np(x_k|x_{k-1},\theta)p(y_k|x_k,\theta)\\
+ &=\sum_{k=1}^n \log p(x_k|x_{k-1},\theta)p(y_k|x_k,\theta)\\
+ &=\sum_{k=1}^n \Big(\log h(x_k,y_k)-\psi(\theta)+\langle S(x_{k-1},x_k,y_k),\phi(\theta)\rangle\Big).
+  \end{align*}
+Given $\theta^{(t)}_n$ in iteration $t$ at time  $n$, notice that $\sum_{k=1}^n\Ebr{ h(x_k,y_k)|y_{1:n},\theta^{(t)}_n}$ does not depend on $\theta$, the intermediate quantity can be reduced to be
+\[
+Q(\theta,\theta^{(t)}_n)=-n\psi(\theta)+\innerp{ \sum_{k=1}^n\Ebr{S(x_{k-1},x_k,y_k)|y_{1:n},\theta^{(t)}_n},\phi(\theta) }.
+\]  
+One only needs to compute $\sum_{k=1}^n\Ebr{ S(x_{k-1},x_k,y_k)|y_{1:n},\theta^{(t)}_n}$ and the gradients of $\psi(\theta)$ and $\phi(\theta)$ for the optimization. 
+
+ \begin{example} 
+ Consider estimating $\theta =(\theta_{1:d-1},\sigma_1) $ in an HMM with
+ \[p(y_k|x_k,\theta) = \frac{1}{\sqrt{2\pi \sigma_2}}e^{-\frac{|y_k-g(x_k)|^2}{2\sigma_2} },\quad 
+ p(x_{k}|x_{k-1},\theta) = \frac{1}{\sqrt{2\pi \sigma_1}}e^{-\frac{|x_k- \sum_{i=1}^{d-1} \theta_{i} f_i(x_{k-1})|^2}{2\sigma_1} }, \]
+the terms in the exponential family are
+\begin{align*}
+\phi(\theta) &= (\theta^2_{1:d-1},\theta_{1:d-1}, 1)/\sigma_1,  \quad \psi(\theta)  = \frac{n}{2}\log \sigma_1,  \\ 
+S(x_{k-1},x_k, y_k)&= - \left(f_{1:d-1}^2(x_{k-1}), 2x_kf_{1:d-1}(x_{k-1}), \frac{x_k^2}{2} \right). 
+\end{align*}
+To calculate the maximizer of the intermediate quantity, note that it is quadratic in $\theta$,
+\[
+Q(\theta,\theta^{(t)}_n)=C_h-n\psi(\theta)+\frac{1}{2\sigma_1} \sum_{k=1}^n\Ebr{|X_k -\sum_{i=1}^{d-1} \theta_{i} f_i(X_{k-1})|^2 \bigg |y_{1:n},\theta^{(t)}_n},
+\] 
+ its maximizer can be analytically calculated:
+\[
+\theta^{(t+1)}_n = A^{-1}b, \quad \sigma^{(t+1)}_n= \frac{1}{n} \sum_{k=1}^n |X_k- \sum_{i=1}^{d-1} \theta_{i} f_i(X_{k-1})|^2
+ \]  
+where $A\in \R^{(d-1)\times (d-1)}$ is a matrix with entries $A_{ij} = \sum_{k=1}^n\Ebr{ f_i(X_{k-1})f_j(X_{k-1})|y_{1:n},\theta^{(t)}_n}$, and $b\in \R^{d-1}$ is a vector with entries $b_i =  \sum_{k=1}^n\Ebr{ f_i(X_{k-1})X_k|y_{1:n},\theta^{(t)}_n}$.
+\end{example}
+
+This algorithm depends on the approximation of the conditional expectations. Unfortunately, the conditional expectations are likely to be approximated poorly, especially those with respect to the empirical smoothing densities  $\hat p(x_{k-1:k}|y_{1:n},\theta)$. This is due to the degeneracy of particles filters: the empirical smoothing densities are often approximated by only a single particle when $k< n$.  Various methods have been proposed to improving the smoothing density, including backward sampling algorithms such as \cite{XX} and block sampling \cite{DBS} or lookahead strategies \cite{Liu et al} which do not require backward sampling. 
+
+
+%% %%%============ 
+\paragraph{On-line EM algorithm}
+
+The above algorithm is offline, and the conditional expectations in $Q$ have to be re-computed for each $n$. That is, at time $n$, one has to compute $n$ conditional expectations of the sufficient statistics $\{S(X_{k-1},X_k,Y_k)\}_{k=1}^n$ under distribution $p(x_{1:n}|y_{1:n},\theta_{n-1})$, and at time $n+1$, one has to re-compute these conditional expectations with respect to the new distribution $p(x_{1:n+1}|y_{1:n+1},\theta_{n})$.
+
+The online EM algorithm aims to avoid the repeated computation of these conditional expectations, and more importantly, to run through the data only once, so as to save computational cost when the data size is large. At each time $n$, only the expectation $\Ebr{S(X_{n-1},X_n,Y_n),\phi(\theta)\big |y_{1:n},\theta_{n-1}}$ is computed, and all the previous expectations are reused.  More precisely, suppose that at time $n$, with an estimator $\theta_{n}$ and approximate function $\widehat{Q}_{n-1}(\theta)$ from previous time, then the intermediate function $Q$ is updated by 
+ \[
+ \widehat{Q}_n(\theta)=  \widehat{Q}_{n-1}(\theta)  + \gamma_n \rbracket{\langle\Ebr{S(X_{n-1},X_n,Y_n)\big |y_{1:n},\theta_{n-1}} ,\phi(\theta)\rangle -   \widehat{Q}_{n-1}(\theta)  },
+ \]
+where $\gamma_n$ is a sequence of numbers satisfying: 
+\[
+\gamma_n>0,\quad  \sum_{n=1}^\infty \gamma_n = \infty, \text{ and } \sum_{n=1}^\infty \gamma_n^2 < \infty.
+\]
+For example, the commonly used numbers are $\gamma_n = \gamma_0 n^{-\alpha}$ with $\alpha \in (\frac{1}{2},1]$ and suitable $\gamma_0$. 
+
+Especially, when  $Q(\theta) = -\psi(\theta) + \langle \bar s, \phi(\theta)\rangle $  has a unique maximizer that can be analytically represented as a function $ \theta^{*} = \bar \theta(\bar{s})$, the online EM algorithm reduced to be simply 
+\begin{equation}
+\begin{aligned}
+\text{ E-step:  \hspace{10mm} } & \widehat s_n = \widehat s_{n-1} + \gamma_n (\bar s_n - \widehat s_{n-1} ),\hspace{20mm}\\ 
+\text{ M-step: \hspace{10mm} }  &  \widehat \theta_{n} = \bar \theta(\widehat s_n) ,
+\end{aligned}
+\end{equation}
+where $\bar s_n = \Ebr{S(X_{n-1},X_n,Y_n)\big |y_{1:n},\widehat\theta_{n-1}}$. 
+
+
+% References: \\
+% [1] F. Lindsten and M. I. Jordan T. B. Sch\"on, ``Ancestor sampling for Particle Gibbs'', Proceedings of the 2012 Conference on Neural Information Processing Systems (NIPS), Lake Taho, USA, 2012. \\
+%   [2] C. Andrieu, A. Doucet and R. Holenstein, "Particle Markov chain Monte  Carlo methods" Journal of the Royal Statistical Society: Series B, 2010, 72, 269-342. 
+
+\end{document}
+    
