@@ -20,7 +20,7 @@ theta0 = randn(Ltheta,1);
 varV   = ssmPar.sigmaV^2;       % variance of the state model noise 
 
 % Initialize the state by running a PF
-[Xpaths,Vpaths,Termspaths,ft,w,ess1] = cpf_as(obs, ssmPar,Np,theta0,varV, X(1,:));
+[Xpaths,Vpaths,Termspaths,ft,w,ess1] = cpf_as(obs, ssmPar,Np,theta0,varV, X(1,:));T
 % Draw J from the weights. Traj J will be reference traj in next step SMC
 J  = find(rand(1) < cumsum(w(:,T)),1,'first');
 X1 = Xpaths(J,:);           V1 = Vpaths(J,:); 
