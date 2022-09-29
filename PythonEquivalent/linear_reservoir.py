@@ -72,23 +72,27 @@ def g_theta(qht,sig_w,qt):
     """
     return ss.norm(qht,sig_w).pdf(qt)
 # discrete inverse transform sampling
-def dits(pdf,x):
+def dits(pdf,x,num):
     '''
         give x ~ pdf
     return: index of x that are been sampled according to pdf
     '''
     # TODO: use binary search - more efficient
+    ind = np.argsort(x) # sort x according to its magnitude
+    pdf = pdf[ind] # sort pdf accordingly
     cdf = pdf.cumsum()
-    u = np.random.uniform(size = len(x))
-    a = np.zeros(len(x))
-    for i in range(len(cdf)):
-        if u[i] < cdf[0]:
+    u = np.random.uniform(size = num)
+    a = np.zeros(num)
+    for i in range(num):
+        if u[i] > cdf[-1]:
+            a[i] = -1
+        elif u[i] < cdf[0]: # this part can be removed
             a[i] = 0
         else:
             for j in range(1,len(cdf)):
                 if (u[i] <= cdf[j]) and (u[i] > cdf[j-1]):
                     a[i] = j
-    return a.astype(int)
+    return ind[a.astype(int)]
 # calculate CI
 def cal_CI(qh: List[float],P: List[float], alpha: float = 0.05):
     '''
@@ -127,7 +131,7 @@ def run_sMC(J: List[float], Q: List[float], k: float, delta_t: float):
     # state estimation-------------------------------
     for t in range(T):
         # sampling from ancestor based on previous weight
-        aa = dits(P[-1],A[-1])
+        aa = dits(P[-1],A[-1], num = len(P[-1]))
         A.append(aa)
         # draw new state samples and associated weights based on last ancestor
         qht = Qh[-1][aa]
@@ -145,6 +149,52 @@ def run_sMC(J: List[float], Q: List[float], k: float, delta_t: float):
     A = np.array(A)[1:]
     return qh, P, A
 
+# TODO: Gibbs Sampler
+def run_GS(J: List[float], Q: List[float], k: float, delta_t: float):
+    '''
+        definitions same as the wrapper
+    return: qh  - estiamted state in particles
+            P   - weight associated with each particles
+            A   - ancestor lineage
+    '''
+    # run particle filter first
+    qh, P, A = run_sMC(J, Q, k, delta_t)
+    # sample an ancestral path based on final weight
+    T = len(Q)
+    B = np.zeros(T).astype(int)
+    B[-1] = dits(P[-1],qh[-1],num = 1)
+    for i in reversed(range(1,T)):
+        B[i-1] =  A[i][B[i]]
+    # B is the current lineage
+    notB = np.arange(0,M)!=B[0]
+    # draw new state samples and associated weights based on last ancestor
+    qhu = qh[0]
+    pht = P[0]
+    # update the states based on the model
+    qhu[notB] = f_theta(qh[0][notB],k,delta_t,J[0],sig_v) 
+    phu = pht * g_theta(qhu, sig_w, Q[0])
+    phu = phu/phu.sum() # normalize
+    # update the info
+    qh[0] = qhu
+    P[0] = phu
+    # state estimation-------------------------------
+    for t in range(1,T):
+        notB = np.arange(0,M)!=B[t]
+        # sampling from ancestor based on previous weight
+        aa = dits(P[t-1],A[t-1], num = len(notB)-1)
+        A[t][notB] = aa
+        # draw new state samples and associated weights based on last ancestor
+        qht = qh[t][aa]
+        pht = P[t-1][aa]
+        # compute new state and weights based on the model
+        qhtp1 = f_theta(qht,k,delta_t,J[t],sig_v)
+        phtp1 = P[t] 
+        phtp1[notB] = pht * g_theta(qhtp1, sig_w, Q[t])
+        phtp1 = phtp1/phtp1.sum() # normalize
+        # update the info
+        qh[t][notB] = qhtp1
+        P[t] = phtp1
+    return qh, P, A
 # %%
 if __name__ == "__main__":
     """
@@ -195,6 +245,22 @@ if __name__ == "__main__":
         plt.legend(ncol = 4)
         plt.title(f"sig_v {sig_v}, sig_w {sig_w}")
         plt.xlim([600,630])
+
+    qh, P, A = run_GS(J, Q, k, delta_t)
+    L, U, MLE = cal_CI(qh,P)
+        # ------------
+    if plot == True:
+        plt.figure()
+
+        plt.plot(np.linspace(0,T,len(Q)),Q,".", label = "Observation")
+        plt.plot(np.linspace(0,T,len(Q_true)),Q_true,'k', label = "True")
+        plt.plot(np.linspace(0,T,len(MLE)),MLE,'r:', label = "MLE")
+        plt.fill_between(np.linspace(0,T,len(L)), L, U, color='b', alpha=.3, label = "95% CI")
+        
+        plt.legend(ncol = 4)
+        plt.title(f"sig_v {sig_v}, sig_w {sig_w}")
+        plt.xlim([600,630])
+
         
 
 # %%
@@ -222,3 +288,4 @@ if __name__ == "__main__":
 #         # get C_Q
 #         C_Q[t] += C_J[t-T]*pq[T]*delta_t
 #     C_Q[t] += C_old*(1-pq.sum()*delta_t)
+# %%
