@@ -115,12 +115,13 @@ def cal_CI(qh: List[float],P: List[float], alpha: float = 0.05):
         U.append(qh[i][X_ind[i_upper]])
     return L, U, MLE
 # running the actual model
-def run_sMC(J: List[float], Q: List[float], k: float, delta_t: float):
+def run_sMC(J: List[float], Q: List[float], k: float, delta_t: float,M:int, sig_v: float, sig_w: float):
     '''
         definitions same as the wrapper
     return: qh  - estiamted state in particles
             P   - weight associated with each particles
             A   - ancestor lineage
+            M   - total number of particles
     '''
     # initialization---------------------------------
     # assume X0 = 0 --> Dirac Delta distribution at 0
@@ -149,18 +150,20 @@ def run_sMC(J: List[float], Q: List[float], k: float, delta_t: float):
     A = np.array(A)[1:]
     return qh, P, A
 
-# TODO: Gibbs Sampler
-def run_GS(J: List[float], Q: List[float], k: float, delta_t: float):
+
+def run_pMCMC(k: float, sig_v: float,sig_w: float, qh: List[float], P: List[float], A: List[float], J: List[float] , Q: List[float], k: float, delta_t: float):
     '''
-        definitions same as the wrapper
-    return: qh  - estiamted state in particles
-            P   - weight associated with each particles
-            A   - ancestor lineage
+    pMCMC inside loop, run this entire function as many as possible
+        theta           - let it be k, sig_v, sig_w for now
+        nstep           - number of steps in MCMC
+        qh              - estiamted state in particles
+        P               - weight associated with each particles
+        A               - ancestor lineage
+        J,Q,k,delta_t   - same as defined above
     '''
-    # run particle filter first
-    qh, P, A = run_sMC(J, Q, k, delta_t)
     # sample an ancestral path based on final weight
     T = len(Q)
+    M = qh.shape[1]
     B = np.zeros(T).astype(int)
     B[-1] = dits(P[-1],qh[-1],num = 1)
     for i in reversed(range(1,T)):
@@ -195,6 +198,18 @@ def run_GS(J: List[float], Q: List[float], k: float, delta_t: float):
         qh[t][notB] = qhtp1
         P[t] = phtp1
     return qh, P, A
+# TODO: Gibbs Sampler
+def run_pGS(J,Q,k0, sig_v0, sig_w0, delta_t):
+    # for the inital guess on theta_0 = {k_0, sig_v0, sig_w0}
+    # run sMC to get a first step estimation
+    qh, P, A = run_sMC(J, Q, k0, delta_t,M, sig_v0, sig_w0)
+    # now update our knowledge on theta
+    
+    # and now run another sMC
+
+    # and run another theta estimation
+     
+
 # %%
 if __name__ == "__main__":
     """
@@ -230,7 +245,7 @@ if __name__ == "__main__":
     T = len(Q) # total age
     k /= delta_t # adjust k
     
-    qh, P, A = run_sMC(J, Q, k, delta_t)
+    qh, P, A = run_sMC(J, Q, k, delta_t,M,sig_v,sig_w)
     L, U, MLE = cal_CI(qh,P)
 
     # ------------
@@ -246,9 +261,9 @@ if __name__ == "__main__":
         plt.title(f"sig_v {sig_v}, sig_w {sig_w}")
         plt.xlim([600,630])
 
-    qh, P, A = run_GS(J, Q, k, delta_t)
+    qh, P, A = run_pMCMC(1.,qh, P, A, J, Q, k, delta_t)
     L, U, MLE = cal_CI(qh,P)
-        # ------------
+    # ------------
     if plot == True:
         plt.figure()
 
