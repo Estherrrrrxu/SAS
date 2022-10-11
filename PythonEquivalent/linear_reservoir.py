@@ -2,8 +2,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+
 import scipy.stats as ss
 from typing import List
+import math
 # %%
 """
     Considering the following condition:
@@ -60,10 +62,10 @@ def f_theta(qht:List[float],k: float, \
     delta_t: float, jt:float, sig_v: float):
     '''
         qt: all possible \hat{x}_{t-1}
-    return: qhtp1
+    return: normal distribution associated with the others
     '''
     f = transition_model(qht, k, delta_t, jt)
-    return ss.norm.rvs(f,sig_v) # this process internalized sig_v
+    return ss.norm(f,sig_v) # this process internalized sig_v
 # observation
 def g_theta(qht,sig_w,qt):
     """
@@ -138,7 +140,7 @@ def run_sMC(J: List[float], Q: List[float], k: float, delta_t: float,M:int, sig_
         qht = Qh[-1][aa]
         pht = P[-1][aa]
         # compute new state and weights based on the model
-        qhtp1 = f_theta(qht,k,delta_t,J[t],sig_v) 
+        qhtp1 = f_theta(qht,k,delta_t,J[t],sig_v).rvs() 
         phtp1 = pht * g_theta(qhtp1, sig_w, Q[t])
         phtp1 = phtp1/phtp1.sum() # normalize
         # update the info
@@ -151,15 +153,18 @@ def run_sMC(J: List[float], Q: List[float], k: float, delta_t: float,M:int, sig_
     return qh, P, A
 
 
-def run_pMCMC(k: float, sig_v: float,sig_w: float, qh: List[float], P: List[float], A: List[float], J: List[float] , Q: List[float], k: float, delta_t: float):
+def run_pMCMC(k: float, sig_v: float,sig_w: float, qh: List[float], P: List[float], A: List[float], J: List[float] , Q: List[float], delta_t: float):
     '''
     pMCMC inside loop, run this entire function as many as possible
+    update w/ Ancestor sampling
         theta           - let it be k, sig_v, sig_w for now
         nstep           - number of steps in MCMC
+        J,Q,k,delta_t   - same as defined above
+        For reference trajectory:
         qh              - estiamted state in particles
         P               - weight associated with each particles
         A               - ancestor lineage
-        J,Q,k,delta_t   - same as defined above
+        
     '''
     # sample an ancestral path based on final weight
     T = len(Q)
@@ -174,40 +179,65 @@ def run_pMCMC(k: float, sig_v: float,sig_w: float, qh: List[float], P: List[floa
     qhu = qh[0]
     pht = P[0]
     # update the states based on the model
-    qhu[notB] = f_theta(qh[0][notB],k,delta_t,J[0],sig_v) 
+    qhu[notB] = f_theta(qh[0][notB],k,delta_t,J[0],sig_v).rvs() 
     phu = pht * g_theta(qhu, sig_w, Q[0])
     phu = phu/phu.sum() # normalize
     # update the info
     qh[0] = qhu
     P[0] = phu
+    p_theta_y = []
     # state estimation-------------------------------
     for t in range(1,T):
-        notB = np.arange(0,M)!=B[t]
+        notB = np.arange(0,M)!=B[t-1]
         # sampling from ancestor based on previous weight
         aa = dits(P[t-1],A[t-1], num = len(notB)-1)
         A[t][notB] = aa
         # draw new state samples and associated weights based on last ancestor
-        qht = qh[t][aa]
-        pht = P[t-1][aa]
+        qht = qh[t-1][aa] # this is x_{t-1}
+        pht = P[t-1][aa] # this is w_{t-1}
+        # ------------ancestor resampling for reference path----------------
+        pjt = pht * f_theta(qht,k,delta_t,J[t-1],sig_v).pdf(qh[t][B[t]])
+        pjt = pjt/pjt.sum() # normalized
+        jj = dits(pjt,aa, num = 1) # draw using i = J for all other particles
+        qh[t-1][B[t-1]] = qh[t-1][jj]
         # compute new state and weights based on the model
-        qhtp1 = f_theta(qht,k,delta_t,J[t],sig_v)
+        qhtp1 = f_theta(qht,k,delta_t,J[t],sig_v).rvs()
         phtp1 = P[t] 
         phtp1[notB] = pht * g_theta(qhtp1, sig_w, Q[t])
+        p_theta_y.append(phtp1.sum())
         phtp1 = phtp1/phtp1.sum() # normalize
         # update the info
         qh[t][notB] = qhtp1
         P[t] = phtp1
-    return qh, P, A
-# TODO: Gibbs Sampler
-def run_pGS(J,Q,k0, sig_v0, sig_w0, delta_t):
+
+    return qh, P, A,p_theta_y
+def run_pGS(J,Q, delta_t, M,chain_len: int, k0 = 0.5, sig_v0 = 0.1, sig_w0=0.01):
+    """
+        for now, assume we just don't know k, and k ~ N(k0, 1)
+    """
     # for the inital guess on theta_0 = {k_0, sig_v0, sig_w0}
     # run sMC to get a first step estimation
-    qh, P, A = run_sMC(J, Q, k0, delta_t,M, sig_v0, sig_w0)
-    # now update our knowledge on theta
+    qh, P, A = run_sMC(J, Q, k0, delta_t, M, sig_v0, sig_w0)
+    k = [k0]
+    qh, P, A, p_theta_y = run_pMCMC(k[-1], sig_v0,sig_w0, qh, P, A, J, Q, delta_t)
+    for i in range(chain_len):
+        # now run pMCMC
+        k_new = ss.norm(k[-1],0.15).rvs()
+        qh_new, P_new, A_new, p_theta_y_new = run_pMCMC(k_new, sig_v0,sig_w0, qh, P, A, J, Q, delta_t)
+        # M-H 
+        ratio = min(1,ss.norm(k[-1],0.5).pdf(k_new)/ss.norm(k_new,0.5).pdf(k[-1])*math.prod(np.array(p_theta_y_new)/np.array(p_theta_y)))
+        u = ss.uniform.rvs()
+        if u >= ratio:
+            k.append(k_new)
+            qh = qh_new
+            P = P_new
+            A = A_new
+        else:
+            k.append(k[-1])
+    return k
     
-    # and now run another sMC
 
-    # and run another theta estimation
+    
      
 
 # %%
@@ -261,7 +291,7 @@ if __name__ == "__main__":
         plt.title(f"sig_v {sig_v}, sig_w {sig_w}")
         plt.xlim([600,630])
 
-    qh, P, A = run_pMCMC(1.,qh, P, A, J, Q, k, delta_t)
+    qh, P, A,p_theta_y = run_pMCMC(k, sig_v, sig_w,qh, P, A, J, Q, delta_t)
     L, U, MLE = cal_CI(qh,P)
     # ------------
     if plot == True:
@@ -274,9 +304,11 @@ if __name__ == "__main__":
         
         plt.legend(ncol = 4)
         plt.title(f"sig_v {sig_v}, sig_w {sig_w}")
+        plt.ylim([-0.05,0.2])
         plt.xlim([600,630])
 
-        
+    k = run_pGS(J,Q, delta_t, M = 10,chain_len = 100, k0 = 0.8, sig_v0 = 0.1, sig_w0=0.01)
+
 
 # %%
 # Add isotope
