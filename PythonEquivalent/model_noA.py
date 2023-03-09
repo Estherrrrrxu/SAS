@@ -5,7 +5,6 @@ from typing import List
 import scipy.stats as ss
 from tqdm import tqdm
 import sys
-import matplotlib.pyplot as plt
 
 """
     Considering the following condition:
@@ -116,7 +115,6 @@ def run_pGS(J,Q, delta_t, num_scenarios:int,param_samples:int, chain_len: int, s
     L = chain_len
     D = param_samples
     N = num_scenarios
-    K = len(J)
     kk = np.zeros((D,L+1))
     k0 = np.random.normal(prior_mean, prior_sd,D)
     kk[:,0] = k0
@@ -124,12 +122,8 @@ def run_pGS(J,Q, delta_t, num_scenarios:int,param_samples:int, chain_len: int, s
     WW = np.zeros((D,N))
     XX = np.zeros((D+1,N,K+1))
     RR = np.zeros((D+1,N,K))
-    AA_q = np.zeros((D+1,N,K+1)).astype(int) 
-    WW_q = np.zeros((D,N))
-    XX_q = np.zeros((D+1,N,K+1))
-    RR_q = np.zeros((D+1,N,K))
     input_record = np.zeros((L,K))
-    theta_record = np.zeros((L,D))
+    theta_record = np.zeros(L)
     # theta_record = np.zeros(L+1)
     # theta_record[0] = prior_mean
 
@@ -137,54 +131,17 @@ def run_pGS(J,Q, delta_t, num_scenarios:int,param_samples:int, chain_len: int, s
         XX[d],AA[d],WW[d],RR[d] = run_sMC(J, Q, kk[d,0], delta_t, N, sig_v, sig_w)
     
     for ll in tqdm(range(L)):
-        # =============================
-        # M-H
-        theta_0 = kk[:,ll].copy()
-        width = prior_sd/2
-        k0 = np.random.normal(theta_0, width)
-        theta_q = k0
-        posterior_0 = np.max(WW, axis = 1)
-        for d in range(D):
-            XX_q[d],AA_q[d],WW_q[d],RR_q[d] = run_pMCMC(theta_q[d], sig_v,sig_w, XX[d] , WW[d], AA[d],RR[d], J , Q, delta_t)
-        posterior_q = np.max(WW_q, axis = 1)
-        # alpha = np.prod(posterior_q * ss.norm(theta_0, width).pdf(theta_q)) / np.prod(posterior_0 * ss.norm(theta_q, width).pdf(theta_0))
-        alpha = (posterior_q * ss.norm(theta_0, width).pdf(theta_q)) / (posterior_0 * ss.norm(theta_q, width).pdf(theta_0))
-
-        for i in range(len(alpha)):
-            u = np.random.uniform()
-            if u <= alpha[i]:
-                XX, AA, WW, RR = XX_q, AA_q, WW_q, RR_q
-                kk[:,ll+1] = theta_q
-                # theta_record[ll,i] = theta_q[np.argmax(np.max(WW, axis = 1))]
-                theta_record[ll,i] = theta_q[i]
-            else:
-                kk[:,ll+1] =  theta_0
-                theta_record[ll,i] = theta_0[i]
-
-
-
-        
+        posterior = np.prod(WW, axis = 1) * ss.norm(prior_mean, prior_sd).pdf(kk[:,ll])
+        theta_record[ll] = kk[:,ll][np.argmax(posterior)]
         # this will be used after fix A's problem
         # input_record[ll] = RR[np.argmax(posterior),N,:]
 
+        k0 = np.random.normal(prior_mean, prior_sd,D)
+        kk[:,ll+1] = k0
         
-        
-        
+        for d in range(D):
+            XX[d],AA[d],WW[d],RR[d] = run_pMCMC(kk[d,ll+1], sig_v,sig_w, XX[d] , WW[d], AA[d],RR[d], J , Q, delta_t)
 
-        # ==============================
-        # # posterior = np.prod(WW, axis = 1) * ss.norm(prior_mean, prior_sd).pdf(kk[:,ll])
-        # # another_way to compute posterior is p(X_MLE|theta)
-        # posterior = np.max(WW, axis = 1) * ss.norm(prior_mean, prior_sd).pdf(kk[:,ll])
-        # theta_record[ll] = kk[:,ll][np.argmax(posterior)]
-        # # this will be used after fix A's problem
-        # # input_record[ll] = RR[np.argmax(posterior),N,:]
-
-        # k0 = np.random.normal(prior_mean, prior_sd,D)
-        # kk[:,ll+1] = k0
-        
-        # for d in range(D):
-        #     XX[d],AA[d],WW[d],RR[d] = run_pMCMC(kk[d,ll+1], sig_v,sig_w, XX[d] , WW[d], AA[d],RR[d], J , Q, delta_t)
-        # ==============================
         # # draw new theta
         # multiplier = ss.norm(theta_record[ll], prior_sd/5).pdf(np.repeat(kk[:,ll],N))
         # posterior = WW.ravel() * multiplier
@@ -239,7 +196,7 @@ if __name__ == "__main__":
     delta_t *= interval
     # estimation inputs
     sig_v = theta_ipt
-    sig_w = 0.1
+    sig_w = theta_obs
     N = 50
     # %%
     # ==================
@@ -261,11 +218,11 @@ if __name__ == "__main__":
     # ==================
     # pGibbs
     # ==================
-    num_scenarios = 10
-    param_samples= 10
-    chain_len = 10
-    prior_mean = 0.99
-    prior_sd = 0.1
+    num_scenarios = 20
+    param_samples= 20
+    chain_len = 50
+    prior_mean = 0.9
+    prior_sd = 0.2
     # ns = int(sys.argv[1])
     # ps = int(sys.argv[2])
     # cl = int(sys.argv[3])
