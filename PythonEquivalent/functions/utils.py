@@ -3,12 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 # %%
 # discrete inverse transform sampling
-def dits(pdf,x,num):
+def dits(Lnpdf,x,num):
     '''
         give x ~ pdf
     return: index of x that are been sampled according to pdf
     '''
-    
+    pdf = np.exp(Lnpdf)
+    pdf = pdf/pdf.sum()
     ind = np.argsort(x) # sort x according to its magnitude
     pdf = pdf[ind] # sort pdf accordingly
     cdf = pdf.cumsum()
