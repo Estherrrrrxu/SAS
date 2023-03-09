@@ -1,0 +1,10 @@
+\contentsline {section}{\numberline {1}Review of SMC and MCMC}{1}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Example problem: Bayesian inference of SSM}{1}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Sequential Monte Carlo.}{2}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Standard Markov Chain Monte Carlo}{3}{subsection.1.3}%
+\contentsline {section}{\numberline {2}Particle MCMC}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Particle Gibbs with ancestor sampling (PGAS)}{4}{subsection.2.1}%
+\contentsline {section}{\numberline {3}Appendix}{8}{section.3}%
+\contentsline {subsection}{\numberline {3.1}MCMC: the Metropolis-Hastings Algorithm}{8}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}PMMH: particle marginal Metropolis-Hastings samplers}{8}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Convergence of PG and PGAS}{9}{subsection.3.3}%
