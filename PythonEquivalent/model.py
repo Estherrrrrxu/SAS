@@ -142,11 +142,12 @@ def run_pMH(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int, sig_
     #theta_record = np.zeros((L,D))
     # theta_record = np.zeros(L+1)
     # theta_record[0] = prior_mean
-
+    pbar = tqdm(total = D+1)
     print('starting')
     for d in range(D):
-        print('')
-        print(f'{d=}')
+        pbar.update(1)
+        # print('')
+        # print(f'{d=}')
         
         rejection_count = np.inf
         while rejection_count>max_rejections:
@@ -155,14 +156,14 @@ def run_pMH(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int, sig_
             goodstart=False
             while not goodstart:
                 kk[d,ll] = np.random.normal(prior_mean, prior_sd,1)
-                print(f'starting run_sMC')
+                # print(f'starting run_sMC')
                 XX[d,ll,:,:],AA[d,ll,:,:],WW[d,ll,:],RR[d,ll,:,:] = run_sMC(J, Q, kk[d,0], delta_t, N, sig_v, sig_w)
-                print(f'done run_sMC')
+                # print(f'done run_sMC')
                 if WW[d,ll,:].max()>-np.inf:
                     goodstart = True
 
         
-            print(f'{WW[d,ll,:].sum()=}')
+            # print(f'{WW[d,ll,:].sum()=}')
             while ll<L:
                 # =============================
                 # M-H
@@ -170,15 +171,16 @@ def run_pMH(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int, sig_
                 theta_proposal, forward_step_probability, backward_step_probability = get_theta_proposal(theta_0, theta_step)
                 current_prior_probability = ss.norm(prior_mean, prior_sd).pdf(theta_0)
                 proposal_prior_probability = ss.norm(prior_mean, prior_sd).pdf(theta_proposal)
-                print(f'starting run_pMCMC')
+                # print(f'starting run_pMCMC')
                 XX_q,AA_q,WW_q,RR_q = run_pMCMC(theta_proposal, sig_v,sig_w, XX[d,ll,:,:] , WW[d,ll,:], AA[d,ll,:,:],RR[d,ll,:,:], J , Q, delta_t)
-                print(f'done run_pMCMC')
-                print(f'{WW_q.max()=}')
-                print(f'{WW[d,ll,:].max()=}')
+                # print(f'done run_pMCMC')
+                # print(f'{WW_q.max()=}')
+                # print(f'{WW[d,ll,:].max()=}')
                 posterior_q = np.exp(np.max(WW_q))
                 posterior_0 = np.exp(np.max(WW[d,ll,:]))
                 # alpha = np.prod(posterior_q * ss.norm(theta_0, width).pdf(theta_q)) / np.prod(posterior_0 * ss.norm(theta_q, width).pdf(theta_0))
                 alpha = (posterior_q * proposal_prior_probability / forward_step_probability) / (posterior_0 * current_prior_probability / backward_step_probability)
+                alpha = (posterior_q  / forward_step_probability) / (posterior_0 / backward_step_probability)
 
                 u = np.random.uniform()
                 if u <= alpha:
@@ -186,12 +188,13 @@ def run_pMH(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int, sig_
                     kk[d,ll+1] = theta_proposal
                     ll+=1
                     rejection_count = 0
-                    print(f'{theta_proposal=} accepted')
+                    # print(f'{theta_proposal=} accepted')
                 else:
                     rejection_count += 1
-                    print(f'{theta_proposal=} rejected')
+                    # print(f'{theta_proposal=} rejected')
                 if rejection_count>max_rejections:
                     break
+    pbar.close()
     theta = kk
 
         
@@ -229,6 +232,42 @@ def run_pMH(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int, sig_
         #     XX[d],AA[d],WW[d],RR[d] = run_pMCMC(kk[d,ll+1], sig_v,sig_w, XX[d] , WW[d], AA[d],RR[d], J , Q, delta_t)
     return theta, AA,WW, XX,RR#, input_record
 
+def run_pGS_SAEM(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int, sig_v =0.1, sig_w=0.1,prior_mean = 0.9,prior_sd = 0.2, q_step = -1):
+    """
+        for now, assume we just don't know k, and k ~ N(k0, 1)
+    """
+    L = chain_len
+    D = num_chains
+    N = num_scenarios
+    K = len(J)
+    kk = np.zeros((D,L+1))
+    AA = np.zeros((D+1,L+1,N,K+1)).astype(int) 
+    WW = np.zeros((D,L+1,N))
+    XX = np.zeros((D+1,L+1,N,K+1))
+    RR = np.zeros((D+1,L+1,N,K))
+    #input_record = np.zeros((L,K))
+    #theta_record = np.zeros((L,D))
+    theta_record = np.zeros(L+1)
+    theta_record[0] = prior_mean
+    
+
+    ll = 0
+    kk[:,ll] = np.random.normal(prior_mean, prior_sd,D)
+    for d in range(D):
+        XX[d,ll,:,:],AA[d,ll,:,:],WW[d,ll,:],RR[d,ll,:,:] = run_sMC(J, Q, kk[d,0], delta_t, N, sig_v, sig_w)
+
+    Qh = q_step[0] * np.max(WW[:,ll,:],axis = 1)
+    for ll in tqdm(range(L)):
+        theta_proposal = np.random.normal(theta_record[ll], 0.05,D)
+        for d in range(D):
+            XX[d,ll+1,:,:], AA[d,ll+1,:,:], WW[d,ll+1,:], RR[d,ll+1,:,:] = run_pMCMC(theta_proposal[d], sig_v,sig_w, XX[d,ll,:,:] , WW[d,ll,:], AA[d,ll,:,:],RR[d,ll,:,:], J , Q, delta_t)
+
+        Qh = (1-q_step[ll+1])*Qh + q_step[ll+1] * np.max(WW[:,ll+1,:],axis = 1)
+        theta_record[ll+1] = theta_proposal[np.argmax(Qh)]
+    return theta_record, AA,WW, XX,RR#, input_record
+
+
+# TODO: the update rate of states; the correlation length of the Markov chain; and the convergence of the marginal posteriors of the parameters
 # %%
 # ======================================================
 # Run this part
@@ -247,8 +286,8 @@ if __name__ == "__main__":
     # ==================
     # Get data
     # ==================
-    import os
-    os.chdir('./PythonEquivalent/')
+    # import os
+    # os.chdir('./PythonEquivalent/')
     df = pd.read_csv("Dataset.csv", index_col= 0)
     T = 50
     interval = 1
@@ -271,7 +310,7 @@ if __name__ == "__main__":
     delta_t *= interval
     # estimation inputs
     sig_v = theta_ipt
-    sig_w = 0.0005
+    sig_w = 0.00005
     #sig_w = theta_obs
 
     # TODO: move these to tests
@@ -296,18 +335,42 @@ if __name__ == "__main__":
     # ==================
     # pGibbs
     # ==================
-    num_scenarios = 2
-    param_samples = 1
-    chain_len = 500
-    prior_mean = 0.99
+    num_scenarios = 50
+    param_samples = 50
+    chain_len = 100
+    prior_mean = 0.90
     prior_sd = 0.3
-    theta_step = 0.05
+    # q_step = 0.7
+    q_step = np.ones(chain_len+1)*0.75
+    # q_step[:40] *= 0.7
+    # q_step[40:] *= 0.9
+
+    theta_record, AA, WW, XX, RR = run_pGS_SAEM(J,Q, delta_t, num_scenarios,param_samples, chain_len, sig_v, sig_w, prior_mean , prior_sd, q_step)  
+    plt.figure()
+    plt.plot(theta_record.T)
+    plt.ylabel(r"$\theta$")
+    plt.xlabel("MCMC Chain")
+    plt.plot([0,chain_len],[prior_mean, prior_mean],'r',label = "prior")
+    plt.legend()
+
+    # %%
+    num_scenarios = 30
+    param_samples = 1
+    chain_len = 50
+    prior_mean = 0.90
+    prior_sd = 0.3
+    theta_step = 0.1
     # ns = int(sys.argv[1])
     # ps = int(sys.argv[2])
     # cl = int(sys.argv[3])
     # mean = float(sys.argv[4])
     # sd = float(sys.argv[5])
-    theta_record, AA, WW, XX, RR = run_pMH(J,Q, delta_t, num_scenarios,param_samples, chain_len, sig_v, sig_w, prior_mean , prior_sd, theta_step)  
+    theta_record, AA, WW, XX, RR = run_pMH(J,Q, delta_t, num_scenarios,param_samples, chain_len, sig_v, sig_w, prior_mean , prior_sd, theta_step,max_rejections=10) 
+    plt.figure()
+    plt.plot(theta_record.T)
+    plt.ylabel(r"$\theta$")
+    plt.xlabel("MCMC Chain")
+    plt.plot([0,chain_len],[prior_mean, prior_mean],'r') 
     # %%
     plt.figure()
     plt.plot(theta_record.T)

@@ -5,7 +5,7 @@ from typing import List
 import scipy.stats as ss
 from tqdm import tqdm
 import sys
-
+import matplotlib.pyplot as plt
 """
     Considering the following condition:
     Q = k * S
@@ -73,6 +73,10 @@ def run_pMCMC(k: float, sig_v: float,sig_w: float, X: List[float], W: List[float
         A               - ancestor lineage
         
     '''
+    X = X.copy()
+    W = W.copy()
+    A = A.copy()
+    R = R.copy()
     # sample an ancestral path based on final weight
     K = len(Q)
     N = X.shape[0]
@@ -80,6 +84,7 @@ def run_pMCMC(k: float, sig_v: float,sig_w: float, X: List[float], W: List[float
     B[-1] = dits(W,A[:,-1], num = 1)
     for i in reversed(range(1,K+1)):
         B[i-1] =  A[:,i][B[i]]
+    W = np.ones(N)/N
     # state estimation-------------------------------
     for kk in range(K):
     # for kk in tqdm(range(K), desc ="PMCMC"):
@@ -108,7 +113,7 @@ def run_pMCMC(k: float, sig_v: float,sig_w: float, X: List[float], W: List[float
 
     return X, A, W, R
 
-def run_pGS(J,Q, delta_t, num_scenarios:int,param_samples:int, chain_len: int, sig_v =0.1, sig_w=0.1,prior_mean = 0.9,prior_sd = 0.2):
+def run_pGS(J,Q, delta_t, num_scenarios:int,param_samples:int, chain_len: int, sig_v =0.1, sig_w=0.1,prior_mean = 0.9,prior_sd = 0.2,step_size = -1):
     """
         for now, assume we just don't know k, and k ~ N(k0, 1)
     """
@@ -123,20 +128,21 @@ def run_pGS(J,Q, delta_t, num_scenarios:int,param_samples:int, chain_len: int, s
     XX = np.zeros((D+1,N,K+1))
     RR = np.zeros((D+1,N,K))
     input_record = np.zeros((L,K))
-    theta_record = np.zeros(L)
+    theta_record = np.zeros(L+1)
     # theta_record = np.zeros(L+1)
-    # theta_record[0] = prior_mean
+    theta_record[0] = prior_mean
 
     for d in range(D):
         XX[d],AA[d],WW[d],RR[d] = run_sMC(J, Q, kk[d,0], delta_t, N, sig_v, sig_w)
     
     for ll in tqdm(range(L)):
-        posterior = np.prod(WW, axis = 1) * ss.norm(prior_mean, prior_sd).pdf(kk[:,ll])
-        theta_record[ll] = kk[:,ll][np.argmax(posterior)]
+        posterior = np.max(WW, axis = 1)  * ss.norm(prior_mean, prior_sd).pdf(kk[:,ll])
+        posterior = np.exp(np.max(WW, axis = 1)) * ss.norm(prior_mean, prior_sd).pdf(kk[:,ll])
+        theta_record[ll+1] = kk[:,ll][np.argmax(posterior)]
         # this will be used after fix A's problem
         # input_record[ll] = RR[np.argmax(posterior),N,:]
 
-        k0 = np.random.normal(prior_mean, prior_sd,D)
+        k0 = np.random.normal(theta_record[ll+1], 0.05,D)
         kk[:,ll+1] = k0
         
         for d in range(D):
@@ -175,7 +181,7 @@ if __name__ == "__main__":
     # Get data
     # ==================
     df = pd.read_csv("Dataset.csv", index_col= 0)
-    T = 500
+    T = 50
     interval = 1
     df = df[:T]
     J_obs = df['J_obs'][::interval]
@@ -196,21 +202,21 @@ if __name__ == "__main__":
     delta_t *= interval
     # estimation inputs
     sig_v = theta_ipt
-    sig_w = theta_obs
+    sig_w = 0.005
     N = 50
-    # %%
-    # ==================
-    # sMC
-    # ==================
-    X, A, W, R = run_sMC(J, Q, k, delta_t,N,sig_v,sig_w)
-    plot_MLE(X,A,W,R,K,df,J_obs, Q_obs,sig_v,sig_w,left = 0, right = 30)
+    # # %%
+    # # ==================
+    # # sMC
+    # # ==================
+    # X, A, W, R = run_sMC(J, Q, k, delta_t,N,sig_v,sig_w)
+    # plot_MLE(X,A,W,R,K,df,J_obs, Q_obs,sig_v,sig_w,left = 0, right = 30)
 
-    # %%
-    # ==================
-    # pMCMC
-    # ==================
-    X, A, W, R= run_pMCMC(k, sig_v,sig_w, X, W, A,R, J, Q, delta_t)
-    plot_MLE(X,A,W,R,K,df,J_obs, Q_obs,sig_v,sig_w,left = 0, right = 500)
+    # # %%
+    # # ==================
+    # # pMCMC
+    # # ==================
+    # X, A, W, R= run_pMCMC(k, sig_v,sig_w, X, W, A,R, J, Q, delta_t)
+    # plot_MLE(X,A,W,R,K,df,J_obs, Q_obs,sig_v,sig_w,left = 0, right = 500)
 
 
 
@@ -218,11 +224,11 @@ if __name__ == "__main__":
     # ==================
     # pGibbs
     # ==================
-    num_scenarios = 20
+    num_scenarios = 10
     param_samples= 20
-    chain_len = 50
-    prior_mean = 0.9
-    prior_sd = 0.2
+    chain_len = 100
+    prior_mean = 0.99
+    prior_sd = 0.1
     # ns = int(sys.argv[1])
     # ps = int(sys.argv[2])
     # cl = int(sys.argv[3])
@@ -240,6 +246,7 @@ if __name__ == "__main__":
     plt.plot(x,ss.norm(prior_mean,prior_sd).pdf(x),label = "prior")
     plt.xlabel(r"$\theta$")
     plt.legend()
+
 
     # %%
     id = np.argmax(np.nan_to_num(WW[:,-1],0))
