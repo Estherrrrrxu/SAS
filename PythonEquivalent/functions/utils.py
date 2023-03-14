@@ -79,4 +79,4 @@ def plot_MLE(X,A,W,R,K,df,J_obs, Q_obs,sig_v,sig_w,left = 0, right = 500):
     plt.title(f"sig_v {round(sig_v,5)}, sig_w {sig_w}")
     plt.xlim([left,right])
     plt.tight_layout()
-    return
+    return MLE
