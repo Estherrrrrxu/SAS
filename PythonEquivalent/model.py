@@ -14,13 +14,13 @@ import matplotlib.pyplot as plt
     Goal: use particle filter to estimate theta
 """
 from functions.process import f_theta, g_theta
-from functions.utils import dits,plot_input,plot_MLE
+from functions.utils import dits
 
 # %%   
 # ==========================
 # MODEL part
 # ==========================
-def run_sMC(J: List[float], Q: List[float], k: float, delta_t: float,N:int, sig_v: float, sig_w: float):
+def run_sMC(J: List[float], Q: List[float], theta: float, delta_t: float,N:int, sig_v: float, sig_w: float):
     '''
         definitions same as the wrapper
     return: qh  - estiamted state in particles
@@ -51,7 +51,7 @@ def run_sMC(J: List[float], Q: List[float], k: float, delta_t: float,N:int, sig_
         # compute new state and weights based on the model
         # xkp1 = f_theta(xk,k,delta_t,J[kk],sig_v).rvs()
         R[:,kk] = ss.uniform(J[kk]-sig_v,sig_v).rvs(N)
-        xkp1 = f_theta(xk,k,delta_t,R[:,kk])
+        xkp1 = f_theta(xk,theta,delta_t,R[:,kk])
         wkp1 = wk + np.log(g_theta(xkp1, sig_w, Q[kk]))
         W = wkp1
         X[:,kk+1] = xkp1
@@ -280,9 +280,6 @@ if __name__ == "__main__":
     sig_w = 0.0005
     #sig_w = theta_obs
 
-
-
-
     # %%
     # ==================
     # pGibbs
@@ -296,6 +293,7 @@ if __name__ == "__main__":
     q_step = np.ones(chain_len+1)*0.75
     # q_step[:40] *= 0.7
     # q_step[40:] *= 0.9
+    # TODO: define the param to learn
 
     theta_record, AA, WW, XX, RR = run_pGS_SAEM(J,Q, delta_t, num_scenarios,param_samples, chain_len, sig_v, sig_w, prior_mean , prior_sd, q_step)  
     plt.figure()
@@ -306,23 +304,24 @@ if __name__ == "__main__":
     plt.legend()
 
     # %%
-    num_scenarios = 2
-    param_samples = 1
-    chain_len = 50
-    prior_mean = 0.8
-    prior_sd = 0.3
-    theta_step = 0.05
-    # ns = int(sys.argv[1])
-    # ps = int(sys.argv[2])
-    # cl = int(sys.argv[3])
-    # mean = float(sys.argv[4])
-    # sd = float(sys.argv[5])
-    theta_record, AA, WW, XX, RR = run_pMH(J,Q, delta_t, num_scenarios,param_samples, chain_len, sig_v, sig_w, prior_mean , prior_sd, theta_step,max_rejections=10) 
-    plt.figure()
-    plt.plot(theta_record.T)
-    plt.ylabel(r"$\theta$")
-    plt.xlabel("MCMC Chain")
-    plt.plot([0,chain_len],[theta_record.T[10:].mean(),theta_record.T[10:].mean()],'r',label = "prior")
+    # not to worry about MH for now
+    # num_scenarios = 2
+    # param_samples = 1
+    # chain_len = 50
+    # prior_mean = 0.8
+    # prior_sd = 0.3
+    # theta_step = 0.05
+    # # ns = int(sys.argv[1])
+    # # ps = int(sys.argv[2])
+    # # cl = int(sys.argv[3])
+    # # mean = float(sys.argv[4])
+    # # sd = float(sys.argv[5])
+    # theta_record, AA, WW, XX, RR = run_pMH(J,Q, delta_t, num_scenarios,param_samples, chain_len, sig_v, sig_w, prior_mean , prior_sd, theta_step,max_rejections=10) 
+    # plt.figure()
+    # plt.plot(theta_record.T)
+    # plt.ylabel(r"$\theta$")
+    # plt.xlabel("MCMC Chain")
+    # plt.plot([0,chain_len],[theta_record.T[10:].mean(),theta_record.T[10:].mean()],'r',label = "prior")
 
     # %%
     plt.figure()
@@ -376,11 +375,11 @@ if __name__ == "__main__":
 
 
      # %%
-    np.savetxt(f"Results/theta_{num_scenarios}_{param_samples}_{chain_len}_{prior_mean}_{prior_sd}.csv",theta_record,delimiter = ",")
-    np.savetxt(f"Results/input_{num_scenarios}_{param_samples}_{chain_len}_{prior_mean}_{prior_sd}.csv",input_record,delimiter = ",")
-    np.savetxt(f"Results/W_{num_scenarios}_{param_samples}_{chain_len}_{prior_mean}_{prior_sd}.csv",WW,delimiter = ",")
-    np.savetxt(f"Results/A_{num_scenarios}_{param_samples}_{chain_len}_{prior_mean}_{prior_sd}.csv",AA.reshape(AA.shape[0], -1),delimiter = ",")
-    np.savetxt(f"Results/X_{num_scenarios}_{param_samples}_{chain_len}_{prior_mean}_{prior_sd}.csv",XX.reshape(XX.shape[0], -1),delimiter = ",")
+    # np.savetxt(f"Results/theta_{num_scenarios}_{param_samples}_{chain_len}_{prior_mean}_{prior_sd}.csv",theta_record,delimiter = ",")
+    # np.savetxt(f"Results/input_{num_scenarios}_{param_samples}_{chain_len}_{prior_mean}_{prior_sd}.csv",input_record,delimiter = ",")
+    # np.savetxt(f"Results/W_{num_scenarios}_{param_samples}_{chain_len}_{prior_mean}_{prior_sd}.csv",WW,delimiter = ",")
+    # np.savetxt(f"Results/A_{num_scenarios}_{param_samples}_{chain_len}_{prior_mean}_{prior_sd}.csv",AA.reshape(AA.shape[0], -1),delimiter = ",")
+    # np.savetxt(f"Results/X_{num_scenarios}_{param_samples}_{chain_len}_{prior_mean}_{prior_sd}.csv",XX.reshape(XX.shape[0], -1),delimiter = ",")
 
 
 # %%
