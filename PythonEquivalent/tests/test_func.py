@@ -1,14 +1,11 @@
 # %%
-import pytest
-import os
-
-# os.chdir('../tests/')
+import unittest
 import pandas as pd
 from functions.utils import plot_MLE
 from model import run_sMC, run_pMCMC
 import numpy as np
 # %%
-class SetTest:
+class TestFuncs:
     def __init__(self, filename = "Dataset.csv", T = 50, interval = 1, k = 1,delta_t = 1./24/60*15,\
                  theta_ipt = 0.254*1./24/60*15,theta_obs = 0.00005,N = 50):
         df = pd.read_csv(filename, index_col= 0)
@@ -51,11 +48,15 @@ class SetTest:
         sum_squared_residuals = sum((MLE[1:] - truth)**2)
         return np.sqrt(sum_squared_residuals/self.K)
 
+class TestTwoFunctions(unittest.TestCase):
+    def runTest(self):
+        result_std =   TestFuncs(filename = "Dataset.csv", T = 50, interval = 1, k = 1,delta_t = 1./24/60*15,\
+                    theta_ipt = 0.254*1./24/60*15,theta_obs = 0.00005,N = 50)
+        assert result_std.test_sMC() <= result_std.sig_w/10, "Variance too large for sMC!!"
+        assert result_std.test_pMCMC() <= result_std.sig_w/10, "Variance too large for pMCMC!!"
+
 
 if __name__ == '__main__':
+    unittest.main()
 
-    result_std = SetTest(filename = "Dataset.csv", T = 50, interval = 1, k = 1,delta_t = 1./24/60*15,\
-                 theta_ipt = 0.254*1./24/60*15,theta_obs = 0.00005,N = 50)
-    assert result_std.test_sMC() <= result_std.sig_w/10, "Variance too large"
-    assert result_std.test_pMCMC() <= result_std.sig_w/10, "Variance too large"
 
