@@ -48,7 +48,7 @@ def plot_input(df,J_obs, Q_obs):
     plt.tight_layout()
     return
 # plotting functions
-def plot_MLE(X,A,W,R,K,df,J_obs, Q_obs,sig_v,sig_w,left = 0, right = 500):
+def plot_MLE(X,A,W,R,K,df,J_obs, Q_obs,left = 0, right = 500):
     B = np.zeros(K+1).astype(int)
     B[-1] = dits(W,A[:,-1], num = 1)
     for i in reversed(range(1,K+1)):
@@ -76,7 +76,7 @@ def plot_MLE(X,A,W,R,K,df,J_obs, Q_obs,sig_v,sig_w,left = 0, right = 500):
     plt.plot(df['Q_true'],'k', label = "Hidden truth")
     plt.plot(np.linspace(0,T,len(MLE)-1),MLE[1:],'r:', label = "One Traj/MLE")
     plt.legend(frameon = False)
-    plt.title(f"sig_v {round(sig_v,5)}, sig_w {sig_w}")
+    # plt.title(f"sig_v {round(sig_v,5)}, sig_w {sig_w}")
     plt.xlim([left,right])
     plt.tight_layout()
     return MLE
