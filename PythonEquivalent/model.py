@@ -212,7 +212,7 @@ def run_pGS_SAEM(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int,
     """
     def prior_model(theta_model,D):
         kk = np.random.normal(theta_model['k']['prior_mean'],theta_model['k']['prior_sd'],D)
-        sig_ww = np.random.normal(theta_model['sig_w']['prior_mean'],theta_model['sig_w']['prior_sd'],D)
+        sig_ww = np.random.uniform(theta_model['sig_w']['lower'],theta_model['sig_w']['upper'],D)
         return kk, sig_ww
     def update_model(theta_model,theta_record_ll,D):
         kk = np.random.normal(theta_record_ll[0],theta_model['k']['search_range'],D)
@@ -234,7 +234,7 @@ def run_pGS_SAEM(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int,
     #input_record = np.zeros((L,K))
     #theta_record = np.zeros((L,D))
     theta_record = np.zeros((2,L+1))
-    theta_record[:,0] = [theta_init['k']['prior_mean'],theta_init['sig_w']['prior_mean']]
+    theta_record[:,0] = [theta_init['k']['prior_mean'],theta_init['sig_w']['upper']]
     
 
     ll = 0
@@ -254,7 +254,7 @@ def run_pGS_SAEM(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int,
         for d in range(D):
             theta_step = {'k':theta_proposal_k[d], 'sig_w':theta_record_ll[1],'sig_v': sig_v}
             XX[d,ll+1,:,:], AA[d,ll+1,:,:], WW[d,ll+1,:], RR[d,ll+1,:,:] = run_pMCMC(theta_step, XX[d,ll,:,:] , WW[d,ll,:], AA[d,ll,:,:],RR[d,ll,:,:], J , Q, delta_t)
-
+            print(sum(WW[d,ll+1,:]))
         Qh = (1-q_step[ll+1])*Qh + q_step[ll+1] * np.max(WW[:,ll+1,:],axis = 1)
         theta_record[0,ll+1] = theta_proposal_k[np.argmax(Qh)]
         
@@ -324,20 +324,20 @@ if __name__ == "__main__":
     # ==================
     num_scenarios = 50
     param_samples = 10
-    chain_len = 50
+    chain_len = 100
     prior_mean_k = 1.2
     prior_sd_k = 0.3
     search_k = 0.05
-    prior_mean_w = sig_w
-    prior_sd_w = sig_w/10
-    search_w = prior_sd_w/2
+    lower_w = sig_w/10
+    upper_w = sig_w
+    search_w = lower_w/5
     # q_step = 0.7
     q_step = np.ones(chain_len+1)*0.75
     # q_step[:40] *= 0.7
     # q_step[40:] *= 0.9
     # TODO: define the param to learn
     theta_init = {'sig_v': {'val': sig_v}, \
-                'sig_w':{'prior_mean': prior_mean_w,'prior_sd':prior_sd_w,'search_range':search_w},\
+                'sig_w':{'lower': lower_w,'upper':upper_w,'search_range':search_w},\
                 'k':{'prior_mean': prior_mean_k,'prior_sd':prior_sd_k,'search_range':search_k},\
             }
 
