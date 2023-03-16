@@ -20,7 +20,7 @@ from functions.utils import dits
 # ==========================
 # MODEL part
 # ==========================
-def run_sMC(J: List[float], Q: List[float], theta: float, delta_t: float,N:int, sig_v: float, sig_w: float):
+def run_sMC(J: List[float], Q: List[float], theta: dict, delta_t: float,N:int):
     '''
         definitions same as the wrapper
     return: qh  - estiamted state in particles
@@ -28,6 +28,9 @@ def run_sMC(J: List[float], Q: List[float], theta: float, delta_t: float,N:int, 
             A   - ancestor lineage
             M   - total number of particles
     '''
+    sig_v = theta['sig_v']
+    sig_w = theta['sig_w']
+    k = theta['k']
     # initialization---------------------------------
     K = len(J)
     A = np.zeros((N,K+1)).astype(int) # ancestor storage
@@ -51,7 +54,7 @@ def run_sMC(J: List[float], Q: List[float], theta: float, delta_t: float,N:int, 
         # compute new state and weights based on the model
         # xkp1 = f_theta(xk,k,delta_t,J[kk],sig_v).rvs()
         R[:,kk] = ss.uniform(J[kk]-sig_v,sig_v).rvs(N)
-        xkp1 = f_theta(xk,theta,delta_t,R[:,kk])
+        xkp1 = f_theta(xk,k,delta_t,R[:,kk])
         wkp1 = wk + np.log(g_theta(xkp1, sig_w, Q[kk]))
         W = wkp1
         X[:,kk+1] = xkp1
@@ -60,7 +63,7 @@ def run_sMC(J: List[float], Q: List[float], theta: float, delta_t: float,N:int, 
     return X,A,W,R
 
 
-def run_pMCMC(k: float, sig_v: float,sig_w: float, X: List[float], W: List[float], A: List[float],R: List[float], J: List[float] , Q: List[float], delta_t: float):
+def run_pMCMC(theta:dict, X: List[float], W: List[float], A: List[float],R: List[float], J: List[float] , Q: List[float], delta_t: float):
     '''
     pMCMC inside loop, run this entire function as many as possible
     update w/ Ancestor sampling
@@ -73,6 +76,10 @@ def run_pMCMC(k: float, sig_v: float,sig_w: float, X: List[float], W: List[float
         A               - ancestor lineage
         
     '''
+    sig_v = theta['sig_v']
+    sig_w = theta['sig_w']
+    k = theta['k']
+
     X = X.copy()
     W = W.copy()
     A = A.copy()
@@ -199,38 +206,69 @@ def run_pMH(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int, sig_
 
     return theta, AA,WW, XX,RR#, input_record
 
-def run_pGS_SAEM(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int, sig_v =0.1, sig_w=0.1,prior_mean = 0.9,prior_sd = 0.2, q_step = -1):
+def run_pGS_SAEM(J,Q, delta_t, num_scenarios:int,num_chains:int, chain_len: int, theta_init:dict, q_step = -1):
     """
         for now, assume we just don't know k, and k ~ N(k0, 1)
     """
+    def prior_model(theta_model,D):
+        kk = np.random.normal(theta_model['k']['prior_mean'],theta_model['k']['prior_sd'],D)
+        sig_ww = np.random.normal(theta_model['sig_w']['prior_mean'],theta_model['sig_w']['prior_sd'],D)
+        return kk, sig_ww
+    def update_model(theta_model,theta_record_ll,D):
+        kk = np.random.normal(theta_record_ll[0],theta_model['k']['search_range'],D)
+        sig_ww = np.random.normal(theta_record_ll[1],theta_model['sig_w']['search_range'],D)
+        return kk, sig_ww
+
+    sig_v = theta_init['sig_v']['val']
+
     L = chain_len
     D = num_chains
     N = num_scenarios
     K = len(J)
     kk = np.zeros((D,L+1))
+    sig_w = np.zeros((D,L+1))
     AA = np.zeros((D+1,L+1,N,K+1)).astype(int) 
     WW = np.zeros((D,L+1,N))
     XX = np.zeros((D+1,L+1,N,K+1))
     RR = np.zeros((D+1,L+1,N,K))
     #input_record = np.zeros((L,K))
     #theta_record = np.zeros((L,D))
-    theta_record = np.zeros(L+1)
-    theta_record[0] = prior_mean
+    theta_record = np.zeros((2,L+1))
+    theta_record[:,0] = [theta_init['k']['prior_mean'],theta_init['sig_w']['prior_mean']]
     
 
     ll = 0
-    kk[:,ll] = np.random.normal(prior_mean, prior_sd,D)
+    kk[:,ll],sig_w[:,ll] = prior_model(theta_init,D)
     for d in range(D):
-        XX[d,ll,:,:],AA[d,ll,:,:],WW[d,ll,:],RR[d,ll,:,:] = run_sMC(J, Q, kk[d,0], delta_t, N, sig_v, sig_w)
+        theta_step = {'k':kk[d,0], 'sig_w':sig_w[d,0],'sig_v': sig_v}
+        XX[d,ll,:,:],AA[d,ll,:,:],WW[d,ll,:],RR[d,ll,:,:] = run_sMC(J, Q, theta_step, delta_t, N)
 
     Qh = q_step[0] * np.max(WW[:,ll,:],axis = 1)
     for ll in tqdm(range(L)):
-        theta_proposal = np.random.normal(theta_record[ll], 0.05,D)
+        # generate random variables now
+        theta_record_ll = theta_record[:,ll]        
+        theta_proposal_k, theta_proposal_sig_w = update_model(theta_init,theta_record_ll,D)
+        # ======update=========
+
+        # Param 1
         for d in range(D):
-            XX[d,ll+1,:,:], AA[d,ll+1,:,:], WW[d,ll+1,:], RR[d,ll+1,:,:] = run_pMCMC(theta_proposal[d], sig_v,sig_w, XX[d,ll,:,:] , WW[d,ll,:], AA[d,ll,:,:],RR[d,ll,:,:], J , Q, delta_t)
+            theta_step = {'k':theta_proposal_k[d], 'sig_w':theta_record_ll[1],'sig_v': sig_v}
+            XX[d,ll+1,:,:], AA[d,ll+1,:,:], WW[d,ll+1,:], RR[d,ll+1,:,:] = run_pMCMC(theta_step, XX[d,ll,:,:] , WW[d,ll,:], AA[d,ll,:,:],RR[d,ll,:,:], J , Q, delta_t)
 
         Qh = (1-q_step[ll+1])*Qh + q_step[ll+1] * np.max(WW[:,ll+1,:],axis = 1)
-        theta_record[ll+1] = theta_proposal[np.argmax(Qh)]
+        theta_record[0,ll+1] = theta_proposal_k[np.argmax(Qh)]
+        
+        # Param 2
+        for d in range(D):
+            theta_step = {'k':theta_record[0,ll+1], 'sig_w':theta_proposal_sig_w[d],'sig_v': sig_v}
+            XX[d,ll+1,:,:], AA[d,ll+1,:,:], WW[d,ll+1,:], RR[d,ll+1,:,:] = run_pMCMC(theta_step, XX[d,ll+1,:,:] , WW[d,ll+1,:], AA[d,ll+1,:,:],RR[d,ll+1,:,:], J , Q, delta_t)
+
+        Qh = (1-q_step[ll+1])*Qh + q_step[ll+1] * np.max(WW[:,ll+1,:],axis = 1)
+        theta_record[1,ll+1] = theta_proposal_sig_w[np.argmax(Qh)]
+
+
+
+
     return theta_record, AA,WW, XX,RR#, input_record
 
 
@@ -287,20 +325,34 @@ if __name__ == "__main__":
     num_scenarios = 50
     param_samples = 10
     chain_len = 50
-    prior_mean = 1.2
-    prior_sd = 0.3
+    prior_mean_k = 1.2
+    prior_sd_k = 0.3
+    search_k = 0.05
+    prior_mean_w = sig_w
+    prior_sd_w = sig_w/10
+    search_w = prior_sd_w/2
     # q_step = 0.7
     q_step = np.ones(chain_len+1)*0.75
     # q_step[:40] *= 0.7
     # q_step[40:] *= 0.9
     # TODO: define the param to learn
+    theta_init = {'sig_v': {'val': sig_v}, \
+                'sig_w':{'prior_mean': prior_mean_w,'prior_sd':prior_sd_w,'search_range':search_w},\
+                'k':{'prior_mean': prior_mean_k,'prior_sd':prior_sd_k,'search_range':search_k},\
+            }
 
-    theta_record, AA, WW, XX, RR = run_pGS_SAEM(J,Q, delta_t, num_scenarios,param_samples, chain_len, sig_v, sig_w, prior_mean , prior_sd, q_step)  
+    theta_record, AA, WW, XX, RR = run_pGS_SAEM(J,Q, delta_t, num_scenarios,param_samples, chain_len, theta_init, q_step)  
+    # %%
     plt.figure()
-    plt.plot(theta_record.T)
+    plt.subplot(2,1,1)
+    plt.plot(theta_record[0])
     plt.ylabel(r"$\theta$")
     plt.xlabel("MCMC Chain")
-    plt.plot([0,chain_len],[theta_record.T[10:].mean(),theta_record.T[10:].mean()],'r',label = "prior")
+    plt.subplot(2,1,2)
+    plt.plot(theta_record[1])
+    plt.ylabel(r"$\theta$")
+    plt.xlabel("MCMC Chain")
+    # plt.plot([0,chain_len],[theta_record.T[10:].mean(),theta_record.T[10:].mean()],'r',label = "prior")
     plt.legend()
 
     # %%
