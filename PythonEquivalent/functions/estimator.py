@@ -4,6 +4,7 @@ import numpy as np
 from typing import List
 import scipy.stats as ss
 import tqdm
+from link import input_model, transition_model, observation_model
 # %%
 # ==========================
 # utility functions
@@ -33,6 +34,21 @@ def inverse_pmf(ln_pmf,x,num):
                     a[i] = j
                     break
     return ind[a.astype(int)]
+# backtracking
+def find_MLE(X,A,W,R):
+    length = A.shape[1]
+    B = np.zeros(length).astype(int)
+    B[-1] = inverse_pmf(W,A[:,-1], num = 1)
+    for i in reversed(range(1,length)):
+        B[i-1] =  A[:,i][B[i]]
+    MLE = np.zeros(length)
+    for i in range(length):
+        MLE[i] = X[B[i],i]
+    MLE_R = np.zeros(length-1)
+    for i in range(length):
+        MLE_R[i] = R[B[i+1],i]
+    return MLE, MLE_R
+
 # %%
 # ==========================
 # general model class
@@ -106,7 +122,11 @@ class SSModel:
             else:
                 raise ValueError("This search distribution is not implemented yet")
         
-
+    def _process_theta_at_p(self,p,ll,key):
+        theta_temp = np.oness((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
+        theta_temp[p] += self.update_model[key].rvs(self.D)
+        return theta_temp
+        
 
 
     def run_pGS_SAEM(self, num_particles:int,num_params:int, len_MCMC: int, theta_init:dict, q_step:list or float = 0.75):
@@ -137,9 +157,9 @@ class SSModel:
             theta_init = {
                 'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.2,0.3], 
                                      "update_dis": "normal", "update_params":[0.05]},
-                                'sig_w':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
+                                'output_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
                                      "update_dis": "normal", "update_params":[0.00005]}},
-                'not_to_estimate': {'sig_v': 0.254*1./24/60*15}
+                'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
             }
         # process theta
         self._theta_init = theta_init
@@ -164,43 +184,128 @@ class SSModel:
             q_step = [q_step]*self.L+1 
         Qh = q_step[0] * np.max(WW[:,:],axis = 1)
 
+
+
         for ll in tqdm(range(self.L)):
-            # generate random variables now
-            theta_record_ll = self.theta_record[ll,:]        
-            theta_new = theta_record_ll + self.update_model.rvs(self.D)
-            # ======update=========
             # for each parameter
-            for p in range(self._num_theta_to_estimate):
+            for p,key in enumerate(self._theta_to_estimate):   
+                theta_new = self._process_theta_at_p(p,ll,key)
                 # for each particle
                 for d in range(self.D):
-                    XX[d,:,:], AA[d,:,:], WW[d,:], RR[d,:,:] = self.run_pMCMC(theta_new, p, XX[d,:,:] , WW[d,:], AA[d,:,:],RR[d,:,:])
+                    XX[d,:,:], AA[d,:,:], WW[d,:], RR[d,:,:] = self.run_pMCMC(theta_new[d,:], XX[d,:,:] , WW[d,:], AA[d,:,:],RR[d,:,:])
 
                 Qh = (1-q_step[ll+1])*Qh + q_step[ll+1] * np.max(WW[:,ll+1,:],axis = 1)
-                self.theta_record[ll+1,p] = theta_new[np.argmax(Qh)]
-                self.input_record[ll+1,p] = _find_MLE()
+                ind_best_param = np.argmax(Qh)
+                self.theta_record[ll+1,p] = theta_new[ind_best_param,p]
+                _, MLE_R = find_MLE(XX[ind_best_param,:,:], AA[ind_best_param,:,:], WW[ind_best_param,:], RR[ind_best_param,:,:])
+                self.input_record[ll+1,p] = MLE_R
         return
 
+    def run_sMC(self, theta_to_estimate):
+        '''
+            :param theta_to_estimate: initial theta to estimate
+        '''
+        # initialization---------------------------------
+        A = np.zeros((self.N,self.K+1)).astype(int) # ancestor storage
+        A[:,0] = np.arange(self.N) # initialize the first set of particles
+        X = np.zeros((self.N,self.K+1)) # for each particle, for each X
+        # TODO: make this more flexible, maybe add 'state_init' in config
+        X[:,0] = np.ones(self.N)*self.outflux[0] # for each particle, for each X
+        # and we only need to store the last weight
+        W = np.log(np.ones(self.N)/self.N) # initial weight on particles are all equal
+        R = np.zeros((self.N,self.K)) # store the stochasity from input concentration
+        # state estimation-------------------------------
+        for kk in range(self.K):
+            # draw new state samples and associated weights based on last ancestor
+            xk = X[A[:,kk],kk]
+            wk = W
+            # compute uncertainties TODO: currently theta not being estimated
+            R[:,kk] = input_model(self.influx[kk],self._theta_init, self.N)
+            # updates
+            xkp1 = self.f_theta(xk,theta_to_estimate,R[:,kk])
+            wkp1 = wk + np.log(self.g_theta(xkp1, theta_to_estimate, self.outflux[kk]))
+            W = wkp1
+            X[:,kk+1] = xkp1
+            aa = inverse_pmf(W,A[:,kk], num = self.N)
+            A[:,kk+1] = aa        
+        return X,A,W,R
+    
+    def f_theta(self,xht:List[float],theta_to_estimate:float, rtp1:float):
+        theta_val = theta_to_estimate[0] # specify the variable
+        xhtp1 = transition_model(xht, theta_val, self.config['dt'], rtp1)
+        return xhtp1
+
+    def g_theta(self, xht:List[float],theta_to_estimate:dict,xt:List[float]):
+        theta_val = theta_to_estimate[1]
+        likelihood = observation_model(xht,theta_val,xt)
+        return likelihood
+
+    def run_pMCMC(self, theta:dict, X: List[float], W: List[float], A: List[float],R: List[float]):
+        '''
+        pMCMC inside loop, run this entire function as many as possible
+        update w/ Ancestor sampling
+            theta           - let it be k, sig_v, sig_w for now
+            For reference trajectory:
+            qh              - estiamted state in particles
+            P               - weight associated with each particles
+            A               - ancestor lineage
+            p               - the p-th parameter to estimate
+            
+        '''
+        # generate random variables now
+        X = X.copy()
+        W = W.copy()
+        A = A.copy()
+        R = R.copy()
+        # sample an ancestral path based on final weight
+
+        B = np.zeros(self.K+1).astype(int)
+        B[-1] = inverse_pmf(W,A[:,-1], num = 1)
+        for i in reversed(range(1,self.K+1)):
+            B[i-1] =  A[:,i][B[i]]
+        # state estimation-------------------------------
+        W = np.log(np.ones(self.N)/self.N) # initial weight on particles are all equal
+        for kk in range(self.K):
+            # draw new state samples and associated weights based on last ancestor
+            xk = X[A[:,kk],kk]
+            wk = W
+            # compute uncertainties TODO: currently theta not being estimated
+            R[:,kk] = 
+            # updates
+            xkp1 = 
+            wkp1 = wk + np.log(self.g_theta(xkp1, theta_to_estimate, self.outflux[kk]))
+            W = wkp1
+            X[:,kk+1] = xkp1
+            aa = inverse_pmf(W,A[:,kk], num = self.N)
+            A[:,kk+1] = aa  
 
 
-# %%
-import numpy as np
-
-def gibbs_sampler(p, num_iterations, initial_values, conditional_sampler_functions):
 
 
-    # Initialize the parameter samples matrix
-    parameter_samples = np.zeros((num_iterations, p))
 
-    # Set the initial values for the parameters
-    current_values = initial_values
 
-    # Run the Gibbs sampler for num_iterations
-    for i in range(num_iterations):
-        # Sample from the full conditional distribution of each parameter in turn
-        for j in range(p):
-            current_values[j] = conditional_sampler_functions[j](current_values)
+ 
+            rr = input_model(self.influx[kk],self._theta_init, self.N)
+            xkp1 = self.f_theta(xk,theta_to_estimate,R[:,kk])
+            # Look into this
+            x_prime = X[B[kk+1],kk+1]
+            W_tilde = W + np.log(ss.norm(x_prime,0.000005).pdf(xkp1))
+            # ^^^^^^^^^^^^^^
+            A[B[kk+1],kk+1] = dits(W_tilde,xkp1 - x_prime, num = 1)
+            # now update everything in new state
+            notB = np.arange(0,N)!=B[kk+1]
+            A[:,kk+1][notB] = dits(W,X[:,kk], num = N-1)
+            xkp1[notB] = xkp1[A[:,kk+1][notB]]
+            rr[notB] = rr[A[:,kk+1][notB]]
+            xkp1[~notB] = xkp1[A[B[kk+1],kk+1]]
+            rr[~notB] = R[:,kk][A[B[kk+1],kk+1]]
+            X[:,kk+1] = xkp1   
+            R[:,kk] = rr       
+            W[notB] = W[A[:,kk+1][notB]]
+            W[~notB] = W[A[B[kk+1],kk+1]]
+            wkp1 = W + np.log(g_theta(xkp1, sig_w, Q[kk]))
+            W = wkp1#/wkp1.sum()
 
-        # Add the current parameter values to the parameter samples matrix
-        parameter_samples[i, :] = current_values
+        return X, A, W, R
 
-    return parameter_samples
+

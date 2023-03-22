@@ -10,30 +10,20 @@ import scipy.stats as ss
 # processes
 # ==========================
 
-
-# Part I: state transition
-def f_theta(xht:List[float],theta: float, \
-    delta_t: float, rtp1:float):
-    '''
-    inputs:
-        xt: all possible \hat{x} at t
-        theta: k in this case
-        delta_t: time interval
-        rtp1: input Jt with uncertainty introduced at t+1
-    return:
-        xtp1: \hat{x} at t+1
-    '''
-    xhtp1 = transition_model(xht, theta, delta_t, rtp1)
-    return xhtp1
-
-# Part II: observation
-def g_theta(xht,sig_w,xt):
+def input_model(J:float, theta:dict, N:int):
     """
-    inputs:
-        xht: all possible \hat{x} at t
-        sig_w: observation uncertainty
-        xt: observed x
-    return:
-        p(xt|sig_w, xht)
+        Generate random uniform noise
     """
-    return ss.norm(xht,sig_w).pdf(xt)
+    thetaval = theta['not_to_estimate']['input_uncertainty']
+    return ss.uniform(J-theta_val,theta_val).rvs(N)
+
+def observation_model(xht:List[float],theta_val:float,xt:List[float]):
+    return ss.norm(xht,theta_val).pdf(xt)
+
+def transition_model(qt: float,k: float,delta_t: float,jt: float):
+    """
+        give four inputs about the watershed at timestep t
+        return the calculated discharge at t+1
+    """
+    qtp1 = (1 - k * delta_t) * qt + k * delta_t * jt
+    return qtp1
