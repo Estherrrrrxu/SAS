@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 from typing import List
 import scipy.stats as ss
-import tqdm
-from link import input_model, transition_model, observation_model
+from tqdm import tqdm
+from functions.link import input_model, transition_model, observation_model
 # %%
 # ==========================
 # utility functions
@@ -45,7 +45,7 @@ def find_MLE(X,A,W,R):
     for i in range(length):
         MLE[i] = X[B[i],i]
     MLE_R = np.zeros(length-1)
-    for i in range(length):
+    for i in range(length-1):
         MLE_R[i] = R[B[i+1],i]
     return MLE, MLE_R
 
@@ -73,15 +73,16 @@ class SSModel:
                
         self.config = self._default_configs
         # TODO: find a better way to write this
-        for key in config.keys():
-            self.config[key] = config[key]
-        else:
-            self.config = config
+        if config is not None:
+            for key in config.keys():
+                self.config[key] = config[key]
+            else:
+                self.config = config
         
         # set influx and outflux here
         # TODO: flexible way to insert multiple influx and outflux
-        self.influx = self.df[config['influx']]
-        self.outflux = self.df[config['outflux']]
+        self.influx = self.df[self.config['influx']]
+        self.outflux = self.df[self.config['outflux']]
 
         # TODO: observation currently made at every timestep, adjust it according to interval later
         self.K = len(self.influx)
@@ -100,7 +101,7 @@ class SSModel:
         """
         # find params to update
         self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
-        self._num_theta_to_estimate = self._theta_init['to_estimate'].keys()
+        self._num_theta_to_estimate = len(self._theta_to_estimate )
         
         # save models
         self.prior_model = {}
@@ -118,18 +119,18 @@ class SSModel:
             
             # for update distributions
             if current_theta['update_dis'] == 'normal':
-                self.update_model[key] = ss.norm(loc = 0, scale = current_theta['update_params'][1])
+                self.update_model[key] = ss.norm(loc = 0, scale = current_theta['update_params'][0])
             else:
                 raise ValueError("This search distribution is not implemented yet")
         
     def _process_theta_at_p(self,p,ll,key):
-        theta_temp = np.oness((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
-        theta_temp[p] += self.update_model[key].rvs(self.D)
+        theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
+        theta_temp[:,p] += self.update_model[key].rvs(self.D)
         return theta_temp
         
 
 
-    def run_pGS_SAEM(self, num_particles:int,num_params:int, len_MCMC: int, theta_init:dict, q_step:list or float = 0.75):
+    def run_pGS_SAEM(self, num_particles:int,num_params:int, len_MCMC: int, theta_init:dict = None, q_step:list or float = 0.75):
         """
 
         :param num_particles: number of input scenarios represented by particles
@@ -163,11 +164,12 @@ class SSModel:
             }
         # process theta
         self._theta_init = theta_init
-        self._process_theta(theta_init)
+        self._process_theta()
 
         # initialize record storage
         self.theta_record = np.zeros((self.L+1, self._num_theta_to_estimate))
-        self.input_record = np.zeros(self.L+1) # assume one input for now
+        # TODO: change self.K to self.T in future
+        self.input_record = np.zeros((self.L+1, self._num_theta_to_estimate ,self.K)) # assume one input for now
         
         # initialize theta
         theta = np.zeros((self.D, self._num_theta_to_estimate))
@@ -181,10 +183,11 @@ class SSModel:
 
         # temp memory term
         if isinstance(q_step,float):
-            q_step = [q_step]*self.L+1 
+            q_step = [q_step]*(self.L+1)
         Qh = q_step[0] * np.max(WW[:,:],axis = 1)
 
-
+        ind_best_param = np.argmax(Qh)
+        self.theta_record[0,:] = theta[ind_best_param,:]
 
         for ll in tqdm(range(self.L)):
             # for each parameter
@@ -194,11 +197,11 @@ class SSModel:
                 for d in range(self.D):
                     XX[d,:,:], AA[d,:,:], WW[d,:], RR[d,:,:] = self.run_pMCMC(theta_new[d,:], XX[d,:,:] , WW[d,:], AA[d,:,:],RR[d,:,:])
 
-                Qh = (1-q_step[ll+1])*Qh + q_step[ll+1] * np.max(WW[:,ll+1,:],axis = 1)
+                Qh = (1-q_step[ll+1])*Qh + q_step[ll+1] * np.max(WW[:,:],axis = 1)
                 ind_best_param = np.argmax(Qh)
                 self.theta_record[ll+1,p] = theta_new[ind_best_param,p]
                 _, MLE_R = find_MLE(XX[ind_best_param,:,:], AA[ind_best_param,:,:], WW[ind_best_param,:], RR[ind_best_param,:,:])
-                self.input_record[ll+1,p] = MLE_R
+                self.input_record[ll+1,p,:] = MLE_R
         return
 
     def run_sMC(self, theta_to_estimate):
@@ -267,7 +270,7 @@ class SSModel:
         W = np.log(np.ones(self.N)/self.N) # initial weight on particles are all equal
         for kk in range(self.K):
             rr = input_model(self.influx[kk],self._theta_init, self.N)
-            xkp1 = self.f_theta(xk,theta,R[:,kk])
+            xkp1 = self.f_theta(X[:,kk],theta,R[:,kk])
             # Look into this
             x_prime = X[B[kk+1],kk+1]
             W_tilde = W + np.log(ss.norm(x_prime,0.000005).pdf(xkp1))
@@ -284,8 +287,6 @@ class SSModel:
             R[:,kk] = rr       
             W[notB] = W[A[:,kk+1][notB]]
             W[~notB] = W[A[B[kk+1],kk+1]]
-            wkp1 = W + np.log(self.g_theta(xkp1, theta, self.outflux))
+            wkp1 = W + np.log(self.g_theta(xkp1, theta, self.outflux[kk]))
             W = wkp1#/wkp1.sum()
         return X, A, W, R
-
-

@@ -14,7 +14,7 @@ def input_model(J:float, theta:dict, N:int):
     """
         Generate random uniform noise
     """
-    thetaval = theta['not_to_estimate']['input_uncertainty']
+    theta_val = theta['not_to_estimate']['input_uncertainty']
     return ss.uniform(J-theta_val,theta_val).rvs(N)
 
 def observation_model(xht:List[float],theta_val:float,xt:List[float]):
