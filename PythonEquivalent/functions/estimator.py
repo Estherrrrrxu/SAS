@@ -240,7 +240,7 @@ class SSModel:
         likelihood = observation_model(xht,theta_val,xt)
         return likelihood
 
-    def run_pMCMC(self, theta:dict, X: List[float], W: List[float], A: List[float],R: List[float]):
+    def run_pMCMC(self, theta:List[float], X: List[float], W: List[float], A: List[float],R: List[float]):
         '''
         pMCMC inside loop, run this entire function as many as possible
         update w/ Ancestor sampling
@@ -266,35 +266,16 @@ class SSModel:
         # state estimation-------------------------------
         W = np.log(np.ones(self.N)/self.N) # initial weight on particles are all equal
         for kk in range(self.K):
-            # draw new state samples and associated weights based on last ancestor
-            xk = X[A[:,kk],kk]
-            wk = W
-            # compute uncertainties TODO: currently theta not being estimated
-            R[:,kk] = 
-            # updates
-            xkp1 = 
-            wkp1 = wk + np.log(self.g_theta(xkp1, theta_to_estimate, self.outflux[kk]))
-            W = wkp1
-            X[:,kk+1] = xkp1
-            aa = inverse_pmf(W,A[:,kk], num = self.N)
-            A[:,kk+1] = aa  
-
-
-
-
-
-
- 
             rr = input_model(self.influx[kk],self._theta_init, self.N)
-            xkp1 = self.f_theta(xk,theta_to_estimate,R[:,kk])
+            xkp1 = self.f_theta(xk,theta,R[:,kk])
             # Look into this
             x_prime = X[B[kk+1],kk+1]
             W_tilde = W + np.log(ss.norm(x_prime,0.000005).pdf(xkp1))
             # ^^^^^^^^^^^^^^
-            A[B[kk+1],kk+1] = dits(W_tilde,xkp1 - x_prime, num = 1)
+            A[B[kk+1],kk+1] = inverse_pmf(W_tilde,xkp1 - x_prime, num = 1)
             # now update everything in new state
-            notB = np.arange(0,N)!=B[kk+1]
-            A[:,kk+1][notB] = dits(W,X[:,kk], num = N-1)
+            notB = np.arange(0,self.N)!=B[kk+1]
+            A[:,kk+1][notB] = inverse_pmf(W,X[:,kk], num = self.N-1)
             xkp1[notB] = xkp1[A[:,kk+1][notB]]
             rr[notB] = rr[A[:,kk+1][notB]]
             xkp1[~notB] = xkp1[A[B[kk+1],kk+1]]
@@ -303,9 +284,8 @@ class SSModel:
             R[:,kk] = rr       
             W[notB] = W[A[:,kk+1][notB]]
             W[~notB] = W[A[B[kk+1],kk+1]]
-            wkp1 = W + np.log(g_theta(xkp1, sig_w, Q[kk]))
+            wkp1 = W + np.log(self.g_theta(xkp1, theta, self.outflux))
             W = wkp1#/wkp1.sum()
-
         return X, A, W, R
 
 
