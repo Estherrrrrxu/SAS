@@ -125,6 +125,7 @@ class SSModel:
         
     def _process_theta_at_p(self,p,ll,key):
         theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
+        theta_temp[:,:p] = self.theta_record[ll,p]
         theta_temp[:,p] += self.update_model[key].rvs(self.D)
         return theta_temp
         
@@ -290,3 +291,4 @@ class SSModel:
             wkp1 = W + np.log(self.g_theta(xkp1, theta, self.outflux[kk]))
             W = wkp1#/wkp1.sum()
         return X, A, W, R
+# %%
