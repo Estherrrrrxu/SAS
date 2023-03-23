@@ -22,7 +22,7 @@ theta_init = {
     'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.2,0.3], 
                             "update_dis": "normal", "update_params":[0.05]},
                     'output_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
-                            "update_dis": "normal", "update_params":[0.00005]}},
+                            "update_dis": "normal", "update_params":[0.000005]}},
     'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
 }
 # process theta
@@ -43,7 +43,7 @@ plot_MLE(X,A,W,R,default_model.K,df,default_model.influx, default_model.outflux,
 
 # %%
 
-default_model.run_pGS_SAEM(num_particles=10,num_params=5, len_MCMC=15)
+default_model.run_pGS_SAEM(num_particles=20,num_params=10, len_MCMC=25)
 # %%
 plt.figure()
 plt.subplot(2,1,1)
