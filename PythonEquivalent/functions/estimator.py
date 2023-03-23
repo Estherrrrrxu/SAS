@@ -125,7 +125,7 @@ class SSModel:
         
     def _process_theta_at_p(self,p,ll,key):
         theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
-        theta_temp[:,:p] = self.theta_record[ll,p]
+        theta_temp[:,:p] = self.theta_record[ll+1,p]
         theta_temp[:,p] += self.update_model[key].rvs(self.D)
         return theta_temp
         
