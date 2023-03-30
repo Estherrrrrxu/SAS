@@ -92,27 +92,10 @@ class LinearReservoirProposalModel(ProposalModel):
         """
         return ss.norm(yht, self.theta).pdf(yt)
     
-
-
-
-
-
-    def _process_input_info(self, df: pd.DataFrame, config: Optional[dict[str, Any]] = None):
-
-
-        # load input dataframe--------------
-        self.df = df
-
-        """
-        Parameters (only showing inputs)
-        ----------
-        df : pd.DataFrame
-            A dataframe contains all essential information as the input 
-        config : dict
-            A dictionary contains information about parameters to estimate and not to be estimated
-        """
+class LinearReservoirInputProcess(InputProcess):
+    def _process_config(self) -> None:
         # process configurations------------
-        self._default_configs = {
+        self._default_config = {
             'dt': 1./24/60*15,
             'influx': 'J_obs',
             'outflux': 'Q_obs',
@@ -120,21 +103,16 @@ class LinearReservoirProposalModel(ProposalModel):
             'observed_interval': None,
             'observed_series': None # give a boolean list of observations been made 
         }   
-        self.config = self._default_configs
+
         # replace default config with input configs
-        if config is not None:
-            for key in config:
-                self.config[key] = config[key]
+        if self.config is not None:
+            for key in self._default_config:
+                if key not in self.config:
+                    self.config[key] = self._default_config[key]
             else:
-                self.config = config
+                raise ValueError('Invalid config key: {}'.format(key))
         
-        # set influx and outflux here--------
-        # TODO: flexible way to insert multiple influx and outflux
-        self.influx = self.df[self.config['influx']]
-        self.outflux = self.df[self.config['outflux']]
-
         # set observation interval-----------
-
         if self.config['observed_at_each_time_step'] == True:
             self.K = self.T
         elif self.config['observed_interval'] is not None:
@@ -146,8 +124,15 @@ class LinearReservoirProposalModel(ProposalModel):
         # set delta_t------------------------
         self.dt = self.config['dt']
 
+    def _process_data(self) -> None:       
+        # TODO: flexible way to insert multiple influx and outflux
+        self.influx = self.df[self.config['influx']]
+        self.outflux = self.df[self.config['outflux']]
+
+
+
  # ---------------pGS_SAEM algo----------------
-    def _process_theta(self):
+    def _process_theta(self,theta_init=None):
         """
             For theta models:
             1. Prior model: 
@@ -156,6 +141,19 @@ class LinearReservoirProposalModel(ProposalModel):
             2. Update model:
                 normal:     params [std]
         """
+        if theta_init == None:
+            # set default theta
+            theta_init = {
+                'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.2,0.3], 
+                                        "update_dis": "normal", "update_params":[0.05],
+                                        'log':False},
+                                'output_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
+                                        "update_dis": "normal", "update_params":[0.00005],
+                                        'log': True}
+                                },
+                'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
+            }
+
         # find params to update
         self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
         self._num_theta_to_estimate = len(self._theta_to_estimate )
@@ -196,19 +194,21 @@ class LinearReservoirProposalModel(ProposalModel):
                 else:
                     raise ValueError("This search distribution is not implemented yet")
         
-    def _process_theta_at_p(self,p,ll,key):
-        theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
-        theta_temp[:,:p] = self.theta_record[ll+1,p]
-        theta_temp[:,p] += self.update_model[key].rvs(self.D)
-        return theta_temp
 
-LinearReservoirModel = SSModel(
-    N = 
-    proposal_model,
+
+
+proposal_model = LinearReservoirProposalModel(
+    transition_model = LinearReservoirTranModel(),
+    observation_model = LinearReservoirObsModel()
 )
 
-   
-LinearReservoirModel .run_sequential_monte_carlo(influx, )
+input_model = LinearReservoirInputModel(theta = )
+num_input_scenarios = 20
+LinearReservoirModel = SSModel(
+        num_input_scenarios,
+        proposal_model,
+        input_model
+    )
 
 
 

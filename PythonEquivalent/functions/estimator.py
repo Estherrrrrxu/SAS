@@ -138,6 +138,36 @@ class ProposalModel(ABC):
     def g_theta(self, yht: np.ndarray, yt: np.ndarray) -> np.ndarray:
         ...
 
+class InputProcess(ABC):
+    def ___init__(self, df: pd.DataFrame, config: Optional[dict[str, Any]] = None):
+        self.df = df
+        self.config = config
+    def _process_config(self) -> None:
+        ...
+    def _process_data(self) -> None:
+        ...
+    def _process_theta(self, theta_init) -> None:
+        ...
+
+# %%
+def _inverse_pmf(x: np.ndarray,ln_pmf: np.ndarray, num: int) -> np.ndarray:
+    """Sample x based on its ln(pmf) using discrete inverse sampling method
+
+    Args:
+        x (np.ndarray): The specific values of x
+        pmf (np.ndarray): The weight (ln(pmf)) associated with x
+        num (int): The total number of samples to generate
+
+    Returns:
+        np.ndarray: index of x that are been sampled according to its ln(pmf)
+    """
+    ind = np.argsort(x) # sort x according to its magnitude
+    pmf = np.exp(ln_pmf) # convert ln(pmf) to pmf
+    pmf /= pmf.sum()
+    pmf = pmf[ind] # sort pdf accordingly
+    u = np.random.uniform(size = num)
+    ind_sample = np.searchsorted(pmf.cumsum(), u)
+    return ind[ind_sample]
 
 # %%
 class SSModel(ABC):
@@ -145,13 +175,14 @@ class SSModel(ABC):
         self,
         num_input_scenarios: int,
         proposal_model: ProposalModel(TransitionModel, ObservationModel,theta=None),
-        input_model: InputModel
+        input_model: InputModel,
+        input_process: InputProcess
     ):
         
         self.N = num_input_scenarios
         self.input_model = input_model
         self.proposal_model = proposal_model
-
+        self.input_process = input_process
 
     def run_sequential_monte_carlo(self,
         influx: pd.Series,
@@ -209,7 +240,11 @@ class SSModel(ABC):
         state = State(X, A, W, R)        
         return state
     
-    def run_particle_MCMC(self, state: State, theta: np.ndarray) -> State:
+    def run_particle_MCMC(
+            self, 
+            state: State, 
+            theta: np.ndarray
+            ) -> State:
         """Run particle MCMC
         
         Args:
@@ -251,11 +286,20 @@ class SSModel(ABC):
             W[~notB] = W[A[B[k+1],k+1]]
             wkp1 = W + np.log(self.g_theta(xkp1, self.outflux[k]))
             W = wkp1#/wkp1.sum()
-        return X, A, W, R
+        
+        state = State(X, A, W, R)        
+        return state
 
 
 
-    def run_pGS_SAEM(self, num_particles:int,num_params:int, len_MCMC: int, theta_init:dict = None, q_step:list or float = 0.75):
+    def run_particle_Gibbs_SAEM(
+            self,
+            num_parameter_samples:int,
+            len_MCMC: int,
+            num_theta_to_estimate: dict = None,
+            theta_to_estimate: dict = None,
+            q_step: np.ndarray or float = 0.75
+            ) -> None:
         """ Run particle Gibbs with Ancestor Resampling (pGS) and Stochastic Approximation of the EM algorithm (SAEM)
 
         Parameters (only showing inputs)
@@ -268,8 +312,10 @@ class SSModel(ABC):
         """
         # specifications
         self.L = len_MCMC
-        self.D = num_params
-        self.N = num_particles
+        self.D = num_parameter_samples
+        self._num_theta_to_estimate = num_theta_to_estimate
+        self._theta_to_estimate = theta_to_estimate
+
 
         # initialize a bunch of temp storage 
         AA = np.zeros((self.D,self.N,self.K+1)).astype(int) 
@@ -277,26 +323,10 @@ class SSModel(ABC):
         XX = np.zeros((self.D,self.N,self.K+1))
         RR = np.zeros((self.D,self.N,self.K))
         
-        if theta_init == None:
-            # set default theta
-            theta_init = {
-                'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.2,0.3], 
-                                     "update_dis": "normal", "update_params":[0.05],
-                                     'log':False},
-                                'output_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
-                                     "update_dis": "normal", "update_params":[0.00005],
-                                     'log': True}
-                                },
-                'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
-            }
-        # process theta
-        self._theta_init = theta_init
-        self._process_theta()
-
         # initialize record storage
         self.theta_record = np.zeros((self.L+1, self._num_theta_to_estimate))
-        # TODO: change self.K to self.T in future
-        self.input_record = np.zeros((self.L+1, self._num_theta_to_estimate ,self.K)) # assume one input for now
+        # TODO: assume one input for now
+        self.input_record = np.zeros((self.L+1, self._num_theta_to_estimate ,self.T))
         
         # initialize theta
         theta = np.zeros((self.D, self._num_theta_to_estimate))
@@ -305,8 +335,10 @@ class SSModel(ABC):
             theta[:,i] = temp_model.rvs(self.D)
 
         # run sMC algo first
+
         for d in range(self.D):
-            XX[d,:,:],AA[d,:,:],WW[d,:],RR[d,:,:] = self.run_sMC(theta[d,:])
+            state = self.run_sequential_monte_carlo(theta[d,:])
+            XX[d,:,:],AA[d,:,:],WW[d,:],RR[d,:,:] = state.X, state.A, state.W, state.R
 
         # temp memory term
         if isinstance(q_step,float):
@@ -315,22 +347,31 @@ class SSModel(ABC):
 
         ind_best_param = np.argmax(Qh)
         self.theta_record[0,:] = theta[ind_best_param,:]
- # TODO: getter and setter for theta
+ 
         for ll in tqdm(range(self.L)):
             # for each parameter
             for p,key in enumerate(self._theta_to_estimate):   
                 theta_new = self._process_theta_at_p(p,ll,key)
                 # for each particle
                 for d in range(self.D):
-                    XX[d,:,:], AA[d,:,:], WW[d,:], RR[d,:,:] = self.run_pMCMC(theta_new[d,:], XX[d,:,:] , WW[d,:], AA[d,:,:],RR[d,:,:])
+                    state = State(X = XX[d,:,:] , W = WW[d,:], A = AA[d,:,:],R = RR[d,:,:])
+                    state_new = self.run_particle_MCMC(theta = theta_new[d,:], state = state)
+                    XX[d,:,:], AA[d,:,:], WW[d,:], RR[d,:,:] = state_new.X, state_new.A, state_new.W, state_new.R
 
                 Qh = (1-q_step[ll+1])*Qh + q_step[ll+1] * np.max(WW[:,:],axis = 1)
                 ind_best_param = np.argmax(Qh)
                 self.theta_record[ll+1,p] = theta_new[ind_best_param,p]
-                _, MLE_R = find_MLE(XX[ind_best_param,:,:], AA[ind_best_param,:,:], WW[ind_best_param,:], RR[ind_best_param,:,:])
-                self.input_record[ll+1,p,:] = MLE_R
+
+                B = self._find_traj(AA[ind_best_param,:,:], WW[ind_best_param,:])
+                traj_R = self._get_R_traj(RR[ind_best_param,:,:], B)
+                self.input_record[ll+1,p,:] = traj_R
         return
 
+    def _process_theta_at_p(self,p,ll,key):
+        theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
+        theta_temp[:,:p] = self.theta_record[ll+1,p]
+        theta_temp[:,p] += self.update_model[key].rvs(self.D)
+        return theta_temp
 
     def _find_traj(self, A: np.ndarray,W: np.ndarray) -> np.ndarray:
         """Find particle trajectory based on final weight
@@ -382,22 +423,3 @@ class SSModel(ABC):
         return  traj_R
     
 
-# %%
-def _inverse_pmf(x: np.ndarray,ln_pmf: np.ndarray, num: int) -> np.ndarray:
-    """Sample x based on its ln(pmf) using discrete inverse sampling method
-
-    Args:
-        x (np.ndarray): The specific values of x
-        pmf (np.ndarray): The weight (ln(pmf)) associated with x
-        num (int): The total number of samples to generate
-
-    Returns:
-        np.ndarray: index of x that are been sampled according to its ln(pmf)
-    """
-    ind = np.argsort(x) # sort x according to its magnitude
-    pmf = np.exp(ln_pmf) # convert ln(pmf) to pmf
-    pmf /= pmf.sum()
-    pmf = pmf[ind] # sort pdf accordingly
-    u = np.random.uniform(size = num)
-    ind_sample = np.searchsorted(pmf.cumsum(), u)
-    return ind[ind_sample]
