@@ -5,47 +5,127 @@ from typing import List, Tuple
 import scipy.stats as ss
 from tqdm import tqdm
 from functions.link import ModelLink
+from dataclasses import dataclass
+from abc import ABC
+
 
 # %%
-def _inverse_pmf(x: List[float],ln_pmf: List[float], num: int) -> List[int]:
-    """Sample x based on its ln(pmf) using discrete inverse sampling method
+@dataclass
+class State:
+    """ Class for keep track of state at each timestep"""
+    R: np.ndarray  # [T, N]
+    W: np.ndarray  # [N]
+    X: np.ndarray  # [T+1, N]
+    A: np.ndarray  # [T+1, N]
 
-    Parameters
-    ----------
-    x : List[str]
-        The specific values of x
-    pmf : List[str]
-        The weight (ln(pmf)) associated with x
-    num : int
-        The total number of samples to generate
 
-    Returns
-    -------
-    List[int]
-        index of x that are been sampled according to its ln(pmf)
+class InputModel(ABC):
+    """General input model
+
+        for given \theta, r_t = func_\theta(u_t)
     """
-    ind = np.argsort(x) # sort x according to its magnitude
-    pmf = np.exp(ln_pmf) # convert ln(pmf) to pmf
-    pmf = pmf/pmf.sum()
-    pmf = pmf[ind] # sort pdf accordingly
-    cmf = pmf.cumsum()
-    u = np.random.uniform(size = num)
-    ind_sample = np.zeros(num)
-    # TODO: any more efficient method? Idea: sort u first and one pass in enumerating cmf
-    for i in range(num):
-        if u[i] > cmf[-1]:
-            ind_sample[i] = -1
-        elif u[i] < cmf[0]:
-            ind_sample[i] = 0
-        else:
-            for j in range(1,len(cmf)):
-                if (u[i] <= cmf[j]) and (u[i] > cmf[j-1]):
-                    ind_sample[i] = j
-                    break
-    return ind[ind_sample.astype(int)]
+    def __init__(self, theta: float):
+        """Set theta
+
+        Args:
+            theta (np.ndarray): parameter of the model  
+        """
+        self.theta = theta
+    
+    def input(self, u: np.ndarray, t: int) -> np.ndarray:
+        """_summary_
+
+        Args:
+            u (np.ndarray): forcing
+            t (int): transition timestep
+
+        Returns:
+            np.ndarray: r_t = func_\theta(u_t)
+        """
+        ...
+
+class TransitionModel(ABC):
+    """General transition model
+
+        for given \theta, x_t = f_\theta(x_{t-1}, u_t, r_t)
+    """
+    def __init__(self, theta: float):
+        """Set theta
+
+        Args:
+            theta (np.ndarray): parameter of the model  
+        """
+        self.theta = theta
+    
+    def transition(self, x: np.ndarray, u: np.ndarray, r: np.ndarray, t: int) -> np.ndarray:
+        """_summary_
+
+        Args:
+            x (np.ndarray): state variable
+            u (np.ndarray): forcing
+            r (np.ndarray): input uncertainty
+            t (int): transition timestep
+
+        Returns:
+            np.ndarray: x_t = f_\theta(x_{t-1}, u_t, r_t)
+        """
+        ...
+
+
+class ObservationModel(ABC):
+    """General observation model
+
+        for given \theta, z_k = g_\theta(x_k, u_k, v_k)
+    """
+    def __init__(self, theta: np.ndarray = None):
+        """Set theta
+
+        Args:
+            theta (np.ndarray): parameter of the model  
+        """
+        self.theta = theta
+
+    def observation(self, x: np.ndarray, u: np.ndarray, v: np.ndarray, k: int) -> np.ndarray:
+        """Run model
+
+        Args:
+            x (np.ndarray): state variable
+            u (np.ndarray): forcing
+            v (np.ndarray): associated uncertainty
+            k (int): observed timestep
+            
+        Returns:
+            np.ndarray: z_k = g_\theta(x_k, u_k, v_k)
+        """
+        ...
+
+
+class ProposalModel(ABC):
+    def __init__(
+            self, 
+            transition_model: TransitionModel,
+            observation_model: ObservationModel,
+            theta: np.ndarray = None
+            ) -> None:
+        """Initialize the model
+
+        Args:
+            transition_model (TransitionModel): 
+            observation_model (ObservationModel): 
+            theta (np.ndarray, optional): parameter. Defaults to None.
+        """
+        self.transition_model = transition_model
+        self.observation_model = observation_model
+        self.theta = theta
+    def f_theta(self):
+        ...
+
+    def g_theta(self):
+        ...
+
 
 # %%
-class SSModel:
+class SSModel(ABC):
     """
     A class used to construct SSModel (State Space Model) algorithm framework
 
@@ -436,55 +516,41 @@ class C(ModelBase)
             self.bs = [B(...)]
         self.a = A(...)
         self.bs = []
-    def 
 
-class Food:
-    pass
+# %%
+def _inverse_pmf(x: List[float],ln_pmf: List[float], num: int) -> List[int]:
+    """Sample x based on its ln(pmf) using discrete inverse sampling method
 
-class Grass(Food):
-    pass
+    Parameters
+    ----------
+    x : List[str]
+        The specific values of x
+    pmf : List[str]
+        The weight (ln(pmf)) associated with x
+    num : int
+        The total number of samples to generate
 
-class Fish(Food):
-    pass
-
-
-class Animal:
-    def __init__():
-        pass
-    
-    def sleep(n: int):
-        time.sleep(n)
-    
-    def eat(food: Food)
-
-class Cat(Animal):
-    def speak():
-        print("Meow")
-    
-    def eat(food: Fish):
-        pass
-
-class Dog(Animal):
-    def speak():
-        print("Bark")
-
-class Puppy(Dog):
-    def speak():
-        print("woo woo woo")
-    
-    def play():
-        print("puppy playing")
-
-
-animals = [Cat(), Dog(), Puppy()]
-foods = [Fish(), Food(), Grass()]
-for a, f in zip(animal, foods):
-    a.speak()
-    # a.play()
-    # a.eat(f)
-
-    model_link.run(model.params)
-
-    # ModelLink(Model): model_link.modle_param
-    # ModelLink(model): model_link.model.param
-    # model_link.run(model.params)
+    Returns
+    -------
+    List[int]
+        index of x that are been sampled according to its ln(pmf)
+    """
+    ind = np.argsort(x) # sort x according to its magnitude
+    pmf = np.exp(ln_pmf) # convert ln(pmf) to pmf
+    pmf = pmf/pmf.sum()
+    pmf = pmf[ind] # sort pdf accordingly
+    cmf = pmf.cumsum()
+    u = np.random.uniform(size = num)
+    ind_sample = np.zeros(num)
+    # TODO: any more efficient method? Idea: sort u first and one pass in enumerating cmf
+    for i in range(num):
+        if u[i] > cmf[-1]:
+            ind_sample[i] = -1
+        elif u[i] < cmf[0]:
+            ind_sample[i] = 0
+        else:
+            for j in range(1,len(cmf)):
+                if (u[i] <= cmf[j]) and (u[i] > cmf[j-1]):
+                    ind_sample[i] = j
+                    break
+    return ind[ind_sample.astype(int)]

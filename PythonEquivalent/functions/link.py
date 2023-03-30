@@ -3,57 +3,117 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import List
-from functions.models import transition_model
 import scipy.stats as ss
+from estimator import *
+
 # %%
-# ==========================
-# processes
-# ==========================
-class ModelLink:
+class LinearReservoirInputModel(InputModel):
     """
-    A class used to specify inputs and settings for SSModel (State Space Model)
+    Args:
+        theta (np.ndarray): [U_upper, N]
+    """
+    def input(self, Ut:float) -> np.ndarray:
+        """Input model for linear reservoir
 
-    Attributes
-    ----------
-    df : pd.DataFrame
-        A dataframe contains all essential information as the input 
-    config : dict
-        A dictionary contains information about parameters to estimate and not to be estimated
-    influx : List[float]
-        The influx of the model
-    outflux : List[fleat]
-        The outflux of the model
+        Rt = Ut - U(0, U_upper)
 
-    Methods
-    -------
-    input_model(influx, theta, N)
-        Generate the input time series for given period
+        Args:
+            Ut (float): forcing at time t
 
-    transition_model()
-        Generate the state to the next set of time
+        Returns:
+            np.ndarray: Rt
+        """
+        return ss.uniform(Ut-self.theta[0],self.theta[0]).rvs(self.theta[1])
 
-    observation_model()
-        Generate observation at given time
+class LinearReservoirTranModel(TransitionModel):
+    """
+    Args:
+        theta (np.ndarray): [k, delta_t]
+    """
+    def transition(self, xtm1: np.ndarray, rt: float) -> np.ndarray:
+        """Transition model for linear reservoir
+
+        xt = (1 - k * delta_t) * x_{t-1} + k * delta_t * rt
         
+        Args:
+            xtm1 (np.ndarray): state at t-1
+            rt (float): uncertainty r at t
+
+        Returns:
+            np.ndarray: xt
+        """
+        xt = (1 - self.theta[0] * self.theta[1]) * xtm1 + self.theta[0] * self.theta[1] * rt
+        return xt
+    
+class LinearReservoirObsModel(ObservationModel):
+    def observation(self, xk: np.ndarray) -> np.ndarray:
+        """Observation model for linear reservoir
+
+        y_hat(k) = x(k)
+
+        Args:
+            xk (np.ndarray): observed y at time k
+
+        Returns:
+            np.ndarray: y_hat
+        """
+        return xk
+    
+class LinearReservoirProposalModel(ProposalModel):
+    """_summary_
+
+    Args:
+        theta (np.array): sig_v
     """
-    def __init__(self, ):
+    def f_theta(self, xtm1: np.ndarray, ut: np.ndarray) -> np.ndarray:
+        """Call transition_model directly
 
+        Args:
+            xtm1 (np.ndarray): state at t-1
+            rt (float): uncertainty r at t
 
-
-    def input_model(self, J:float, theta:dict, N:int):
+        Returns:
+            np.ndarray: xt
         """
-            Generate random uniform noise
-        """
-        theta_val = theta['not_to_estimate']['input_uncertainty']
-        return ss.uniform(J-theta_val,theta_val).rvs(N)
+        return self.transition_model.transition(xtm1, ut)
 
-    def observation_model(self, xht:List[float],theta_val:float,xt:List[float]):
-        return ss.norm(xht,theta_val).pdf(xt)
+    def g_theta(self, yht: np.ndarray, yt: np.ndarray) -> np.ndarray:
+        """Observation model for linear reservoir
 
-    def transition_model(self, qt: float,k: float,delta_t: float,jt: float):
+        y(t) = y_hat(t) + N(0, theta_v)
+
+        Args:
+            yht (np.ndarray): estimated y_hat at time t
+            yt (np.ndarray): observed y at time t
+            theta (float): parameter of the model
+
+        Returns:
+            np.ndarray: p(y|y_hat, sig_v)
         """
-            give four inputs about the watershed at timestep t
-            return the calculated discharge at t+1
-        """
-        qtp1 = (1 - k * delta_t) * qt + k * delta_t * jt
-        return qtp1
+        return ss.norm(yht, self.theta).pdf(yt)
+    
+
+
+
+
+
+
+
+my_ss_model = SSModel(
+    transition_model= ,
+    proposal_model=,
+    observation_model=LinearReservoirObsModel(theta = 1.),
+)
+
+
+
+my_ss_model.run_sequential_monte_carlo(influx, )
+..
+
+
+
+
+
+
+
+

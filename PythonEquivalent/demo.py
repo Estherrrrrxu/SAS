@@ -32,7 +32,6 @@ class ProposalModel(ABC):
 
     def g_theta():
         ...
-proposal_model = ProposalModel()
 
 
 class SSModel(ABC):
@@ -77,31 +76,4 @@ class SSModel(ABC):
         
         State(R=.., X=.., A=.., W=..)
 
-        state.
-    
-    def 
-
-
-
-class MyProposalModel1(ProposalModel):
-
-    def f_theta():
-        # your implementation
-    def g_theta():
-        # your implementation
-
-
-my_ss_model = SSModel(
-    transition_model=MyTransitionModel(),
-    proposal_model=MyProposalModel1(),
-    observation_model=ObservationModel(),
-)
-
-my_ss_model_2 = SSModel(
-    ,,,
-)
-
-
-my_ss_model.run_sequential_monte_carlo(influx, )
-..
 
