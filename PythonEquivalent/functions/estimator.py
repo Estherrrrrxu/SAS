@@ -5,6 +5,7 @@ from typing import List, Tuple
 import scipy.stats as ss
 from tqdm import tqdm
 from functions.link import ModelLink
+
 # %%
 def _inverse_pmf(x: List[float],ln_pmf: List[float], num: int) -> List[int]:
     """Sample x based on its ln(pmf) using discrete inverse sampling method
@@ -76,54 +77,8 @@ class SSModel:
 
     observation_model()
         Generate observation at given time
-        
     """
-    def __init__(self, df:pd.DataFrame, config:dict = None):
-        """
-        Parameters (only showing inputs)
-        ----------
-        df : pd.DataFrame
-            A dataframe contains all essential information as the input 
-        config : dict
-            A dictionary contains information about parameters to estimate and not to be estimated
-        """
-        # load input dataframe--------------
-        self.df = df
 
-        # process configurations------------
-        self._default_configs = {
-            'dt': 1./24/60*15,
-            'influx': 'J_obs',
-            'outflux': 'Q_obs',
-            'observed_at_each_time_step': True,
-            'observed_interval': None,
-            'observed_series': None # give a boolean list of observations been made 
-        }   
-        self.config = self._default_configs
-        # replace default config with input configs
-        if config is not None:
-            for key in config:
-                self.config[key] = config[key]
-            else:
-                self.config = config
-        
-        # set influx and outflux here--------
-        # TODO: flexible way to insert multiple influx and outflux
-        self.influx = self.df[self.config['influx']]
-        self.outflux = self.df[self.config['outflux']]
-
-        # set observation interval-----------
-        self.T = len(self.influx)
-        if self.config['observed_at_each_time_step'] == True:
-            self.K = self.T
-        elif self.config['observed_interval'] is not None:
-            self.K = int(self.T/self.config['observed_interval'])
-        else:
-            self.K = sum(self.config['observed_series']) # total num observation is the number 
-            self._is_observed = self.config['observed_series'] # set another variable to indicate observation
-
-        # set delta_t------------------------
-        self.dt = self.config['dt']
     
     # ---------------pGS_SAEM algo----------------
     def _process_theta(self):
@@ -259,6 +214,78 @@ class SSModel:
                 self.input_record[ll+1,p,:] = MLE_R
         return
 
+
+    
+
+
+
+
+class ModelBase:
+    def __init__(self, df: pd.DataFrame, config: Optional[Dict[str, Any]] = None):
+        """
+        Parameters (only showing inputs)
+        ----------
+        df : pd.DataFrame
+            A dataframe contains all essential information as the input 
+        config : dict
+            A dictionary contains information about parameters to estimate and not to be estimated
+        """
+        # load input dataframe--------------
+        self.df = df
+
+        # process configurations------------
+        self._default_configs = {
+            'dt': 1./24/60*15,
+            'influx': 'J_obs',
+            'outflux': 'Q_obs',
+            'observed_at_each_time_step': True,
+            'observed_interval': None,
+            'observed_series': None # give a boolean list of observations been made 
+        }   
+        self.config = self._default_configs
+        # replace default config with input configs
+        if config is not None:
+            for key in config:
+                self.config[key] = config[key]
+            else:
+                self.config = config
+        
+        # set influx and outflux here--------
+        # TODO: flexible way to insert multiple influx and outflux
+        self.influx = self.df[self.config['influx']]
+        self.outflux = self.df[self.config['outflux']]
+
+        # set observation interval-----------
+        self.T = len(self.influx)
+        if self.config['observed_at_each_time_step'] == True:
+            self.K = self.T
+        elif self.config['observed_interval'] is not None:
+            self.K = int(self.T/self.config['observed_interval'])
+        else:
+            self.K = sum(self.config['observed_series']) # total num observation is the number 
+            self._is_observed = self.config['observed_series'] # set another variable to indicate observation
+
+        # set delta_t------------------------
+        self.dt = self.config['dt']
+    
+
+class A(SSModel):
+    def __init__(self, df: pd.DataFrame, config: Optional[Dict[str, Any]] = None):
+        super().__init__(df, config)
+
+    def f_theta(self, xht: np.ndarray, theta_to_estimate: float, rtp1: float):
+        theta_val = theta_to_estimate[0]  # specify the variable
+        xhtp1 = self.transition_model(xht, theta_val, self.config['dt'], rtp1)
+        return xhtp1
+
+    def g_theta(self, xht:List[float],theta_to_estimate:dict,xt:List[float]):
+        theta_val = theta_to_estimate[1]
+        likelihood = self.observation_model(xht,theta_val,xt)
+        return likelihood
+
+    
+
+
     def run_sMC(self, theta_to_estimate):
         '''
             :param theta_to_estimate: initial theta to estimate
@@ -287,66 +314,11 @@ class SSModel:
             aa = _inverse_pmf(A[:,kk],W, num = self.N)
             A[:,kk+1] = aa        
         return X,A,W,R
-    
-    def f_theta(self,xht:List[float],theta_to_estimate:float, rtp1:float):
-        theta_val = theta_to_estimate[0] # specify the variable
-        xhtp1 = self.transition_model(xht, theta_val, self.config['dt'], rtp1)
-        return xhtp1
-
-    def g_theta(self, xht:List[float],theta_to_estimate:dict,xt:List[float]):
-        theta_val = theta_to_estimate[1]
-        likelihood = self.observation_model(xht,theta_val,xt)
-        return likelihood
-
-    def run_pMCMC(self, theta:List[float], X: List[float], W: List[float], A: List[float],R: List[float]):
-        '''
-        pMCMC inside loop, run this entire function as many as possible
-        update w/ Ancestor sampling
-            theta           - let it be k, sig_v, sig_w for now
-            For reference trajectory:
-            qh              - estiamted state in particles
-            P               - weight associated with each particles
-            A               - ancestor lineage
-            p               - the p-th parameter to estimate
-            
-        '''
-        # generate random variables now
-        X = X.copy()
-        W = W.copy()
-        A = A.copy()
-        R = R.copy()
-        # sample an ancestral path based on final weight
-
-        B = np.zeros(self.K+1).astype(int)
-        B[-1] = _inverse_pmf(A[:,-1],W, num = 1)
-        for i in reversed(range(1,self.K+1)):
-            B[i-1] =  A[:,i][B[i]]
-        # state estimation-------------------------------
-        W = np.log(np.ones(self.N)/self.N) # initial weight on particles are all equal
-        for kk in range(self.K):
-            rr = input_model(self.influx[kk],self._theta_init, self.N)
-            xkp1 = self.f_theta(X[:,kk],theta,R[:,kk])
-            # Look into this
-            x_prime = X[B[kk+1],kk+1]
-            W_tilde = W + np.log(ss.norm(x_prime,0.000005).pdf(xkp1))
-            # ^^^^^^^^^^^^^^
-            A[B[kk+1],kk+1] = _inverse_pmf(xkp1 - x_prime,W_tilde, num = 1)
-            # now update everything in new state
-            notB = np.arange(0,self.N)!=B[kk+1]
-            A[:,kk+1][notB] = _inverse_pmf(X[:,kk],W, num = self.N-1)
-            xkp1[notB] = xkp1[A[:,kk+1][notB]]
-            rr[notB] = rr[A[:,kk+1][notB]]
-            xkp1[~notB] = xkp1[A[B[kk+1],kk+1]]
-            rr[~notB] = R[:,kk][A[B[kk+1],kk+1]]
-            X[:,kk+1] = xkp1   
-            R[:,kk] = rr       
-            W[notB] = W[A[:,kk+1][notB]]
-            W[~notB] = W[A[B[kk+1],kk+1]]
-            wkp1 = W + np.log(self.g_theta(xkp1, theta, self.outflux[kk]))
-            W = wkp1#/wkp1.sum()
-        return X, A, W, R
 
 
+class B(ModelBase)
+    def __init__(self, df:pd.DataFrame, config:dict = None):
+            super.__init__( df:pd.DataFrame, config:dict = None)
     def _find_traj(self, A: List[str],W: List[str]):
         """Find particle trajectory based on final weight
 
@@ -404,3 +376,115 @@ class SSModel:
         for i in range(self.K+1):
             traj_R[i] = R[self.B[i+1],i]
         return  traj_R
+    
+
+    def run_pMCMC(self, theta:List[float], X: List[float], W: List[float], A: List[float],R: List[float]):
+        '''
+        pMCMC inside loop, run this entire function as many as possible
+        update w/ Ancestor sampling
+            theta           - let it be k, sig_v, sig_w for now
+            For reference trajectory:
+            qh              - estiamted state in particles
+            P               - weight associated with each particles
+            A               - ancestor lineage
+            p               - the p-th parameter to estimate
+            
+        '''
+        # generate random variables now
+        X = X.copy()
+        W = W.copy()
+        A = A.copy()
+        R = R.copy()
+        # sample an ancestral path based on final weight
+
+        B = np.zeros(self.K+1).astype(int)
+        B[-1] = _inverse_pmf(A[:,-1],W, num = 1)
+        for i in reversed(range(1,self.K+1)):
+            B[i-1] =  A[:,i][B[i]]
+        # state estimation-------------------------------
+        W = np.log(np.ones(self.N)/self.N) # initial weight on particles are all equal
+        for kk in range(self.K):
+            rr = input_model(self.influx[kk],self._theta_init, self.N)
+            xkp1 = self.f_theta(X[:,kk],theta,R[:,kk])
+            # Look into this
+            x_prime = X[B[kk+1],kk+1]
+            W_tilde = W + np.log(ss.norm(x_prime,0.000005).pdf(xkp1))
+            # ^^^^^^^^^^^^^^
+            A[B[kk+1],kk+1] = _inverse_pmf(xkp1 - x_prime,W_tilde, num = 1)
+            # now update everything in new state
+            notB = np.arange(0,self.N)!=B[kk+1]
+            A[:,kk+1][notB] = _inverse_pmf(X[:,kk],W, num = self.N-1)
+            xkp1[notB] = xkp1[A[:,kk+1][notB]]
+            rr[notB] = rr[A[:,kk+1][notB]]
+            xkp1[~notB] = xkp1[A[B[kk+1],kk+1]]
+            rr[~notB] = R[:,kk][A[B[kk+1],kk+1]]
+            X[:,kk+1] = xkp1   
+            R[:,kk] = rr       
+            W[notB] = W[A[:,kk+1][notB]]
+            W[~notB] = W[A[B[kk+1],kk+1]]
+            wkp1 = W + np.log(self.g_theta(xkp1, theta, self.outflux[kk]))
+            W = wkp1#/wkp1.sum()
+        return X, A, W, R
+
+
+
+
+
+class C(ModelBase)
+    def __init__(self, df:pd.DataFrame, config:dict = None):
+            super.__init__( df:pd.DataFrame, config:dict = None)
+            self.bs = [B(...)]
+        self.a = A(...)
+        self.bs = []
+    def 
+
+class Food:
+    pass
+
+class Grass(Food):
+    pass
+
+class Fish(Food):
+    pass
+
+
+class Animal:
+    def __init__():
+        pass
+    
+    def sleep(n: int):
+        time.sleep(n)
+    
+    def eat(food: Food)
+
+class Cat(Animal):
+    def speak():
+        print("Meow")
+    
+    def eat(food: Fish):
+        pass
+
+class Dog(Animal):
+    def speak():
+        print("Bark")
+
+class Puppy(Dog):
+    def speak():
+        print("woo woo woo")
+    
+    def play():
+        print("puppy playing")
+
+
+animals = [Cat(), Dog(), Puppy()]
+foods = [Fish(), Food(), Grass()]
+for a, f in zip(animal, foods):
+    a.speak()
+    # a.play()
+    # a.eat(f)
+
+    model_link.run(model.params)
+
+    # ModelLink(Model): model_link.modle_param
+    # ModelLink(model): model_link.model.param
+    # model_link.run(model.params)
