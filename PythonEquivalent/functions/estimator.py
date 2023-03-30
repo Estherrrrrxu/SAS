@@ -1,92 +1,128 @@
 # %%
 import pandas as pd
 import numpy as np
-from typing import List
+from typing import List, Tuple
 import scipy.stats as ss
 from tqdm import tqdm
-from functions.link import input_model, transition_model, observation_model
+from functions.link import ModelLink
 # %%
-# ==========================
-# utility functions
-# ==========================
-# discrete inverse transform sampling
-def inverse_pmf(ln_pmf,x,num):
-    '''
-        give x ~ ln(pdf)
-    return: index of x that are been sampled according to pdf
-    '''
-    pmf = np.exp(ln_pmf)
-    pmf = pmf/pmf.sum()
+def _inverse_pmf(x: List[float],ln_pmf: List[float], num: int) -> List[int]:
+    """Sample x based on its ln(pmf) using discrete inverse sampling method
+
+    Parameters
+    ----------
+    x : List[str]
+        The specific values of x
+    pmf : List[str]
+        The weight (ln(pmf)) associated with x
+    num : int
+        The total number of samples to generate
+
+    Returns
+    -------
+    List[int]
+        index of x that are been sampled according to its ln(pmf)
+    """
     ind = np.argsort(x) # sort x according to its magnitude
+    pmf = np.exp(ln_pmf) # convert ln(pmf) to pmf
+    pmf = pmf/pmf.sum()
     pmf = pmf[ind] # sort pdf accordingly
-    cdf = pmf.cumsum()
+    cmf = pmf.cumsum()
     u = np.random.uniform(size = num)
-    a = np.zeros(num)
+    ind_sample = np.zeros(num)
+    # TODO: any more efficient method? Idea: sort u first and one pass in enumerating cmf
     for i in range(num):
-        if u[i] > cdf[-1]:
-            a[i] = -1
-        elif u[i] < cdf[0]: # this part can be removed
-            a[i] = 0
+        if u[i] > cmf[-1]:
+            ind_sample[i] = -1
+        elif u[i] < cmf[0]:
+            ind_sample[i] = 0
         else:
-            # TODO: any more efficient method?
-            for j in range(1,len(cdf)):
-                if (u[i] <= cdf[j]) and (u[i] > cdf[j-1]):
-                    a[i] = j
+            for j in range(1,len(cmf)):
+                if (u[i] <= cmf[j]) and (u[i] > cmf[j-1]):
+                    ind_sample[i] = j
                     break
-    return ind[a.astype(int)]
-# backtracking
-def find_MLE(X,A,W,R):
-    length = A.shape[1]
-    B = np.zeros(length).astype(int)
-    B[-1] = inverse_pmf(W,A[:,-1], num = 1)
-    for i in reversed(range(1,length)):
-        B[i-1] =  A[:,i][B[i]]
-    MLE = np.zeros(length)
-    for i in range(length):
-        MLE[i] = X[B[i],i]
-    MLE_R = np.zeros(length-1)
-    for i in range(length-1):
-        MLE_R[i] = R[B[i+1],i]
-    return MLE, MLE_R
+    return ind[ind_sample.astype(int)]
 
 # %%
-# ==========================
-# general model class
-# ==========================
 class SSModel:
-    def __init__(self, data_df:pd.DataFrame, config:dict = None):
-        '''
-            inputs:
-                    - data_df: the input time series
-                    - config: configuration
-                            - if none given, use default_configs
-            variables:
-                    - df: dataframe that contains all data
-                    - 
-        '''
-        self.df = data_df
+    """
+    A class used to construct SSModel (State Space Model) algorithm framework
+
+    Attributes
+    ----------
+    df : pd.DataFrame
+        A dataframe contains all essential information as the input 
+    config : dict
+        A dictionary contains information about parameters to estimate and not to be estimated
+    influx : List[float]
+        The influx of the model
+    outflux : List[fleat]
+        The outflux of the model
+    T : int
+        Total time length of the time series
+    K : int
+        Total number of observation made
+    dt : float
+        Time interval between time steps
+
+
+    Methods
+    -------
+    _process_theta()
+        Generate the input time series for given period
+
+    transition_model()
+        Generate the state to the next set of time
+
+    observation_model()
+        Generate observation at given time
+        
+    """
+    def __init__(self, df:pd.DataFrame, config:dict = None):
+        """
+        Parameters (only showing inputs)
+        ----------
+        df : pd.DataFrame
+            A dataframe contains all essential information as the input 
+        config : dict
+            A dictionary contains information about parameters to estimate and not to be estimated
+        """
+        # load input dataframe--------------
+        self.df = df
+
+        # process configurations------------
         self._default_configs = {
             'dt': 1./24/60*15,
             'influx': 'J_obs',
-            'outflux': 'Q_obs'
-        }
-               
+            'outflux': 'Q_obs',
+            'observed_at_each_time_step': True,
+            'observed_interval': None,
+            'observed_series': None # give a boolean list of observations been made 
+        }   
         self.config = self._default_configs
-        # TODO: find a better way to write this
+        # replace default config with input configs
         if config is not None:
-            for key in config.keys():
+            for key in config:
                 self.config[key] = config[key]
             else:
                 self.config = config
         
-        # set influx and outflux here
+        # set influx and outflux here--------
         # TODO: flexible way to insert multiple influx and outflux
         self.influx = self.df[self.config['influx']]
         self.outflux = self.df[self.config['outflux']]
 
-        # TODO: observation currently made at every timestep, adjust it according to interval later
-        self.K = len(self.influx)
-        # adjust delta_t regarding to time interval
+        # set observation interval-----------
+        self.T = len(self.influx)
+        if self.config['observed_at_each_time_step'] == True:
+            self.K = self.T
+        elif self.config['observed_interval'] is not None:
+            self.K = int(self.T/self.config['observed_interval'])
+        else:
+            self.K = sum(self.config['observed_series']) # total num observation is the number 
+            self._is_observed = self.config['observed_series'] # set another variable to indicate observation
+
+        # set delta_t------------------------
         self.dt = self.config['dt']
     
     # ---------------pGS_SAEM algo----------------
@@ -109,19 +145,35 @@ class SSModel:
 
         for key in self._theta_to_estimate:
             current_theta = self._theta_init['to_estimate'][key]
-            # for prior distribution
-            if current_theta['prior_dis'] == 'normal':
-                self.prior_model[key] = ss.norm(loc = current_theta['prior_params'][0], scale = current_theta['prior_params'][1])
-            elif current_theta['prior_dis'] == 'uniform':
-                self.prior_model[key] = ss.uniform(loc = current_theta['prior_params'][0],scale = (current_theta['prior_params'][1] - current_theta['prior_params'][0]))
+            if current_theta['log'] == True:
+                # TODO: need to think about how to do log part
+                # for prior distribution
+                if current_theta['prior_dis'] == 'normal':
+                    self.prior_model[key] = ss.norm(loc = np.log(current_theta['prior_params'][0]), scale = np.log(current_theta['prior_params'][1]))
+                elif current_theta['prior_dis'] == 'uniform':
+                    self.prior_model[key] = ss.uniform(loc = np.log(current_theta['prior_params'][0]),scale = np.log(current_theta['prior_params'][1] - current_theta['prior_params'][0]))
+                else:
+                    raise ValueError("This prior distribution is not implemented yet")
+                
+                # for update distributions
+                if current_theta['update_dis'] == 'normal':
+                    self.update_model[key] = ss.norm(loc = 0, scale = current_theta['update_params'][0])
+                else:
+                    raise ValueError("This search distribution is not implemented yet")
             else:
-                raise ValueError("This prior distribution is not implemented yet")
-            
-            # for update distributions
-            if current_theta['update_dis'] == 'normal':
-                self.update_model[key] = ss.norm(loc = 0, scale = current_theta['update_params'][0])
-            else:
-                raise ValueError("This search distribution is not implemented yet")
+                # for prior distribution
+                if current_theta['prior_dis'] == 'normal':
+                    self.prior_model[key] = ss.norm(loc = current_theta['prior_params'][0], scale = current_theta['prior_params'][1])
+                elif current_theta['prior_dis'] == 'uniform':
+                    self.prior_model[key] = ss.uniform(loc = current_theta['prior_params'][0],scale = (current_theta['prior_params'][1] - current_theta['prior_params'][0]))
+                else:
+                    raise ValueError("This prior distribution is not implemented yet")
+                
+                # for update distributions
+                if current_theta['update_dis'] == 'normal':
+                    self.update_model[key] = ss.norm(loc = 0, scale = current_theta['update_params'][0])
+                else:
+                    raise ValueError("This search distribution is not implemented yet")
         
     def _process_theta_at_p(self,p,ll,key):
         theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
@@ -132,16 +184,15 @@ class SSModel:
 
 
     def run_pGS_SAEM(self, num_particles:int,num_params:int, len_MCMC: int, theta_init:dict = None, q_step:list or float = 0.75):
-        """
+        """ Run particle Gibbs with Ancestor Resampling (pGS) and Stochastic Approximation of the EM algorithm (SAEM)
 
-        :param num_particles: number of input scenarios represented by particles
-        :param num_params: number of samples of parameters to estimate
-        :param len_MCMC: the length of Markov chain
-        :param theta_int: a dictionary to initialize and process theta
-
-
-        :return: 
-                    
+        Parameters (only showing inputs)
+        ----------
+        df : pd.DataFrame
+            A dataframe contains all essential information as the input 
+        config : dict
+            A dictionary contains information about parameters to estimate and not to be estimated
+    
         """
         # specifications
         self.L = len_MCMC
@@ -158,9 +209,12 @@ class SSModel:
             # set default theta
             theta_init = {
                 'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.2,0.3], 
-                                     "update_dis": "normal", "update_params":[0.05]},
+                                     "update_dis": "normal", "update_params":[0.05],
+                                     'log':False},
                                 'output_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
-                                     "update_dis": "normal", "update_params":[0.00005]}},
+                                     "update_dis": "normal", "update_params":[0.00005],
+                                     'log': True}
+                                },
                 'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
             }
         # process theta
@@ -189,7 +243,7 @@ class SSModel:
 
         ind_best_param = np.argmax(Qh)
         self.theta_record[0,:] = theta[ind_best_param,:]
-
+ # TODO: getter and setter for theta
         for ll in tqdm(range(self.L)):
             # for each parameter
             for p,key in enumerate(self._theta_to_estimate):   
@@ -224,24 +278,24 @@ class SSModel:
             xk = X[A[:,kk],kk]
             wk = W
             # compute uncertainties TODO: currently theta not being estimated
-            R[:,kk] = input_model(self.influx[kk],self._theta_init, self.N)
+            R[:,kk] = ModelLink.input_model(self.influx[kk],self._theta_init, self.N)
             # updates
             xkp1 = self.f_theta(xk,theta_to_estimate,R[:,kk])
             wkp1 = wk + np.log(self.g_theta(xkp1, theta_to_estimate, self.outflux[kk]))
             W = wkp1
             X[:,kk+1] = xkp1
-            aa = inverse_pmf(W,A[:,kk], num = self.N)
+            aa = _inverse_pmf(A[:,kk],W, num = self.N)
             A[:,kk+1] = aa        
         return X,A,W,R
     
     def f_theta(self,xht:List[float],theta_to_estimate:float, rtp1:float):
         theta_val = theta_to_estimate[0] # specify the variable
-        xhtp1 = transition_model(xht, theta_val, self.config['dt'], rtp1)
+        xhtp1 = self.transition_model(xht, theta_val, self.config['dt'], rtp1)
         return xhtp1
 
     def g_theta(self, xht:List[float],theta_to_estimate:dict,xt:List[float]):
         theta_val = theta_to_estimate[1]
-        likelihood = observation_model(xht,theta_val,xt)
+        likelihood = self.observation_model(xht,theta_val,xt)
         return likelihood
 
     def run_pMCMC(self, theta:List[float], X: List[float], W: List[float], A: List[float],R: List[float]):
@@ -264,7 +318,7 @@ class SSModel:
         # sample an ancestral path based on final weight
 
         B = np.zeros(self.K+1).astype(int)
-        B[-1] = inverse_pmf(W,A[:,-1], num = 1)
+        B[-1] = _inverse_pmf(A[:,-1],W, num = 1)
         for i in reversed(range(1,self.K+1)):
             B[i-1] =  A[:,i][B[i]]
         # state estimation-------------------------------
@@ -276,10 +330,10 @@ class SSModel:
             x_prime = X[B[kk+1],kk+1]
             W_tilde = W + np.log(ss.norm(x_prime,0.000005).pdf(xkp1))
             # ^^^^^^^^^^^^^^
-            A[B[kk+1],kk+1] = inverse_pmf(W_tilde,xkp1 - x_prime, num = 1)
+            A[B[kk+1],kk+1] = _inverse_pmf(xkp1 - x_prime,W_tilde, num = 1)
             # now update everything in new state
             notB = np.arange(0,self.N)!=B[kk+1]
-            A[:,kk+1][notB] = inverse_pmf(W,X[:,kk], num = self.N-1)
+            A[:,kk+1][notB] = _inverse_pmf(X[:,kk],W, num = self.N-1)
             xkp1[notB] = xkp1[A[:,kk+1][notB]]
             rr[notB] = rr[A[:,kk+1][notB]]
             xkp1[~notB] = xkp1[A[B[kk+1],kk+1]]
@@ -291,4 +345,62 @@ class SSModel:
             wkp1 = W + np.log(self.g_theta(xkp1, theta, self.outflux[kk]))
             W = wkp1#/wkp1.sum()
         return X, A, W, R
-# %%
+
+
+    def _find_traj(self, A: List[str],W: List[str]):
+        """Find particle trajectory based on final weight
+
+        Parameters
+        ----------
+        A : List[str]
+            Record of particles move to the next time step
+        W : List[str]
+            Weight associated with each particle at final timestep
+
+        Returns
+        -------
+        List[int]
+            Index of particle through time
+        """
+
+        self.B = np.zeros(self.K+1).astype(int)
+        self.B[-1] = _inverse_pmf(A[:,-1],W, num = 1)
+        for i in reversed(range(1,self.K+1)):
+            self.B[i-1] =  A[:,i][self.B[i]]
+        return self.B
+
+    def _get_X_traj(self, X: List[str]) -> List[str]:
+        """Get X trajectory based on sampled particle trajectory
+
+        Parameters
+        ----------
+        X : List[str]
+            State variable
+
+        Returns
+        -------
+        List[int]
+            Trajectory of X that is sampled at final timestep
+        """
+        traj_X = np.zeros(self.K+1)
+        for i in range(self.K+1):
+            traj_X[i] = X[self.B[i],i]
+        return traj_X
+    
+    def _get_R_traj(self, R: List[str]) -> List[str]:
+        """Get R trajectory based on sampled particle trajectory
+
+        Parameters
+        ----------
+        R : List[str]
+            Input uncertainty matrix    
+
+        Returns
+        -------
+        List[int]
+            Trajectory of R that is sampled at final timestep
+        """
+        traj_R = np.zeros(self.K)
+        for i in range(self.K+1):
+            traj_R[i] = R[self.B[i+1],i]
+        return  traj_R
