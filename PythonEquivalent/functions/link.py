@@ -146,12 +146,7 @@ class LinearReservoirProposalModel(ProposalModel):
         # set delta_t------------------------
         self.dt = self.config['dt']
 
-LinearReservoirModel = SSModel(
-    N = 
-    proposal_model,
-)
-
-    # ---------------pGS_SAEM algo----------------
+ # ---------------pGS_SAEM algo----------------
     def _process_theta(self):
         """
             For theta models:
@@ -207,6 +202,12 @@ LinearReservoirModel = SSModel(
         theta_temp[:,p] += self.update_model[key].rvs(self.D)
         return theta_temp
 
+LinearReservoirModel = SSModel(
+    N = 
+    proposal_model,
+)
+
+   
 LinearReservoirModel .run_sequential_monte_carlo(influx, )
 
 

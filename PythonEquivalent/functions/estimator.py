@@ -47,7 +47,7 @@ class InputModel(ABC):
 class TransitionModel(ABC):
     """General transition model
 
-        for given \theta, x_t = f_\theta(x_{t-1}, u_t, r_t)
+    for given \theta, x_t = f_\theta(x_{t-1}, u_t, r_t)
     """
     def __init__(self, theta: float):
         """Set theta
@@ -75,7 +75,7 @@ class TransitionModel(ABC):
 class ObservationModel(ABC):
     """General observation model
 
-        for given \theta, z_k = g_\theta(x_k, u_k, v_k)
+    for given \theta, z_k = g_\theta(x_k, u_k, v_k)
     """
     def __init__(self, theta: np.ndarray = None):
         """Set theta
@@ -120,7 +120,7 @@ class ProposalModel(ABC):
             self, 
             transition_model: TransitionModel,
             observation_model: ObservationModel,
-            theta: np.ndarray = None
+            theta: np.ndarray
             ) -> None:
         """Initialize the model
 
@@ -204,60 +204,55 @@ class SSModel(ABC):
             wkp1 = wk + np.log(self.proposal_model.g_theta(xkp1, self.outflux[k]))
             W = wkp1
             X[:,k+1] = xkp1
-            aa = _inverse_pmf(A[:,k],W, num = self.N)
-            A[:,k+1] = aa
+            A[:,k+1] = _inverse_pmf(A[:,k],W, num = self.N)
         
         state = State(X, A, W, R)        
         return state
     
-    def run_pMCMC(self, theta:List[float], X: List[float], W: List[float], A: List[float],R: List[float]):
-        '''
-        pMCMC inside loop, run this entire function as many as possible
-        update w/ Ancestor sampling
-            theta           - let it be k, sig_v, sig_w for now
-            For reference trajectory:
-            qh              - estiamted state in particles
-            P               - weight associated with each particles
-            A               - ancestor lineage
-            p               - the p-th parameter to estimate
-            
-        '''
-        # generate random variables now
-        X = X.copy()
-        W = W.copy()
-        A = A.copy()
-        R = R.copy()
-        # sample an ancestral path based on final weight
+    def run_particle_MCMC(self, state: State, theta: np.ndarray) -> State:
+        """Run particle MCMC
+        
+        Args:
+            state (State): state at each timestep
+            theta (np.ndarray): parameter of the model
+        
+        Returns:
+            State: state at each timestep
+        """
 
-        B = np.zeros(self.K+1).astype(int)
-        B[-1] = _inverse_pmf(A[:,-1],W, num = 1)
-        for i in reversed(range(1,self.K+1)):
-            B[i-1] =  A[:,i][B[i]]
+        # generate random variables now
+        X = state.X
+        W = state.W
+        A = state.A
+        R = state.R
+        # sample an ancestral path based on final weight
+        B = self._find_traj(A,W)
         # state estimation-------------------------------
         W = np.log(np.ones(self.N)/self.N) # initial weight on particles are all equal
-        for kk in range(self.K):
-            rr = input_model(self.influx[kk],self._theta_init, self.N)
-            xkp1 = self.f_theta(X[:,kk],theta,R[:,kk])
-            # Look into this
-            x_prime = X[B[kk+1],kk+1]
+        for k in range(self.K):
+            rr = self.input_model.input(self.influx[k])
+            xkp1 = self.proposal_model.f_theta(X[:,k],R[:,k])
+            # Update 
+            x_prime = X[B[k+1],k+1]
+            # TODO: design a W_tilde module
             W_tilde = W + np.log(ss.norm(x_prime,0.000005).pdf(xkp1))
-            # ^^^^^^^^^^^^^^
-            A[B[kk+1],kk+1] = _inverse_pmf(xkp1 - x_prime,W_tilde, num = 1)
+
+            A[B[k+1],k+1] = _inverse_pmf(xkp1 - x_prime,W_tilde, num = 1)
             # now update everything in new state
-            notB = np.arange(0,self.N)!=B[kk+1]
-            A[:,kk+1][notB] = _inverse_pmf(X[:,kk],W, num = self.N-1)
-            xkp1[notB] = xkp1[A[:,kk+1][notB]]
-            rr[notB] = rr[A[:,kk+1][notB]]
-            xkp1[~notB] = xkp1[A[B[kk+1],kk+1]]
-            rr[~notB] = R[:,kk][A[B[kk+1],kk+1]]
-            X[:,kk+1] = xkp1   
-            R[:,kk] = rr       
-            W[notB] = W[A[:,kk+1][notB]]
-            W[~notB] = W[A[B[kk+1],kk+1]]
-            wkp1 = W + np.log(self.g_theta(xkp1, theta, self.outflux[kk]))
+            notB = np.arange(0,self.N)!=B[k+1]
+            A[:,k+1][notB] = _inverse_pmf(X[:,k],W, num = self.N-1)
+            xkp1[notB] = xkp1[A[:,k+1][notB]]
+            rr[notB] = rr[A[:,k+1][notB]]
+            xkp1[~notB] = xkp1[A[B[k+1],k+1]]
+            rr[~notB] = R[:,k][A[B[k+1],k+1]]
+            X[:,k+1] = xkp1   
+            R[:,k] = rr       
+            W[notB] = W[A[:,k+1][notB]]
+            W[~notB] = W[A[B[k+1],k+1]]
+            wkp1 = W + np.log(self.g_theta(xkp1, self.outflux[k]))
             W = wkp1#/wkp1.sum()
         return X, A, W, R
-        
+
 
 
     def run_pGS_SAEM(self, num_particles:int,num_params:int, len_MCMC: int, theta_init:dict = None, q_step:list or float = 0.75):
@@ -337,115 +332,72 @@ class SSModel(ABC):
         return
 
 
-    
-
-
-
-
-
-
-
-
-    def _find_traj(self, A: List[str],W: List[str]):
+    def _find_traj(self, A: np.ndarray,W: np.ndarray) -> np.ndarray:
         """Find particle trajectory based on final weight
-
-        Parameters
-        ----------
-        A : List[str]
-            Record of particles move to the next time step
-        W : List[str]
-            Weight associated with each particle at final timestep
-
-        Returns
-        -------
-        List[int]
-            Index of particle through time
+        
+        Args:
+            A (np.ndarray): Ancestor matrix
+            W (np.ndarray): Weight at final timestep
+        
+        Returns:
+            np.ndarray: Trajectory indices of reference particle
         """
 
-        self.B = np.zeros(self.K+1).astype(int)
-        self.B[-1] = _inverse_pmf(A[:,-1],W, num = 1)
+
+        B = np.zeros(self.K+1).astype(int)
+        B[-1] = _inverse_pmf(A[:,-1],W, num = 1)
         for i in reversed(range(1,self.K+1)):
-            self.B[i-1] =  A[:,i][self.B[i]]
-        return self.B
+            B[i-1] =  A[:,i][B[i]]
+        return B
 
-    def _get_X_traj(self, X: List[str]) -> List[str]:
+    def _get_X_traj(self, X:  np.ndarray, B: np.ndarray) -> np.ndarray:
         """Get X trajectory based on sampled particle trajectory
+        
+        Args:
+            X (np.ndarray): State variable
+            B (np.ndarray): Trajectory indices of reference particle
 
-        Parameters
-        ----------
-        X : List[str]
-            State variable
-
-        Returns
-        -------
-        List[int]
-            Trajectory of X that is sampled at final timestep
+        Returns:
+            np.ndarray: Trajectory of X that is sampled at final timestep
         """
+
         traj_X = np.zeros(self.K+1)
         for i in range(self.K+1):
-            traj_X[i] = X[self.B[i],i]
+            traj_X[i] = X[B[i],i]
         return traj_X
     
-    def _get_R_traj(self, R: List[str]) -> List[str]:
+    def _get_R_traj(self, R: np.ndarray, B: np.ndarray) -> np.ndarray:
         """Get R trajectory based on sampled particle trajectory
 
-        Parameters
-        ----------
-        R : List[str]
-            Input uncertainty matrix    
-
-        Returns
-        -------
-        List[int]
-            Trajectory of R that is sampled at final timestep
+        Args:
+            R (np.ndarray): Observation variable
+            B (np.ndarray): Trajectory indices of reference particle
+        
+        Returns:
+            np.ndarray: Trajectory of R that is sampled at final timestep
         """
         traj_R = np.zeros(self.K)
         for i in range(self.K+1):
-            traj_R[i] = R[self.B[i+1],i]
+            traj_R[i] = R[B[i+1],i]
         return  traj_R
     
 
-
-
-
-
-
-
-
 # %%
-def _inverse_pmf(x: List[float],ln_pmf: List[float], num: int) -> List[int]:
+def _inverse_pmf(x: np.ndarray,ln_pmf: np.ndarray, num: int) -> np.ndarray:
     """Sample x based on its ln(pmf) using discrete inverse sampling method
 
-    Parameters
-    ----------
-    x : List[str]
-        The specific values of x
-    pmf : List[str]
-        The weight (ln(pmf)) associated with x
-    num : int
-        The total number of samples to generate
+    Args:
+        x (np.ndarray): The specific values of x
+        pmf (np.ndarray): The weight (ln(pmf)) associated with x
+        num (int): The total number of samples to generate
 
-    Returns
-    -------
-    List[int]
-        index of x that are been sampled according to its ln(pmf)
+    Returns:
+        np.ndarray: index of x that are been sampled according to its ln(pmf)
     """
     ind = np.argsort(x) # sort x according to its magnitude
     pmf = np.exp(ln_pmf) # convert ln(pmf) to pmf
-    pmf = pmf/pmf.sum()
+    pmf /= pmf.sum()
     pmf = pmf[ind] # sort pdf accordingly
-    cmf = pmf.cumsum()
     u = np.random.uniform(size = num)
-    ind_sample = np.zeros(num)
-    # TODO: any more efficient method? Idea: sort u first and one pass in enumerating cmf
-    for i in range(num):
-        if u[i] > cmf[-1]:
-            ind_sample[i] = -1
-        elif u[i] < cmf[0]:
-            ind_sample[i] = 0
-        else:
-            for j in range(1,len(cmf)):
-                if (u[i] <= cmf[j]) and (u[i] > cmf[j-1]):
-                    ind_sample[i] = j
-                    break
-    return ind[ind_sample.astype(int)]
+    ind_sample = np.searchsorted(pmf.cumsum(), u)
+    return ind[ind_sample]
