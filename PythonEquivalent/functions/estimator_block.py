@@ -4,7 +4,6 @@ import numpy as np
 from typing import List, Tuple, Optional, Any
 import scipy.stats as ss
 from tqdm import tqdm
-from functions.link import ModelLink
 from dataclasses import dataclass
 from abc import ABC
 
@@ -17,6 +16,137 @@ class State:
     W: np.ndarray  # [N]
     X: np.ndarray  # [T+1, N]
     A: np.ndarray  # [T+1, N]
+
+
+class InputModel(ABC):
+    """General input model
+
+        for given \theta, r_t = func_\theta(u_t)
+    """
+    def __init__(self, theta: float):
+        """Set theta
+
+        Args:
+            theta (np.ndarray): parameter of the model  
+        """
+        self.theta = theta
+    
+    def input(self, ut: np.ndarray) -> np.ndarray:
+        """_summary_
+
+        Args:
+            u (np.ndarray): forcing
+            t (int): transition timestep
+
+        Returns:
+            np.ndarray: r_t = func_\theta(u_t)
+        """
+        ...
+
+class TransitionModel(ABC):
+    """General transition model
+
+    for given \theta, x_t = f_\theta(x_{t-1}, u_t, r_t)
+    """
+    def __init__(self, theta: float):
+        """Set theta
+
+        Args:
+            theta (np.ndarray): parameter of the model  
+        """
+        self.theta = theta
+    
+    def transition(self, x: np.ndarray, u: np.ndarray, r: np.ndarray, t: int) -> np.ndarray:
+        """_summary_
+
+        Args:
+            x (np.ndarray): state variable
+            u (np.ndarray): forcing
+            r (np.ndarray): input uncertainty
+            t (int): transition timestep
+
+        Returns:
+            np.ndarray: x_t = f_\theta(x_{t-1}, u_t, r_t)
+        """
+        ...
+
+
+class ObservationModel(ABC):
+    """General observation model
+
+    for given \theta, z_k = g_\theta(x_k, u_k, v_k)
+    """
+    def __init__(self, theta: np.ndarray = None):
+        """Set theta
+
+        Args:
+            theta (np.ndarray): parameter of the model  
+        """
+        self.theta = theta
+
+    def observation(self, x: np.ndarray, u: np.ndarray, v: np.ndarray, k: int) -> np.ndarray:
+        """Run model
+
+        Args:
+            x (np.ndarray): state variable
+            u (np.ndarray): forcing
+            v (np.ndarray): associated uncertainty
+            k (int): observed timestep
+            
+        Returns:
+            np.ndarray: z_k = g_\theta(x_k, u_k, v_k)
+        """
+        ...
+
+
+class ProposalModel(ABC):
+    """A class used to construct proposal model
+        
+    Attributes
+    ----------        
+    transition_model (TransitionModel):
+    observation_model (ObservationModel):
+    theta (np.ndarray): parameter of the model
+
+    Methods
+    -------
+    f_theta()
+        Transition model
+    g_theta()   
+        Observation model
+    """
+    def __init__(
+            self, 
+            transition_model: TransitionModel,
+            observation_model: ObservationModel,
+            theta: np.ndarray
+            ) -> None:
+        """Initialize the model
+
+        Args:
+            transition_model (TransitionModel): 
+            observation_model (ObservationModel): 
+            theta (np.ndarray, optional): parameter. Defaults to None.
+        """
+        self.transition_model = transition_model
+        self.observation_model = observation_model
+        self.theta = theta
+    def f_theta(self, xtm1: np.ndarray, ut: np.ndarray) -> np.ndarray:
+        ...
+
+    def g_theta(self, yht: np.ndarray, yt: np.ndarray) -> np.ndarray:
+        ...
+
+class InputProcess(ABC):
+    def ___init__(self, df: pd.DataFrame, config: Optional[dict[str, Any]] = None):
+        self.df = df
+        self.config = config
+    def _process_config(self) -> None:
+        ...
+    def _process_data(self) -> None:
+        ...
+    def _process_theta(self, theta_init) -> None:
+        ...
 
 # %%
 def _inverse_pmf(x: np.ndarray,ln_pmf: np.ndarray, num: int) -> np.ndarray:
@@ -42,32 +172,47 @@ def _inverse_pmf(x: np.ndarray,ln_pmf: np.ndarray, num: int) -> np.ndarray:
 class SSModel(ABC):
     def __init__(
         self,
-        model_link: ModelLink
+        num_input_scenarios: int,
+        proposal_model: ProposalModel(TransitionModel, ObservationModel,theta=None),
+        input_model: InputModel,
+        input_process: InputProcess
     ):
-        self.model_link = model_link
-        self.N = model_link.N
-        self.influx = model_link.influx
-        self.outflux = model_link.outflux
-        self.T = model_link.T
-        self.K = model_link.K
+        
+        self.N = num_input_scenarios
+        self.input_model = input_model
+        self.proposal_model = proposal_model
+        self.input_process = input_process
 
-    def run_sequential_monte_carlo(
-            self,
-            theta: np.ndarray
-            ) -> State:
+    def run_sequential_monte_carlo(self,
+        influx: pd.Series,
+        outflux: pd.Series,
+        input_theta: np.ndarray,
+        obs_theta: np.ndarray,
+        K: int,
+    ) -> State:
         """Run sequential Monte Carlo
         
         Args:
-            theta (float): parameter of the model
+            influx (pd.Series): inflow time series
+            outflux (pd.Series): outflow time series
+            theta (Tuple[float, float]): parameter of the model
+            K (int): number of observations
 
         Returns:
             State: state at each timestep
         """
+        self.K = K
+        self.T = len(influx)
+        self.influx = influx
+        self.outflux = outflux
+
+        self.input_model.theta = input_theta
+        self.proposal_model.theta = obs_theta
 
         # state storage
         # TODO: make this more flexible, maybe add 'state_init' class???
         X = np.zeros((self.N, self.T + 1))
-        X[:, 0] = np.ones(self.N) * self.outflux[0]
+        X[:, 0] = np.ones(self.N) * outflux[0]
 
         # ancestor storage
         A = np.zeros((self.N, self.K + 1)).astype(int)
@@ -83,16 +228,15 @@ class SSModel(ABC):
             xk = X[A[:,k],k]
             wk = W
             # compute uncertainties 
-            R[:,k] = self.model_link.input_model(self.influx[k])
+            R[:,k] = self.input_model.input(self.influx[k])
             # updates
-            xkp1 = self.model_link.f_theta(xk,R[:,k],theta_k=theta[0])
-            wkp1 = wk + np.log(self.model_link.g_theta(xkp1, self.outflux[k], theta_obs=theta[1]))
+            xkp1 = self.proposal_model.f_theta(xk,R[:,k])
+            wkp1 = wk + np.log(self.proposal_model.g_theta(xkp1, self.outflux[k]))
             W = wkp1
             X[:,k+1] = xkp1
             A[:,k+1] = _inverse_pmf(A[:,k],W, num = self.N)
-       
         
-        state = State(X = X, A = A, W = W, R = R)      
+        state = State(X, A, W, R)        
         return state
     
     def run_particle_MCMC(
@@ -120,8 +264,8 @@ class SSModel(ABC):
         # state estimation-------------------------------
         W = np.log(np.ones(self.N)/self.N) # initial weight on particles are all equal
         for k in range(self.K):
-            rr = self.model_link.input_model(self.influx[k])
-            xkp1 = self.model_link.f_theta(X[:,k],R[:,k], theta_k=theta[0])
+            rr = self.input_model.input(self.influx[k])
+            xkp1 = self.proposal_model.f_theta(X[:,k],R[:,k])
             # Update 
             x_prime = X[B[k+1],k+1]
             # TODO: design a W_tilde module
@@ -139,10 +283,10 @@ class SSModel(ABC):
             R[:,k] = rr       
             W[notB] = W[A[:,k+1][notB]]
             W[~notB] = W[A[B[k+1],k+1]]
-            wkp1 = W + np.log(self.model_link.g_theta(xkp1, self.outflux[k], theta_obs=theta[1]))
+            wkp1 = W + np.log(self.g_theta(xkp1, self.outflux[k]))
             W = wkp1#/wkp1.sum()
         
-        state = State(X = X, A = A, W = W, R = R)             
+        state = State(X, A, W, R)        
         return state
 
 
@@ -278,5 +422,3 @@ class SSModel(ABC):
         return  traj_R
     
 
-
-# %%

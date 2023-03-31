@@ -4,8 +4,8 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from functions.estimator import SSModel
-
+from functions.link import ModelLink
+from functions.estimator import SSModel, _inverse_pmf
 # %%
 # get a chopped dataframe
 df = pd.read_csv("Dataset.csv", index_col= 0)
@@ -13,48 +13,51 @@ T = 50
 interval = 1
 df = df[:T:interval]
 # %%
-default_model = SSModel(data_df=df)
-# %%
-# CHECK sMC
-default_model.N = 10
-# set default theta
-theta_init = {
-    'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.2,0.3], 
-                            "update_dis": "normal", "update_params":[0.05]},
-                    'output_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
-                            "update_dis": "normal", "update_params":[0.000005]}},
-    'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
-}
-# process theta
-default_model._theta_init = theta_init
-default_model._process_theta()
-X,A,W,R = default_model.run_sMC([1.,0.00005])
-from functions.utils import plot_MLE
-plot_MLE(X,A,W,R,default_model.K,df,default_model.influx, default_model.outflux,left = 0, right = default_model.K)
-# %%
-# AA = np.broadcast_to(A, (default_model.D, *A.shape))
-# WW = np.zeros((default_model.D,default_model.N))
-# XX = np.zeros((default_model.D,default_model.N,default_model.K+1))
-# RR = np.zeros((default_model.D,default_model.N,default_model.K))
-# default_model.run_pMCMC([1.,0.00005], X[np.newaxis,:,:],A[np.newaxis,:,:],W[np.newaxis,:],R[np.newaxis,:,:])
-
-
-
+model_link = ModelLink(df=df, num_input_scenarios=5)
+default_model = SSModel(model_link)
 
 # %%
-
-default_model.run_pGS_SAEM(num_particles=20,num_params=10, len_MCMC=25)
-# %%
-plt.figure()
-plt.subplot(2,1,1)
-plt.plot(default_model.theta_record[:,0])
-plt.ylabel(r"$\theta$")
-plt.xlabel("MCMC Chain")
-plt.subplot(2,1,2)
-plt.plot(default_model.theta_record[:,1])
-plt.ylabel(r"$\theta$")
-plt.xlabel("MCMC Chain")
-# plt.plot([0,chain_len],[theta_record.T[10:].mean(),theta_record.T[10:].mean()],'r',label = "prior")
-plt.legend()
+state = default_model.run_sequential_monte_carlo([1.,0.00005])
 
 # %%
+def plot_MLE(state,df,left = 0, right = 500):
+    X = state.X
+    A = state.A
+    W = state.W
+    R = state.R
+    J_obs = df['J_obs'].values
+    Q_obs = df['Q_obs'].values
+    K = len(J_obs)
+
+    B = np.zeros(K+1).astype(int)
+    B[-1] = _inverse_pmf(W,A[:,-1], num = 1)
+    for i in reversed(range(1,K+1)):
+        B[i-1] =  A[:,i][B[i]]
+    MLE = np.zeros(K+1)
+    MLE_R = np.zeros(K)
+    for i in range(K+1):
+        MLE[i] = X[B[i],i]
+    for i in range(K):
+        MLE_R[i] = R[B[i+1],i]   
+    T = len(X[0])-1
+    # ------------
+    plt.figure()
+    plt.subplot(2,1,1)
+    plt.plot(df['J_true'],label = "J true")
+    plt.plot(J_obs,"*",label = "J obs")
+    plt.plot(np.linspace(0,T,len(MLE_R)),MLE_R,'r:', label = "One Traj/MLE")
+    plt.legend(frameon = False)
+    plt.legend(frameon = False)
+    plt.xlim([left,right])
+    plt.title('J')
+
+    plt.subplot(2,1,2)
+    plt.plot(Q_obs,".", label = "Observation")
+    plt.plot(df['Q_true'],'k', label = "Hidden truth")
+    plt.plot(np.linspace(0,T,len(MLE)-1),MLE[1:],'r:', label = "One Traj/MLE")
+    plt.legend(frameon = False)
+    # plt.title(f"sig_v {round(sig_v,5)}, sig_w {sig_w}")
+    plt.xlim([left,right])
+    plt.tight_layout()
+    return MLE
+plot_MLE(state,df,left = 0, right = 50)
