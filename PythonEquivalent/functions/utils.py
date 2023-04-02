@@ -1,32 +1,9 @@
 # %%
 import numpy as np
 import matplotlib.pyplot as plt
+from functions.estimator import _inverse_pmf
 # %%
-# discrete inverse transform sampling
-def dits(Lnpdf,x,num):
-    '''
-        give x ~ pdf
-    return: index of x that are been sampled according to pdf
-    '''
-    pdf = np.exp(Lnpdf)
-    pdf = pdf/pdf.sum()
-    ind = np.argsort(x) # sort x according to its magnitude
-    pdf = pdf[ind] # sort pdf accordingly
-    cdf = pdf.cumsum()
-    u = np.random.uniform(size = num)
-    a = np.zeros(num)
-    for i in range(num):
-        if u[i] > cdf[-1]:
-            a[i] = -1
-        elif u[i] < cdf[0]: # this part can be removed
-            a[i] = 0
-        else:
-            # TODO: any more efficient method?
-            for j in range(1,len(cdf)):
-                if (u[i] <= cdf[j]) and (u[i] > cdf[j-1]):
-                    a[i] = j
-                    break
-    return ind[a.astype(int)]
+
 
 
 # %%
@@ -48,9 +25,17 @@ def plot_input(df,J_obs, Q_obs):
     plt.tight_layout()
     return
 # plotting functions
-def plot_MLE(X,A,W,R,K,df,J_obs, Q_obs,left = 0, right = 500):
+def plot_MLE(state,df,left = 0, right = 500):
+    X = state.X
+    A = state.A
+    W = state.W
+    R = state.R
+    J_obs = df['J_obs'].values
+    Q_obs = df['Q_obs'].values
+    K = len(J_obs)
+
     B = np.zeros(K+1).astype(int)
-    B[-1] = dits(W,A[:,-1], num = 1)
+    B[-1] = _inverse_pmf(W,A[:,-1], num = 1)
     for i in reversed(range(1,K+1)):
         B[i-1] =  A[:,i][B[i]]
     MLE = np.zeros(K+1)

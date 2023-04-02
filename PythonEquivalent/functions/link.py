@@ -64,7 +64,7 @@ class ModelLink:
                                         'log':False},
                                 'output_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
                                         "update_dis": "normal", "update_params":[0.00005],
-                                        'log': True}
+                                        'log': False}
                                 },
                 'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
             }
@@ -83,10 +83,10 @@ class ModelLink:
                 # TODO: need to think about how to do log part
                 # for prior distribution
                 if current_theta['prior_dis'] == 'normal':
-                    self.prior_model[key] = ss.norm(loc = np.log(current_theta['prior_params'][0]), scale = np.log(current_theta['prior_params'][1]))
+                    self.prior_model[key] = ss.norm(loc = np.exp(current_theta['prior_params'][0]), scale = np.exp(current_theta['prior_params'][1]))
                 elif current_theta['prior_dis'] == 'uniform':
-                    self.prior_model[key] = ss.uniform(loc = np.log(current_theta['prior_params'][0]),scale = np.log(current_theta['prior_params'][1] - current_theta['prior_params'][0]))
-                else:
+            _model[key] = ss.uniform(loc = np.exp(current_theta['prior_params'][0]),scale = np.exp(current_theta['prior_params'][1] - current_theta['prior_params'][0]))
+                else:        self.prior
                     raise ValueError("This prior distribution is not implemented yet")
                 
                 # for update distributions

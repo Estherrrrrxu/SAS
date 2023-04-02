@@ -168,8 +168,8 @@ class SSModel(ABC):
         # specifications
         self.L = len_MCMC
         self.D = num_parameter_samples
-        self._num_theta_to_estimate = num_theta_to_estimate
-        self._theta_to_estimate = theta_to_estimate
+        self._num_theta_to_estimate = self.model_link._num_theta_to_estimate
+        self._theta_to_estimate = self.model_link._theta_to_estimate
 
 
         # initialize a bunch of temp storage 
@@ -186,7 +186,7 @@ class SSModel(ABC):
         # initialize theta
         theta = np.zeros((self.D, self._num_theta_to_estimate))
         for i, key in enumerate(self._theta_to_estimate):
-            temp_model = self.prior_model[key]
+            temp_model = self.model_link.prior_model[key]
             theta[:,i] = temp_model.rvs(self.D)
 
         # run sMC algo first
@@ -225,7 +225,7 @@ class SSModel(ABC):
     def _process_theta_at_p(self,p,ll,key):
         theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
         theta_temp[:,:p] = self.theta_record[ll+1,p]
-        theta_temp[:,p] += self.update_model[key].rvs(self.D)
+        theta_temp[:,p] += self.model_link.update_model[key].rvs(self.D)
         return theta_temp
 
     def _find_traj(self, A: np.ndarray,W: np.ndarray) -> np.ndarray:
@@ -273,7 +273,7 @@ class SSModel(ABC):
             np.ndarray: Trajectory of R that is sampled at final timestep
         """
         traj_R = np.zeros(self.K)
-        for i in range(self.K+1):
+        for i in range(self.K):
             traj_R[i] = R[B[i+1],i]
         return  traj_R
     
