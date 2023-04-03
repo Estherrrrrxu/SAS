@@ -151,8 +151,6 @@ class SSModel(ABC):
             self,
             num_parameter_samples:int,
             len_MCMC: int,
-            num_theta_to_estimate: dict = None,
-            theta_to_estimate: dict = None,
             q_step: np.ndarray or float = 0.75
             ) -> None:
         """ Run particle Gibbs with Ancestor Resampling (pGS) and Stochastic Approximation of the EM algorithm (SAEM)
@@ -184,15 +182,14 @@ class SSModel(ABC):
         self.input_record = np.zeros((self.L+1, self._num_theta_to_estimate ,self.T))
         
         # initialize theta
-        theta = np.zeros((self.D, self._num_theta_to_estimate))
+        theta_new = np.zeros((self.D, self._num_theta_to_estimate))
         for i, key in enumerate(self._theta_to_estimate):
             temp_model = self.model_link.prior_model[key]
-            theta[:,i] = temp_model.rvs(self.D)
-
+            theta_new[:,i] = temp_model.rvs(self.D)
         # run sMC algo first
 
         for d in range(self.D):
-            state = self.run_sequential_monte_carlo(theta[d,:])
+            state = self.run_sequential_monte_carlo(theta_new[d,:])
             XX[d,:,:],AA[d,:,:],WW[d,:],RR[d,:,:] = state.X, state.A, state.W, state.R
 
         # temp memory term
@@ -201,7 +198,7 @@ class SSModel(ABC):
         Qh = q_step[0] * np.max(WW[:,:],axis = 1)
 
         ind_best_param = np.argmax(Qh)
-        self.theta_record[0,:] = theta[ind_best_param,:]
+        self.theta_record[0,:] = theta_new[ind_best_param,:]
  
         for ll in tqdm(range(self.L)):
             # for each parameter
@@ -224,8 +221,12 @@ class SSModel(ABC):
 
     def _process_theta_at_p(self,p,ll,key):
         theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
-        theta_temp[:,:p] = self.theta_record[ll+1,p]
-        theta_temp[:,p] += self.model_link.update_model[key].rvs(self.D)
+        theta_temp[:,:p] = self.theta_record[ll+1,:p]
+        
+        if self.model_link._theta_init['to_estimate'][key]['log'] == True:
+            theta_temp[:,p] += self.model_link.update_model[key].rvs(self.D)
+        else:
+            theta_temp[:,p] += self.model_link.update_model[key].rvs(self.D)
         return theta_temp
 
     def _find_traj(self, A: np.ndarray,W: np.ndarray) -> np.ndarray:

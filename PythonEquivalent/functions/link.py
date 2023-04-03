@@ -63,8 +63,8 @@ class ModelLink:
                                         "update_dis": "normal", "update_params":[0.05],
                                         'log':False},
                                 'output_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
-                                        "update_dis": "normal", "update_params":[0.00005],
-                                        'log': False}
+                                        "update_dis": "normal", "update_params":[0.0005],
+                                        'log': True}
                                 },
                 'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
             }
@@ -79,37 +79,23 @@ class ModelLink:
 
         for key in self._theta_to_estimate:
             current_theta = self._theta_init['to_estimate'][key]
-            if current_theta['log'] == True:
-                # TODO: need to think about how to do log part
-                # for prior distribution
-                if current_theta['prior_dis'] == 'normal':
-                    self.prior_model[key] = ss.norm(loc = np.exp(current_theta['prior_params'][0]), scale = np.exp(current_theta['prior_params'][1]))
-                elif current_theta['prior_dis'] == 'uniform':
-            _model[key] = ss.uniform(loc = np.exp(current_theta['prior_params'][0]),scale = np.exp(current_theta['prior_params'][1] - current_theta['prior_params'][0]))
-                else:        self.prior
-                    raise ValueError("This prior distribution is not implemented yet")
-                
-                # for update distributions
-                if current_theta['update_dis'] == 'normal':
-                    self.update_model[key] = ss.norm(loc = 0, scale = current_theta['update_params'][0])
-                else:
-                    raise ValueError("This search distribution is not implemented yet")
+            # for prior distribution
+            if current_theta['prior_dis'] == 'normal':
+                self.prior_model[key] = ss.norm(loc = current_theta['prior_params'][0], 
+                                                scale = current_theta['prior_params'][1])
+            elif current_theta['prior_dis'] == 'uniform':
+                self.prior_model[key] = ss.uniform(loc = current_theta['prior_params'][0],
+                                                    scale = (current_theta['prior_params'][1] - current_theta['prior_params'][0]))
             else:
-                # for prior distribution
-                if current_theta['prior_dis'] == 'normal':
-                    self.prior_model[key] = ss.norm(loc = current_theta['prior_params'][0], scale = current_theta['prior_params'][1])
-                elif current_theta['prior_dis'] == 'uniform':
-                    self.prior_model[key] = ss.uniform(loc = current_theta['prior_params'][0],scale = (current_theta['prior_params'][1] - current_theta['prior_params'][0]))
-                else:
-                    raise ValueError("This prior distribution is not implemented yet")
-                
-                # for update distributions
-                if current_theta['update_dis'] == 'normal':
-                    self.update_model[key] = ss.norm(loc = 0, scale = current_theta['update_params'][0])
-                else:
-                    raise ValueError("This search distribution is not implemented yet")
-   
-   
+                raise ValueError("This prior distribution is not implemented yet")
+            
+            # for update distributions
+            if current_theta['update_dis'] == 'normal':
+                self.update_model[key] = ss.norm(loc = 0, scale = current_theta['update_params'][0])
+            else:
+                raise ValueError("This search distribution is not implemented yet")
+
+
     def input_model(self, Ut:float) -> np.ndarray:
         """Input model for linear reservoir
 
@@ -189,3 +175,5 @@ class ModelLink:
 
 
 
+
+# %%
