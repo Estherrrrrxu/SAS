@@ -222,11 +222,7 @@ class SSModel(ABC):
     def _process_theta_at_p(self,p,ll,key):
         theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
         theta_temp[:,:p] = self.theta_record[ll+1,:p]
-        
-        if self.model_link._theta_init['to_estimate'][key]['log'] == True:
-            theta_temp[:,p] += self.model_link.update_model[key].rvs(self.D)
-        else:
-            theta_temp[:,p] += self.model_link.update_model[key].rvs(self.D)
+        theta_temp[:,p] += self.model_link.update_model[key].rvs(self.D)
         return theta_temp
 
     def _find_traj(self, A: np.ndarray,W: np.ndarray) -> np.ndarray:
