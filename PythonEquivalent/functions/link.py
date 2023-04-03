@@ -5,7 +5,6 @@ import numpy as np
 from typing import List, Tuple, Optional, Any
 import scipy.stats as ss
 
-
 # %%
 class ModelLink:
     def __init__(
@@ -164,16 +163,3 @@ class ModelLink:
             np.ndarray: p(y|y_hat, sig_v)
         """
         return ss.norm(yht, theta_obs).pdf(yt)
-    
-
-
-
-
-
-
-
-
-
-
-
-# %%
