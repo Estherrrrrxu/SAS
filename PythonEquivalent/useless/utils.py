@@ -1,26 +1,30 @@
 # %%
 import numpy as np
 import matplotlib.pyplot as plt
+
 # %%
-def _inverse_pmf(x: np.ndarray,ln_pmf: np.ndarray, num: int) -> np.ndarray:
-    """Sample x based on its ln(pmf) using discrete inverse sampling method
 
-    Args:
-        x (np.ndarray): The specific values of x
-        pmf (np.ndarray): The weight (ln(pmf)) associated with x
-        num (int): The total number of samples to generate
 
-    Returns:
-        np.ndarray: index of x that are been sampled according to its ln(pmf)
-    """
-    ind = np.argsort(x) # sort x according to its magnitude
-    pmf = np.exp(ln_pmf) # convert ln(pmf) to pmf
-    pmf /= pmf.sum()
-    pmf = pmf[ind] # sort pdf accordingly
-    u = np.random.uniform(size = num)
-    ind_sample = np.searchsorted(pmf.cumsum(), u)
-    return ind[ind_sample]
 
+# %%
+# =================
+# Plotting section
+# =================
+def plot_input(df,J_obs, Q_obs):
+    plt.figure()
+    plt.subplot(2,1,1)
+    plt.plot(df['J_true'],label = "J true")
+    plt.plot(J_obs,"*",label = "J obs")
+    plt.legend()
+    plt.title('J')
+    plt.subplot(2,1,2)
+    plt.plot(df['Q_true'],label = "Q true")
+    plt.plot(Q_obs,"*",label = "Q obs")
+    plt.title('Q')
+    plt.legend()
+    plt.tight_layout()
+    return
+# plotting functions
 def plot_MLE(state,df,left = 0, right = 500):
     X = state.X
     A = state.A

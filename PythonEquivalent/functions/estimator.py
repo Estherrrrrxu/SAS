@@ -7,7 +7,7 @@ from tqdm import tqdm
 from functions.link import ModelLink
 from dataclasses import dataclass
 from abc import ABC
-
+from functions.utils import _inverse_pmf
 
 # %%
 @dataclass
@@ -17,26 +17,6 @@ class State:
     W: np.ndarray  # [N]
     X: np.ndarray  # [T+1, N]
     A: np.ndarray  # [T+1, N]
-
-# %%
-def _inverse_pmf(x: np.ndarray,ln_pmf: np.ndarray, num: int) -> np.ndarray:
-    """Sample x based on its ln(pmf) using discrete inverse sampling method
-
-    Args:
-        x (np.ndarray): The specific values of x
-        pmf (np.ndarray): The weight (ln(pmf)) associated with x
-        num (int): The total number of samples to generate
-
-    Returns:
-        np.ndarray: index of x that are been sampled according to its ln(pmf)
-    """
-    ind = np.argsort(x) # sort x according to its magnitude
-    pmf = np.exp(ln_pmf) # convert ln(pmf) to pmf
-    pmf /= pmf.sum()
-    pmf = pmf[ind] # sort pdf accordingly
-    u = np.random.uniform(size = num)
-    ind_sample = np.searchsorted(pmf.cumsum(), u)
-    return ind[ind_sample]
 
 # %%
 class SSModel(ABC):

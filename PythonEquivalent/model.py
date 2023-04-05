@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
     Goal: use particle filter to estimate theta
 """
 from functions.process import f_theta, g_theta
-from functions.utils import dits
+from useless.utils import dits
 
 # %%   
 # ==========================

@@ -1,7 +1,7 @@
 # %%
 import unittest
 import pandas as pd
-from functions.utils import plot_MLE
+from useless.utils import plot_MLE
 from model import run_sMC, run_pMCMC
 import numpy as np
 # %%
