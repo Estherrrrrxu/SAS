@@ -15,7 +15,7 @@ class TestLinearReservoir(unittest.TestCase):
         run_test: test sequential Monte Carlo and particle MCMC
     """
 
-    def run_test(self):
+    def runTest(self):
         # get a chopped dataframe
         df = pd.read_csv("Dataset.csv", index_col= 0)
         T = 50
