@@ -205,7 +205,7 @@ class SSModel(ABC):
         theta_temp[:,p] += self.model_link.update_model[key].rvs(self.D)
         return theta_temp
 
-    def _find_traj(self, A: np.ndarray,W: np.ndarray) -> np.ndarray:
+    def _find_traj(self, A: np.ndarray, W: np.ndarray) -> np.ndarray:
         """Find particle trajectory based on final weight
         
         Args:
