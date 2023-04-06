@@ -8,7 +8,7 @@ from functions.link import ModelLink
 from functions.estimator import SSModel
 # %%
 # get a chopped dataframe
-df = pd.read_csv("Dataset.csv", index_col= 0)
+df = pd.read_csv("Data/linear_reservoir.csv", index_col= 0)
 T = 50
 interval = 1
 df = df[:T:interval]

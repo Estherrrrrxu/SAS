@@ -27,14 +27,15 @@ class ModelLink:
             'observed_interval': None,
             'observed_series': None # give a boolean list of observations been made 
         }   
-
         # replace default config with input configs
+        
+
         if self.config is not None:
-            for key in self._default_config:
+            for key in self._default_config.keys():
                 if key not in self.config:
                     self.config[key] = self._default_config[key]
             else:
-                raise ValueError('Invalid config key: {}'.format(key))
+                raise ValueError(f'Invalid config key: {key}')
         else:
             self.config = self._default_config
             
@@ -42,9 +43,12 @@ class ModelLink:
         self.dt = self.config['dt']
      
         # TODO: flexible way to insert multiple influx and outflux
-        self.influx = self.df[self.config['influx']]
+        if self.config['influx'] is not None:
+            self.influx = self.df[self.config['influx']]
+            self.T = len(self.influx)
+        
         self.outflux = self.df[self.config['outflux']]
-        self.T = len(self.influx)
+        
         # set observation interval-----------
         if self.config['observed_at_each_time_step'] == True:
             self.K = self.T
