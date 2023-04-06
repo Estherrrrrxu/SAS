@@ -23,18 +23,28 @@ class State:
 class SSModel:
     def __init__(
         self,
-        model_link: ModelLink
+        ModelLink,
+        num_parameter_samples:int,
+        len_parameter_MCMC: int,
+        *model_args
     ):
-        self.model_link = model_link
-        self.N = model_link.N
-        self.influx = model_link.influx
-        self.outflux = model_link.outflux
-        self.T = model_link.T
-        self.K = model_link.K
+        self.ModelLinkClass = ModelLink
+        self.model_args = model_args
+
+        self.L = len_parameter_MCMC
+        self.D = num_parameter_samples
+
+        self.model_links = [ModelLink(*model_args) for d in self.D]
+
+        #self.N = model_link.N
+        #self.influx = model_link.influx
+        #self.outflux = model_link.outflux
+        #self.T = model_link.T
+        #self.K = model_link.K
 
     def run_sequential_monte_carlo(
             self,
-            theta: np.ndarray
+            model_link
             ) -> State:
         """Run sequential Monte Carlo
         
@@ -64,10 +74,10 @@ class SSModel:
             xk = X[A[:,k],k]
             wk = W
             # compute uncertainties 
-            R[:,k] = self.model_link.input_model(self.influx[k])
+            R[:,k] = model_link.input_model()
             # updates
-            xkp1 = self.model_link.f_theta(xk,R[:,k],theta_k=theta[0])
-            wkp1 = wk + np.log(self.model_link.g_theta(xkp1, self.outflux[k], theta_obs=theta[1]))
+            xkp1 = model_link.f_theta(xk)
+            wkp1 = wk + np.log(model_link.g_theta())
             W = wkp1
             X[:,k+1] = xkp1
             A[:,k+1] = _inverse_pmf(A[:,k],W, num = self.N)
@@ -130,8 +140,6 @@ class SSModel:
 
     def run_particle_Gibbs_SAEM(
             self,
-            num_parameter_samples:int,
-            len_MCMC: int,
             q_step: np.ndarray or float = 0.75
             ) -> None:
         """ Run particle Gibbs with Ancestor Resampling (pGS) and Stochastic Approximation of the EM algorithm (SAEM)
@@ -145,10 +153,8 @@ class SSModel:
     
         """
         # specifications
-        self.L = len_MCMC
-        self.D = num_parameter_samples
-        self._num_theta_to_estimate = self.model_link._num_theta_to_estimate
-        self._theta_to_estimate = self.model_link._theta_to_estimate
+        self._num_theta_to_estimate = self.model_links[0]._num_theta_to_estimate
+        self._theta_to_estimate = self.model_links[0]._theta_to_estimate
 
 
         # initialize a bunch of temp storage 
@@ -163,12 +169,19 @@ class SSModel:
         self.input_record = np.zeros((self.L+1, self._num_theta_to_estimate ,self.T))
         
         # initialize theta
-        theta_new = np.zeros((self.D, self._num_theta_to_estimate))
-        for i, key in enumerate(self._theta_to_estimate):
-            temp_model = self.model_link.prior_model[key]
-            theta_new[:,i] = temp_model.rvs(self.D)
+        #theta_new = np.zeros((self.D, self._num_theta_to_estimate))
+        #for i, key in enumerate(self._theta_to_estimate):
+            #temp_model = self.model_links[0].prior_model[key]
+            #theta_new[:,i] = temp_model.rvs(self.D)
         # run sMC algo first
+        #theta_new = np.array([model_link.sample_theta_from_prior() for model_link in self.model_links])
 
+        def initialize_chains(model_link):
+            return model_link.sample_theta_from_prior()
+        with Pool(processes=self.D) as pool:
+            theta_new = pool.map(
+                initialize_chains, self.model_links
+            )
         # run sMC algo first
         # queue = Queue()
         # p = Process(target=self.run_sequential_monte_carlo, args=(queue, 1))
@@ -176,9 +189,13 @@ class SSModel:
         # p.join() # this blocks until the process terminates
         # result = queue.get()
 
+        #with Pool(processes=self.D) as pool:
+        #    results = pool.map(
+        #        self.run_sequential_monte_carlo, theta_new
+        #    )
         with Pool(processes=self.D) as pool:
             results = pool.map(
-                self.run_sequential_monte_carlo, theta_new
+                self.run_sequential_monte_carlo, self.model_links
             )
         new_states = [t[1] for t in sorted(results, key=lambda t: t[0])]
         XX = np.vstack([s.X for s in new_states], axis=0)

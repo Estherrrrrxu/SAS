@@ -13,8 +13,8 @@ T = 50
 interval = 1
 df = df[:T:interval]
 # %%
-model_link = ModelLink(df=df, num_input_scenarios=15)
-default_model = SSModel(model_link)
+#model_link = ModelLink(df=df, num_input_scenarios=15)
+default_model = SSModel(ModelLink)
 
 # %%
 # state = default_model.run_sequential_monte_carlo([1.,0.00005])
