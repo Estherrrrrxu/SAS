@@ -99,6 +99,18 @@ class ModelLink:
                 raise ValueError("This search distribution is not implemented yet")
 
 
+    def sample_theta_from_prior(self):
+        theta_new = np.zeros(self._theta_to_estimate)
+        for i, key in enumerate(self._theta_to_estimate):
+             theta_new[i] = self.prior_model[key].rvs()
+        self._update_model(theta_new)
+        return theta_new
+
+    def _update_model(theta_new):
+        #TODO: create function that updates the model object with a new parameter set
+        # and calls whatever initialization routines are necessary
+        pass
+
     def input_model(self, Ut:float) -> np.ndarray:
         """Input model for linear reservoir
 
@@ -113,7 +125,7 @@ class ModelLink:
         input_theta = self._theta_init['not_to_estimate']['input_uncertainty']
         return ss.uniform(Ut-input_theta,input_theta).rvs(self.N)
 
-    def transition_model(self, xtm1: np.ndarray, rt: float, theta_k) -> np.ndarray:
+    def transition_model(self, xtm1: np.ndarray, rt: float) -> np.ndarray:
         """Transition model for linear reservoir
 
         xt = (1 - k * delta_t) * x_{t-1} + k * delta_t * rt
@@ -141,7 +153,7 @@ class ModelLink:
         """
         return xk
     
-    def f_theta(self, xtm1: np.ndarray, ut: np.ndarray, theta_k) -> np.ndarray:
+    def f_theta(self, xtm1: np.ndarray, ut: np.ndarray) -> np.ndarray:
         """Call transition_model directly
 
         Args:
@@ -151,9 +163,9 @@ class ModelLink:
         Returns:
             np.ndarray: xt
         """
-        return self.transition_model(xtm1, ut, theta_k)
+        return self.transition_model(xtm1, ut)
 
-    def g_theta(self, yht: np.ndarray, yt: np.ndarray, theta_obs) -> np.ndarray:
+    def g_theta(self, yht: np.ndarray) -> np.ndarray:
         """Observation model for linear reservoir
 
         y(t) = y_hat(t) + N(0, theta_v)
