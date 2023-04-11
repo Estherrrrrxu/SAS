@@ -23,18 +23,18 @@ class State:
 class SSModel:
     def __init__(
         self,
-        ModelLink,
+        custom_ModelLink: ModelLink,
         num_parameter_samples:int,
         len_parameter_MCMC: int,
         *model_args
     ):
-        self.ModelLinkClass = ModelLink
+        self.ModelLinkClass = custom_ModelLink
         self.model_args = model_args
 
         self.L = len_parameter_MCMC
         self.D = num_parameter_samples
 
-        self.model_links = [ModelLink(*model_args) for d in self.D]
+        self.model_links = [custom_ModelLink(*model_args) for d in self.D]
 
         #self.N = model_link.N
         #self.influx = model_link.influx

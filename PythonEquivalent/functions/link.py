@@ -4,22 +4,48 @@ import matplotlib.pyplot as plt
 import numpy as np
 from typing import List, Tuple, Optional, Any
 import scipy.stats as ss
+from model_structure import SpecifyModel, LinearReservior, Parameter
 
 # %%
 class ModelLink:
     def __init__(
             self, 
-            df: pd.DataFrame, 
-            config: Optional[dict[str, Any]] = None,
+            df: pd.DataFrame,
+            customized_model: SpecifyModel,
             theta_init: Optional[dict[str, Any]] = None,
-            num_input_scenarios: Optional[int] = 10,
+            config: Optional[dict[str, Any]] = None,
+            num_input_scenarios: Optional[int] = 10,      
             ) -> None:
+        """Link model structure and data
+
+        Args:
+            df (pd.DataFrame): dataframe of input data
+            customized_model (SpecifyModel): model structure
+            config (dict): configurations of the model
+            num_input_scenarios (int): number of input scenarios
+            
+        """
         self.df = df
         self.N = num_input_scenarios
+
         self.config = config
+        # customize the config according to model structure here
+        self._parse_config()
+        # parse theta - add customization here
+        self._parse_theta_init(theta_init)
+
+        # initialize model
+        self.model = customized_model
+
+    def _parse_config(
+            self,
+        ) -> None:
+        """Parse config and set default values
+
+        """
 
         # process configurations------------
-        self._default_config = {
+        _default_config = {
             'dt': 1./24/60*15,
             'influx': 'J_obs',
             'outflux': 'Q_obs',
@@ -33,11 +59,11 @@ class ModelLink:
         if self.config is not None:
             for key in self._default_config.keys():
                 if key not in self.config:
-                    self.config[key] = self._default_config[key]
+                    self.config[key] = _default_config[key]
             else:
                 raise ValueError(f'Invalid config key: {key}')
         else:
-            self.config = self._default_config
+            self.config = _default_config
             
         # set delta_t------------------------
         self.dt = self.config['dt']
@@ -57,8 +83,17 @@ class ModelLink:
         else:
             self.K = sum(self.config['observed_series']) # total num observation is the number 
             self._is_observed = self.config['observed_series'] # set another variable to indicate observation
+        return
 
+    def _parse_theta_init(
+            self,
+            theta_init: Optional[dict[str, Any]] = None            
+    ) -> None:
+        """Parse theta and set default values
 
+        Args:
+            theta_init (dict): initial values of theta
+        """
         if theta_init == None:
             # set default theta
             theta_init = {
@@ -97,63 +132,57 @@ class ModelLink:
                 self.update_model[key] = ss.norm(loc = 0, scale = current_theta['update_params'][0])
             else:
                 raise ValueError("This search distribution is not implemented yet")
+                # need theta be decoded in this way
+        return
 
 
     def sample_theta_from_prior(self):
-        theta_new = np.zeros(self._theta_to_estimate)
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        theta_new = np.zeros(self._num_theta_to_estimate)
         for i, key in enumerate(self._theta_to_estimate):
              theta_new[i] = self.prior_model[key].rvs()
+        # cannot update model here, because it need to update iteratively
         self._update_model(theta_new)
         return theta_new
 
-    def _update_model(theta_new):
-        #TODO: create function that updates the model object with a new parameter set
-        # and calls whatever initialization routines are necessary
-        pass
-
-    def input_model(self, Ut:float) -> np.ndarray:
-        """Input model for linear reservoir
-
-        Rt = Ut - U(0, U_upper)
-
-        Args:
-            Ut (float): forcing at time t
-
-        Returns:
-            np.ndarray: Rt
-        """
-        input_theta = self._theta_init['not_to_estimate']['input_uncertainty']
-        return ss.uniform(Ut-input_theta,input_theta).rvs(self.N)
-
-    def transition_model(self, xtm1: np.ndarray, rt: float) -> np.ndarray:
-        """Transition model for linear reservoir
-
-        xt = (1 - k * delta_t) * x_{t-1} + k * delta_t * rt
+    def _update_model(
+            self,
+            theta_new: np.ndarray
+        ) -> None:
+        # create function that updates the model object with a new parameter set
+        # and calls whatever initialization routines are necessary        
+        """Set theta to the model, customizable
         
         Args:
-            xtm1 (np.ndarray): state at t-1
-            rt (float): uncertainty r at t
+            theta_new (np.ndarray): new theta to update the model
 
-        Returns:
-            np.ndarray: xt
+        Set:
+            Parameter: update parameter object for later
         """
-        xt = (1 - theta_k * self.dt) * xtm1 + theta_k * self.dt * rt
-        return xt
+
+        # input model param is fixed
+        input_param = self._theta_init['not_to_estimate']['input_uncertainty'].values()
+        # transition model param [0] is theta to estimate, and [1] is fixed dt
+        transition_param = [theta_new[0], self.config['dt']]
+        # observation model param is to estimate
+        obs_param = theta_new[1]
+
+        self.theta = Parameter(
+                            input_model=input_param,
+                            transition_model=transition_param, 
+                            observation_model=obs_param
+                            )
+        self.model(self.theta)
+        return 
     
-    def observation_model(self, xk: np.ndarray) -> np.ndarray:
-        """Observation model for linear reservoir
-
-        y_hat(k) = x(k)
-
-        Args:
-            xk (np.ndarray): observed y at time k
-
-        Returns:
-            np.ndarray: y_hat
-        """
-        return xk
-    
-    def f_theta(self, xtm1: np.ndarray, ut: np.ndarray) -> np.ndarray:
+    def f_theta(self, 
+                xtm1: np.ndarray, 
+                ut: np.ndarray
+        ) -> np.ndarray:
         """Call transition_model directly
 
         Args:
@@ -161,21 +190,27 @@ class ModelLink:
             rt (float): uncertainty r at t
 
         Returns:
-            np.ndarray: xt
+            np.ndarray: state x at t
         """
-        return self.transition_model(xtm1, ut)
+        return self.model.transition_model(xtm1, ut)
 
-    def g_theta(self, yht: np.ndarray) -> np.ndarray:
+    def g_theta(self, 
+                xk: np.ndarray,
+                yt: np.ndarray
+        ) -> np.ndarray:
         """Observation model for linear reservoir
 
-        y(t) = y_hat(t) + N(0, theta_v)
+        y(t) = y_hat(t) + N(0, theta_v),
+                        where y_hat(t) = x(t) 
 
         Args:
-            yht (np.ndarray): estimated y_hat at time t
+            xt (np.ndarray): state x at time t
             yt (np.ndarray): observed y at time t
-            theta (float): parameter of the model
 
         Returns:
             np.ndarray: p(y|y_hat, sig_v)
         """
-        return ss.norm(yht, theta_obs).pdf(yt)
+        yht = self.model.observation_model(xk = xk)
+        return ss.norm(yht).pdf(yt)
+    
+    # TODO: generate input time series
