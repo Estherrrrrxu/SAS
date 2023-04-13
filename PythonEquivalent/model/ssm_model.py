@@ -1,9 +1,9 @@
+# %%
 from input_generator import InputGenerator
-from user_interface import ModelInterface
+from model_interface import ModelInterface
 from utils_chain import Chain
 
-
-
+# %%
 class SSModel:
     def __init__(
         self,

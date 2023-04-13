@@ -1,10 +1,6 @@
+# %%
 
-
-
-
-
-
-
+# %%
 class Chain:
     def __init__(
             
