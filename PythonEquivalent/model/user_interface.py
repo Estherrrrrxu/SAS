@@ -1,0 +1,256 @@
+import numpy as np
+from dataclasses import dataclass
+import scipy.stats as ss
+import pandas as pd
+from typing import Optional, Any
+# %%
+@dataclass
+class Parameter:
+    input_model: np.ndarray
+    transition_model: np.ndarray
+    observation_model: np.ndarray
+
+# %%
+class ModelInterface:
+    """Customize necessary model functionalities here
+
+    Methods:
+        _parse_config: parse configurations
+        _parse_theta_init: parse initial values of parameters
+        update_model: update model using the new theta values
+
+
+    """
+    def __init__(
+            self, 
+            df: pd.DataFrame,
+            customized_model: Optional[Any] = None,
+            theta_init: Optional[dict[str, Any]] = None,
+            config: Optional[dict[str, Any]] = None,
+            num_input_scenarios: Optional[int] = 10,   
+        ) -> None:
+        """Initialize the model interface
+
+        Args:
+            df (pd.DataFrame): dataframe of input data
+            customized_model (Any): any model structure that is necessary to inport info
+            theta_init (dict): initial values of parameters
+            config (dict): configurations of the model
+            num_input_scenarios (int): number of input scenarios
+        
+        """
+        self.df = df
+        self.N = num_input_scenarios
+
+        self.config = config
+        # customize the config according to model structure here
+        self._parse_config()
+        # parse theta - add customization here
+        self._parse_theta_init(theta_init)
+
+        # initialize model
+        self.model = customized_model
+
+
+    def _parse_config(
+            self,
+        ) -> None:
+        """Parse config and set default values
+
+        """
+
+        # process configurations------------
+        _default_config = {
+            'dt': 1./24/60*15,
+            'influx': 'J_obs',
+            'outflux': 'Q_obs',
+            'observed_at_each_time_step': True,
+            'observed_interval': None,
+            'observed_series': None # give a boolean list of observations been made 
+        }   
+        # replace default config with input configs
+        
+
+        if self.config is not None:
+            for key in _default_config.keys():
+                if key not in self.config:
+                    self.config[key] = _default_config[key]
+            # else:
+            #     raise ValueError(f'Invalid config key: {key}')
+        else:
+            self.config = _default_config
+            
+        # set delta_t------------------------
+        self.dt = self.config['dt']
+     
+        # TODO: flexible way to insert multiple influx and outflux
+        if self.config['influx'] is not None:
+            self.influx = self.df[self.config['influx']]
+            self.T = len(self.influx)
+        
+        self.outflux = self.df[self.config['outflux']]
+        
+        # set observation interval-----------
+        if self.config['observed_at_each_time_step'] == True:
+            self.K = self.T
+        elif self.config['observed_interval'] is not None:
+            self.K = int(self.T/self.config['observed_interval'])
+        else:
+            self.K = sum(self.config['observed_series']) # total num observation is the number 
+            self._is_observed = self.config['observed_series'] # set another variable to indicate observation
+        return
+
+    def _parse_theta_init(
+            self,
+            theta_init: Optional[dict[str, Any]] = None            
+    ) -> None:
+        """Parse theta and set default values
+
+        Args:
+            theta_init (dict): initial values of theta
+        """
+        if theta_init == None:
+            # set default theta
+            theta_init = {
+                'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.2,0.3], 
+                                        "update_dis": "normal", "update_params":[0.05]
+                                    },
+                                'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
+                                        "update_dis": "normal", "update_params":[0.00001],
+                                    }
+                                },
+                'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
+            }
+        self._theta_init = theta_init
+        # find params to update
+        self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
+        self._num_theta_to_estimate = len(self._theta_to_estimate )
+        
+        # save models
+        self.prior_model = {}
+        self.update_model = {}
+
+        for key in self._theta_to_estimate:
+            current_theta = self._theta_init['to_estimate'][key]
+            # for prior distribution
+            if current_theta['prior_dis'] == 'normal':
+                self.prior_model[key] = ss.norm(loc = current_theta['prior_params'][0], 
+                                                scale = current_theta['prior_params'][1])
+            elif current_theta['prior_dis'] == 'uniform':
+                self.prior_model[key] = ss.uniform(loc = current_theta['prior_params'][0],
+                                                    scale = (current_theta['prior_params'][1] - current_theta['prior_params'][0]))
+            else:
+                raise ValueError("This prior distribution is not implemented yet")
+            
+            # for update distributions
+            if current_theta['update_dis'] == 'normal':
+                self.update_model[key] = ss.norm(loc = 0, scale = current_theta['update_params'][0])
+            else:
+                raise ValueError("This search distribution is not implemented yet")
+                # need theta be decoded in this way
+        return
+
+    def update_model(
+            self,
+            theta_new: np.ndarray
+        ) -> None:       
+        """Update the model object with a new parameter set
+        
+        Set/reset theta to the model
+        
+        Args:
+            theta_new (np.ndarray): new theta to update the model
+
+        Set:
+            Parameter: update parameter object for later
+        """
+        # input model param is fixed
+        input_param = self._theta_init['not_to_estimate']['input_uncertainty']
+        # transition model param [0] is theta to estimate, and [1] is fixed dt
+        transition_param = [theta_new[0], self.config['dt']]
+        # observation model param is to estimate
+        obs_param = theta_new[1]
+
+        self.theta = Parameter(
+                            input_model=input_param,
+                            transition_model=transition_param, 
+                            observation_model=obs_param
+                            )
+        return 
+    
+    def f_theta(self, 
+                Xtm1: np.ndarray, 
+                Ut: Optional[np.ndarray] = None,
+                Rt: Optional[np.ndarray] = None
+        ) -> np.ndarray:
+        """State estimaton model f_theta
+
+        Current setting has no additional randomness being added to the model
+
+        Args:
+            Xtm1 (np.ndarray): state X at t-1
+            Ut (np.ndarray, Optional): input forcing U at t
+            Rt (np.ndarray, Optional): uncertainty R at t
+
+        Returns:
+            np.ndarray: state X at t
+        """
+        # in this case Rt is combined with Ut
+        Xt = self.transition_model(Xtm1=Xtm1, Rt=Rt)
+        return Xt
+    
+    def transition_model(self, Xtm1: np.ndarray, Rt: float) -> np.ndarray:
+        """Transition model
+
+        Currently set up for linear reservoirmodel:
+            xt = (1 - k * delta_t) * x_{t-1} + k * delta_t * rt,
+                where rt = ut - N(0, theta_r)
+        
+        Args:
+            Xtm1 (np.ndarray): state X at t-1
+            Rt (float): uncertainty R at t
+
+        Returns:
+            np.ndarray: Xt
+        """
+        theta = self.theta.transition_model.values()
+        theta_k = theta[0]
+        theta_dt = theta[1]
+        Xt = (1 -  theta_k * theta_dt) * Xtm1 + theta_k * theta_dt * Rt
+        return Xt
+    
+    def g_theta(self, 
+                Xk: np.ndarray,
+                yt: np.ndarray
+        ) -> np.ndarray:
+        """Observation likelihood g_theta
+
+        Current general model setting:
+            y(t) = y_hat(t) + N(0, theta_v),
+                            where y_hat(t) = x(t) 
+
+        Args:
+            Xt (np.ndarray): state X at time t
+            yt (np.ndarray): observed y at time t
+
+        Returns:
+            np.ndarray: p(y|y_hat, sig_v)
+        """
+        yht = self.observation_model(Xk = Xk)
+        return ss.norm(yht).pdf(yt)
+    
+    def observation_model(self, Xk: np.ndarray) -> np.ndarray:
+        """Observation model 
+        
+        Current setup for linear reservoir:
+            y_hat(k) = x(k)
+
+        Args:
+            Xk (np.ndarray): state X at observation time k
+
+        Returns:
+            np.ndarray: y_hat
+        """
+        return Xk
+
+    
