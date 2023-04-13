@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from functions.utils import plot_MLE
 from functions.link import ModelLink
 from functions.estimator import SSModel
+from functions.model_structure import LinearReservior
 # %%
 # get a chopped dataframe
 df = pd.read_csv("Data/linear_reservoir.csv", index_col= 0)
@@ -13,8 +14,18 @@ T = 50
 interval = 1
 df = df[:T:interval]
 # %%
-#model_link = ModelLink(df=df, num_input_scenarios=15)
-default_model = SSModel(ModelLink)
+model_link = ModelLink(
+                        df=df, 
+                        customized_model=LinearReservior,
+                        num_input_scenarios=15
+                        )
+model_link._parse_config()
+model_link._parse_theta_init()
+model_link._update_model([1,0.00005])
+model_link.input_generation()
+print(model_link.R)
+# %%
+print(default_model = SSModel(ModelLink))
 
 # %%
 # state = default_model.run_sequential_monte_carlo([1.,0.00005])

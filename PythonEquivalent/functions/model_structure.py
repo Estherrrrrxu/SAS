@@ -36,17 +36,20 @@ class SpecifyModel(ABC):
     """
     def __init__(
             self, 
-            theta: Parameter
+            theta: Parameter,
+            N: int
         ) -> None:
         """Initialize model parameters 
 
         Args:
-            theta (np.ndarray): parameter of the model  
+            theta (np.ndarray): parameter of the model
+            N (int): number of particles
         """
         # need theta be decoded in this way
         self.theta_input = theta.input_model
         self.theta_transition = theta.transition_model
         self.theta_observation = theta.observation_model
+        self.N = N
     
     def input_model(
             self, 
@@ -97,7 +100,9 @@ class LinearReservior(SpecifyModel):
         Returns:
             np.ndarray: Rt
         """
-        return ss.uniform(Ut-self.theta_input.values(),self.theta_input.values()).rvs(self.N)
+        return ss.uniform(Ut-self.theta_input, 
+                          self.theta_input
+                          ).rvs(self.N)
 
     def transition_model(self, xtm1: np.ndarray, rt: float) -> np.ndarray:
         """Transition model for linear reservoir

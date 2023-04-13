@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from typing import List, Tuple, Optional, Any
 import scipy.stats as ss
-from model_structure import SpecifyModel, LinearReservior, Parameter
+from functions.model_structure import SpecifyModel, LinearReservior, Parameter
 
 # %%
 class ModelLink:
@@ -57,11 +57,11 @@ class ModelLink:
         
 
         if self.config is not None:
-            for key in self._default_config.keys():
+            for key in _default_config.keys():
                 if key not in self.config:
                     self.config[key] = _default_config[key]
-            else:
-                raise ValueError(f'Invalid config key: {key}')
+            # else:
+            #     raise ValueError(f'Invalid config key: {key}')
         else:
             self.config = _default_config
             
@@ -163,9 +163,8 @@ class ModelLink:
         Set:
             Parameter: update parameter object for later
         """
-
         # input model param is fixed
-        input_param = self._theta_init['not_to_estimate']['input_uncertainty'].values()
+        input_param = self._theta_init['not_to_estimate']['input_uncertainty']
         # transition model param [0] is theta to estimate, and [1] is fixed dt
         transition_param = [theta_new[0], self.config['dt']]
         # observation model param is to estimate
@@ -176,7 +175,7 @@ class ModelLink:
                             transition_model=transition_param, 
                             observation_model=obs_param
                             )
-        self.model(self.theta)
+        self.model = self.model(self.theta, self.N)
         return 
     
     def f_theta(self, 
@@ -192,8 +191,8 @@ class ModelLink:
         Returns:
             np.ndarray: state x at t
         """
-        return self.model.transition_model(xtm1, ut)
-
+        xt = self.model.transition_model(xtm1 = xtm1, ut = ut)
+        return xt
     def g_theta(self, 
                 xk: np.ndarray,
                 yt: np.ndarray
@@ -213,4 +212,15 @@ class ModelLink:
         yht = self.model.observation_model(xk = xk)
         return ss.norm(yht).pdf(yt)
     
-    # TODO: generate input time series
+    def input_generation(self,
+        ) -> np.ndarray:
+        """Generate input uncertainty for the model
+        
+        Returns:
+            np.ndarray: input for the model"""
+
+        self.R = np.zeros((self.T, self.N))
+        for k in range(self.T):
+            self.R[k,:] = self.model.input_model(self.influx[k])
+        return
+
