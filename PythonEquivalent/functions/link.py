@@ -180,18 +180,20 @@ class ModelLink:
     
     def f_theta(self, 
                 xtm1: np.ndarray, 
-                ut: np.ndarray
+                ut: np.ndarray,
+                rt: np.ndarray
         ) -> np.ndarray:
         """Call transition_model directly
 
         Args:
             xtm1 (np.ndarray): state at t-1
-            rt (float): uncertainty r at t
+            ut (np.ndarray): input at t
+            rt (np.ndarray): uncertainty at t
 
         Returns:
             np.ndarray: state x at t
         """
-        xt = self.model.transition_model(xtm1 = xtm1, ut = ut)
+        xt = self.model.transition_model(xtm1 = xtm1, rt = rt)
         return xt
     def g_theta(self, 
                 xk: np.ndarray,
@@ -217,7 +219,7 @@ class ModelLink:
         """Generate input uncertainty for the model
         
         Returns:
-            np.ndarray: input for the model"""
+            np.ndarray: input for the model"""   
 
         self.R = np.zeros((self.T, self.N))
         for k in range(self.T):

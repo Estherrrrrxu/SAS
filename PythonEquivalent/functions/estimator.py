@@ -8,6 +8,7 @@ from functions.link import ModelLink
 from dataclasses import dataclass
 from abc import ABC
 from functions.utils import _inverse_pmf
+from functions.model_structure import SpecifyModel
 
 # %%
 @dataclass
@@ -22,23 +23,33 @@ class State:
 class SSModel(ABC):
     def __init__(
         self,
-        model_link: ModelLink
+        model_link: SpecifyModel,
+        num_parameter_samples:int,
+        len_parameter_MCMC: int,
     ):
-        self.model_link = model_link
-        self.N = model_link.N
-        self.influx = model_link.influx
-        self.outflux = model_link.outflux
-        self.T = model_link.T
-        self.K = model_link.K
+        """Initialize model parameters
 
-    def run_sequential_monte_carlo(
-            self,
-            theta: np.ndarray
-            ) -> State:
-        """Run sequential Monte Carlo
-        
         Args:
-            theta (float): parameter of the model
+            model_link (SpecifyModel): model_link object that has been properly initialized
+            num_parameter_samples (int): number of parameter samples
+            len_parameter_MCMC (int): length of MCMC parameter evolution chain 
+        """
+        # initialize model link
+        self.model_link = model_link
+        self.model_link._parse_config()
+        self.model_link._parse_theta_init()
+
+        self.T = self.model_link.T
+        self.K = self.model_link.K
+
+        self.L = len_parameter_MCMC
+        self.D = num_parameter_samples
+
+        self.model_links = [self.model_link.sample_theta_from_prior() for d in self.D]
+
+
+    def run_sequential_monte_carlo(self) -> State:
+        """Run sequential Monte Carlo
 
         Returns:
             State: state at each timestep
@@ -54,7 +65,7 @@ class SSModel(ABC):
         A[:, 0] = np.arange(self.N)
 
         # other states
-        R = np.zeros((self.N, self.T)) # input uncertainty
+        R =  # input uncertainty
         W = np.log(np.ones(self.N) / self.N) # last weight, initial weight on particles are all equal
 
         # TODO: work on diff k and T later
@@ -99,8 +110,8 @@ class SSModel(ABC):
         B = self._find_traj(A,W)
         # state estimation-------------------------------
         W = np.log(np.ones(self.N)/self.N) # initial weight on particles are all equal
+        R = self.R.copy()
         for k in range(self.K):
-            rr = self.model_link.input_model(self.influx[k])
             xkp1 = self.model_link.f_theta(X[:,k],R[:,k], theta_k=theta[0])
             # Update 
             x_prime = X[B[k+1],k+1]
@@ -149,7 +160,9 @@ class SSModel(ABC):
         self._num_theta_to_estimate = self.model_link._num_theta_to_estimate
         self._theta_to_estimate = self.model_link._theta_to_estimate
 
-
+        self.model_link.input_generation()
+        self.R = self.model_link.R
+        
         # initialize a bunch of temp storage 
         AA = np.zeros((self.D,self.N,self.K+1)).astype(int) 
         WW = np.zeros((self.D,self.N))
