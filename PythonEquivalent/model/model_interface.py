@@ -16,8 +16,13 @@ class ModelInterface:
 
     Methods:
         _parse_config: parse configurations
+        _set_fluxes: set fluxes and observations using info from config
         _parse_theta_init: parse initial values of parameters
+        _set_parameter_distribution: set parameter distribution using info from theta_init
+
         update_model: update model using the new theta values
+        transition_model: transition model for/to link user-defined model
+        observation_model: observation model for/to link user-defined model
 
 
     """
@@ -118,10 +123,10 @@ class ModelInterface:
             # set default theta
             theta_init = {
                 'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.2,0.3], 
-                                        "update_dis": "normal", "update_params":[0.05]
+                                        "search_dis": "normal", "search_params":[0.05]
                                     },
                                 'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
-                                        "update_dis": "normal", "update_params":[0.00001],
+                                        "search_dis": "normal", "search_params":[0.00001],
                                     }
                                 },
                 'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
@@ -140,7 +145,7 @@ class ModelInterface:
         """
         # save models
         self.prior_model = {}
-        self.update_model = {}
+        self.search_model = {}
 
         for key in self._theta_to_estimate:
             current_theta = self._theta_init['to_estimate'][key]
@@ -155,8 +160,8 @@ class ModelInterface:
                 raise ValueError("This prior distribution is not implemented yet")
             
             # for update distributions
-            if current_theta['update_dis'] == 'normal':
-                self.update_model[key] = ss.norm(loc = 0, scale = current_theta['update_params'][0])
+            if current_theta['search_dis'] == 'normal':
+                self.search_model[key] = ss.norm(loc = 0, scale = current_theta['search_params'][0])
             else:
                 raise ValueError("This search distribution is not implemented yet")
                 # need theta be decoded in this way
