@@ -45,9 +45,10 @@ class ModelInterface:
         self.config = config
         # customize the config according to model structure here
         self._parse_config()
+        self._set_fluxes()
         # parse theta - add customization here
-        self._parse_theta_init(theta_init)
-
+        self._parse_theta_init(theta_init=theta_init)
+        self._set_parameter_distribution()
         # initialize model
         self.model = customized_model
 
@@ -82,7 +83,11 @@ class ModelInterface:
             
         # set delta_t------------------------
         self.dt = self.config['dt']
-     
+        return
+    
+    def _set_fluxes(self) -> None:
+        """Set fluxes
+        """
         # TODO: flexible way to insert multiple influx and outflux
         if self.config['influx'] is not None:
             self.influx = self.df[self.config['influx']]
@@ -99,7 +104,7 @@ class ModelInterface:
             self.K = sum(self.config['observed_series']) # total num observation is the number 
             self._is_observed = self.config['observed_series'] # set another variable to indicate observation
         return
-
+    
     def _parse_theta_init(
             self,
             theta_init: Optional[dict[str, Any]] = None            
@@ -125,7 +130,14 @@ class ModelInterface:
         # find params to update
         self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
         self._num_theta_to_estimate = len(self._theta_to_estimate )
-        
+        return
+    
+    def _set_parameter_distribution(
+            self,
+        ) -> None:
+        """Set prior and update distributions for parameters
+
+        """
         # save models
         self.prior_model = {}
         self.update_model = {}
@@ -148,7 +160,6 @@ class ModelInterface:
             else:
                 raise ValueError("This search distribution is not implemented yet")
                 # need theta be decoded in this way
-        return
 
     def update_model(
             self,
@@ -178,14 +189,16 @@ class ModelInterface:
                             )
         return 
     
-    def f_theta(self, 
-                Xtm1: np.ndarray, 
-                Ut: Optional[np.ndarray] = None,
-                Rt: Optional[np.ndarray] = None
+    def transition_model(self, 
+                        Xtm1: np.ndarray, 
+                        Ut: Optional[np.ndarray] = None,
+                        Rt: Optional[np.ndarray] = None
         ) -> np.ndarray:
-        """State estimaton model f_theta
+        """State estimaton model f_theta(Xt-1, Rt)
 
-        Current setting has no additional randomness being added to the model
+        Currently set up for linear reservoirmodel:
+            xt = (1 - k * delta_t) * x_{t-1} + k * delta_t * rt,
+                where rt = ut - N(0, theta_r)
 
         Args:
             Xtm1 (np.ndarray): state X at t-1
@@ -195,35 +208,20 @@ class ModelInterface:
         Returns:
             np.ndarray: state X at t
         """
-        # in this case Rt is combined with Ut
-        Xt = self.transition_model(Xtm1=Xtm1, Rt=Rt)
-        return Xt
-    
-    def transition_model(self, Xtm1: np.ndarray, Rt: float) -> np.ndarray:
-        """Transition model
-
-        Currently set up for linear reservoirmodel:
-            xt = (1 - k * delta_t) * x_{t-1} + k * delta_t * rt,
-                where rt = ut - N(0, theta_r)
-        
-        Args:
-            Xtm1 (np.ndarray): state X at t-1
-            Rt (float): uncertainty R at t
-
-        Returns:
-            np.ndarray: Xt
-        """
         theta = self.theta.transition_model.values()
         theta_k = theta[0]
         theta_dt = theta[1]
         Xt = (1 -  theta_k * theta_dt) * Xtm1 + theta_k * theta_dt * Rt
         return Xt
     
-    def g_theta(self, 
-                Xk: np.ndarray,
-                yt: np.ndarray
+    def observation_model(self, 
+                        Xk: np.ndarray,
+                        yt: np.ndarray
         ) -> np.ndarray:
         """Observation likelihood g_theta
+
+        Current setup for linear reservoir:
+            y_hat(k) = x(k)
 
         Current general model setting:
             y(t) = y_hat(t) + N(0, theta_v),
@@ -236,21 +234,6 @@ class ModelInterface:
         Returns:
             np.ndarray: p(y|y_hat, sig_v)
         """
-        yht = self.observation_model(Xk = Xk)
+        yht = Xk
         return ss.norm(yht).pdf(yt)
-    
-    def observation_model(self, Xk: np.ndarray) -> np.ndarray:
-        """Observation model 
-        
-        Current setup for linear reservoir:
-            y_hat(k) = x(k)
-
-        Args:
-            Xk (np.ndarray): state X at observation time k
-
-        Returns:
-            np.ndarray: y_hat
-        """
-        return Xk
-
     
