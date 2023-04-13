@@ -1,4 +1,5 @@
 # %%
+from typing import Optional
 from input_generator import InputGenerator
 from model_interface import ModelInterface
 from utils_chain import Chain
@@ -9,8 +10,8 @@ class SSModel:
         self,
         input_generator: InputGenerator,
         user_interface: ModelInterface,
-        df: pd.DataFrame,
-        num_input_scenarios: Optional[int] = 10,
+        num_parameter_samples: Optional[int] = 15,
+        len_parameter_MCMC: Optional[int] = 20,
     ) -> None:
         
         """
@@ -24,7 +25,6 @@ class SSModel:
         self.model = model
         self.model_links = model_links
 
-# TODO: call inputs after input model
 
 
     def run_particle_Gibbs_SAEM(

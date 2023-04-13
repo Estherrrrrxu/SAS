@@ -57,7 +57,6 @@ class ModelInterface:
         # initialize model
         self.model = customized_model
 
-
     def _parse_config(
             self,
         ) -> None:
