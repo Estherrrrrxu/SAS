@@ -44,7 +44,7 @@ class Chain:
                             A=np.zeros((self.N, self.K + 1))
         )
         # initilize state object
-        self.state.X[:, 0] = np.ones(self.N) * self.outflux[0]
+        self.state.X[:, 0] = np.ones(self.N) * self.outflux[0] #TODO: change this to init state --> init as a setting in config
         self.state.A[:, 0] = np.arange(self.N)
 
     def run_sequential_monte_carlo(self) -> None:
@@ -61,7 +61,7 @@ class Chain:
             xk = X[A[:,k],k]
             # TODO: may need more more work on this cuz currently only one flux
             xkp1 = self.model_interface.transition_model(Xtm1=xk,
-                                                         Rt=R[:,k])
+                                                         Rt=R[A[:,k],k])
 
             wkp1 = W + np.log(
                 self.model_interface.observation_model(Xt=xkp1,
@@ -87,7 +87,7 @@ class Chain:
         A = self.state.A
 
         # sample an ancestral path based on final weight
-        B = self._find_traj(A,W)
+        B = self._find_traj(A, W)
         # reinitialize weight
         W = np.log(np.ones(self.N)/self.N)
 

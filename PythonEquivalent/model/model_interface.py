@@ -38,7 +38,7 @@ class ModelInterface:
 
         Args:
             df (pd.DataFrame): dataframe of input data
-            customized_model (Any): any model structure that is necessary to inport info
+            customized_model (Any): any model structure that is necessary to import info
             theta_init (dict): initial values of parameters
             config (dict): configurations of the model
             num_input_scenarios (int): number of input scenarios
@@ -56,6 +56,8 @@ class ModelInterface:
         self._set_parameter_distribution()
         # initialize model
         self.model = customized_model
+        # initialize input uncertainties
+        self.R = np.zeros((self.T, self.N))
 
     def _parse_config(
             self,
@@ -240,4 +242,22 @@ class ModelInterface:
         """
         yht = Xk
         return ss.norm(yht).pdf(yt)
+    
+    def input_model(
+            self
+        ) -> None:
+        """Input model for linear reservoir
+
+        Rt = Ut - U(0, U_upper)
+
+        Args:
+            Ut (float): forcing at time t
+
+        Returns:
+            np.ndarray: Rt
+        """
+        for t in range(self.T):
+            self.R[t,:] = ss.uniform(self.influx[t]-self.theta.input_model, self.theta.input_model).rvs(self.N)
+        return 
+
     
