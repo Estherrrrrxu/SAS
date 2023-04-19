@@ -1,6 +1,6 @@
 # %%
 from typing import Optional
-from input_generator import InputGenerator
+from tqdm import tqdm
 from model_interface import ModelInterface
 from utils_chain import Chain
 import numpy as np
@@ -27,6 +27,8 @@ class SSModel:
         self.D = num_parameter_samples
         self.L = len_parameter_MCMC
         self.learning_step = learning_step
+        if isinstance(self.learning_step,float):
+            self.learning_step = [self.learning_step] * (self.L + 1)
         
         # get info from model_interface
         self._num_theta_to_estimate = model_interface._num_theta_to_estimate
@@ -71,32 +73,72 @@ class SSModel:
         # initilize D chains
         def initialize_chains(model):
             theta_new = self._sample_theta_from_prior()
-            chain = Chain(model, theta_new, self.R)
-
-            self._update_model(theta_new)
-            return
-        with Pool(processes=self.D) as pool:
-            theta_new = pool.map(
-                initialize_chains, self.model_links
-            )
-
-
-# input will be passed through input model
+            # put new theta into model
+            model.update_model(theta_new)
+            # initialize a chain using this theta
+            chain = Chain(
+                model_interface=model, 
+                theta=theta_new, 
+                R=self.R
+                )
+            return chain, theta_new
         
-        # initialize theta
-        #theta_new = np.zeros((self.D, self._num_theta_to_estimate))
-        #for i, key in enumerate(self._theta_to_estimate):
-            #temp_model = self.model_links[0].prior_model[key]
-            #theta_new[:,i] = temp_model.rvs(self.D)
-        # run sMC algo first
-        #theta_new = np.array([model_link.sample_theta_from_prior() for model_link in self.model_links])
+        with Pool(processes=self.D) as pool:
+            chain, theta_new = pool.map(
+                initialize_chains, 
+                self.models_for_each_chain
+            )
+            chain.run_sequential_monte_carlo()
+        
+        WW = np.vstack([chain.state.W for d in self.D], axis=0)
+        # find optimal parameters
+        Qh = self.learning_step[0] * np.max(WW[:,:],axis = 1)
+        ind_best_param = np.argmax(Qh)
+        self.theta_record[0,:] = theta_new[ind_best_param, :]
+        
+        # for particle Gibbs
+        for l in tqdm(range(self.L)):
+            # update theta
+            for d in range(self.D):
+                # update theta
+                theta_new = self._sample_theta_from_prior()
+        
+                for p, key in enumerate(self._theta_to_estimate):
+                    theta_new[p] = self.search_model[key].rvs(
+                        self._process_theta_at_p(
+                            theta=self.theta_record[l,:], 
+                            p=p
+                            )
+                        )
+                # put new theta into model
+                self.models_for_each_chain[d].update_model(theta_new)
+                # initialize a chain using this theta
+                chain = Chain(
+                    model_interface=self.models_for_each_chain[d], 
+                    theta=theta_new, 
+                    R=self.R
+                    )
+                chain.run_sequential_monte_carlo()
+                # update Qh
+                Qh[d] = Qh[d] + self.learning_step[l] * (chain.state.W[ind_best_param] - chain.state.W[d])
+            # resample
+            ind_best_param = np.argmax(Qh)
+            self.theta_record[l+1,:] = theta_new[ind_best_param, :]
+    
+    def _process_theta_at_p(
+            self,
+            p,
+            ll,
+            key
+        ) -> np.ndarray:
+        theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
+        theta_temp[:,:p] = self.theta_record[ll+1,:p]
+        theta_temp[:,p] += self.model_link.update_model[key].rvs(self.D)
+        return theta_temp
+                    
 
 
-        # initialize a bunch of temp storage 
-        AA = np.zeros((self.D,self.N,self.K+1)).astype(int) 
-        WW = np.zeros((self.D,self.N))
-        XX = np.zeros((self.D,self.N,self.K+1))
-        RR = np.zeros((self.D,self.N,self.K))
+
         
 
 
