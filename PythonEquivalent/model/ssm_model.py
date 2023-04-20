@@ -90,50 +90,61 @@ class SSModel:
             )
             chain.run_sequential_monte_carlo()
         
-        WW = np.vstack([chain.state.W for d in self.D], axis=0)
+        WW = np.vstack([chain[d].state.W for d in self.D], axis=0)
         # find optimal parameters
         Qh = self.learning_step[0] * np.max(WW[:,:],axis = 1)
         ind_best_param = np.argmax(Qh)
         self.theta_record[0,:] = theta_new[ind_best_param, :]
         
-        # for particle Gibbs
-        for l in tqdm(range(self.L)):
-            # update theta
-            for d in range(self.D):
-                # update theta
-                theta_new = self._sample_theta_from_prior()
-        
+
+        for l in range(self.L):
+            # update chains
+            def updating_chains(model):
+                # for each theta
                 for p, key in enumerate(self._theta_to_estimate):
-                    theta_new[p] = self.search_model[key].rvs(
-                        self._process_theta_at_p(
-                            theta=self.theta_record[l,:], 
-                            p=p
-                            )
+                    self._update_theta_at_p(
+                            p=p,
+                            l=l,
+                            key=key
                         )
-                # put new theta into model
-                self.models_for_each_chain[d].update_model(theta_new)
-                # initialize a chain using this theta
-                chain = Chain(
-                    model_interface=self.models_for_each_chain[d], 
-                    theta=theta_new, 
-                    R=self.R
-                    )
-                chain.run_sequential_monte_carlo()
-                # update Qh
-                Qh[d] = Qh[d] + self.learning_step[l] * (chain.state.W[ind_best_param] - chain.state.W[d])
-            # resample
-            ind_best_param = np.argmax(Qh)
-            self.theta_record[l+1,:] = theta_new[ind_best_param, :]
-    
-    def _process_theta_at_p(
+
+                    # put new theta into model
+                    model.update_model(theta_new)
+                    # initialize a chain using this theta
+                    chain = Chain(
+                        model_interface=model, 
+                        theta=theta_new, 
+                        R=self.R
+                        )
+                    chain.run_particle_MCMC()   
+                    WW = np.vstack([chain[d].state.W for d in self.D], axis=0)
+                    # find optimal parameters
+                    Qh = self.learning_step[l+1] * np.max(WW[:,:],axis = 1)
+                    ind_best_param = np.argmax(Qh)
+                    self.theta_record[l,p] = theta_new[ind_best_param, p]   
+                    # TODO: update input record    
+
+
+                return chain, theta_new
+
+
+            with Pool(processes=self.D) as pool:
+                chain, theta_new = pool.map(
+                    updating_chains, 
+                    self.models_for_each_chain
+                )
+
+
+
+    def _update_theta_at_p(
             self,
             p,
-            ll,
+            l,
             key
         ) -> np.ndarray:
-        theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[ll,:]
-        theta_temp[:,:p] = self.theta_record[ll+1,:p]
-        theta_temp[:,p] += self.model_link.update_model[key].rvs(self.D)
+        theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[l,:]
+        theta_temp[:,:p] = self.theta_record[l+1,:p]
+        theta_temp[:,p] += self.search_model[key].rvs(self.D)
         return theta_temp
                     
 
