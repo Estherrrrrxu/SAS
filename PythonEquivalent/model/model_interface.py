@@ -57,8 +57,8 @@ class ModelInterface:
         # initialize model
         self.model = customized_model
         # initialize input uncertainties
-        self.R = np.zeros((self.T, self.N))
-
+        self.R = np.zeros((self.N, self.T))
+        self.update_model([1, 0.05]) # dummy update
     def _parse_config(
             self,
         ) -> None:
@@ -214,7 +214,7 @@ class ModelInterface:
         Returns:
             np.ndarray: state X at t
         """
-        theta = self.theta.transition_model.values()
+        theta = self.theta.transition_model
         theta_k = theta[0]
         theta_dt = theta[1]
         Xt = (1 -  theta_k * theta_dt) * Xtm1 + theta_k * theta_dt * Rt
@@ -257,7 +257,7 @@ class ModelInterface:
             np.ndarray: Rt
         """
         for t in range(self.T):
-            self.R[t,:] = ss.uniform(self.influx[t]-self.theta.input_model, self.theta.input_model).rvs(self.N)
+            self.R[:,t] = ss.uniform(self.influx[t] - self.theta.input_model, self.theta.input_model).rvs(self.N)
         return 
 
     

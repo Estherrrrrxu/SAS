@@ -1,8 +1,8 @@
 # %%
 from typing import Optional
 from tqdm import tqdm
-from model_interface import ModelInterface
-from utils_chain import Chain
+from model.model_interface import ModelInterface
+from model.utils_chain import Chain
 import numpy as np
 from multiprocessing import Pool
 # %%

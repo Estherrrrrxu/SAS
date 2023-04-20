@@ -1,6 +1,5 @@
 # %%
-from model_interface import ModelInterface
-from ssm_model import SSModel
+from model.model_interface import ModelInterface
 import numpy as np
 import scipy.stats as ss
 from dataclasses import dataclass
@@ -17,8 +16,7 @@ class State:
 class Chain:
     def __init__(self,
         model_interface: ModelInterface,
-        theta: np.ndarray,
-        R: np.ndarray,
+        theta: np.ndarray
     ) -> None:
         """
         Args:
@@ -28,6 +26,8 @@ class Chain:
         # TODO: think about this more
         self.model_interface = model_interface
         self.model_interface.update_model(theta)
+        self.model_interface.input_model()
+        self.R = self.model_interface.R
 
         # get dimension constants
         self.N = self.model_interface.N
@@ -38,10 +38,11 @@ class Chain:
         self.outflux = self.model_interface.outflux
 
         # initialize state
-        self.state = State( R=R,
-                            W=np.log(np.ones(self.N) / self.N),
-                            X=np.zeros((self.N, self.T + 1)),
-                            A=np.zeros((self.N, self.K + 1))
+        self.state = State( 
+            R=self.R,
+            W=np.log(np.ones(self.N) / self.N),
+            X=np.zeros((self.N, self.T + 1)),
+            A=np.zeros((self.N, self.K + 1))
         )
         # initilize state object
         self.state.X[:, 0] = np.ones(self.N) * self.outflux[0] #TODO: change this to init state --> init as a setting in config
@@ -53,7 +54,7 @@ class Chain:
         R = self.state.R
         W = self.state.W
         X = self.state.X
-        A = self.state.A
+        A = self.state.A.astype(int)
 
         # TODO: work on diff k and T later
         for k in range(self.K):
@@ -64,7 +65,7 @@ class Chain:
                                                          Rt=R[A[:,k],k])
 
             wkp1 = W + np.log(
-                self.model_interface.observation_model(Xt=xkp1,
+                self.model_interface.observation_model(Xk=xkp1,
                                                        yt=self.outflux[k])
                             )
             W = wkp1
@@ -116,7 +117,7 @@ class Chain:
             W[~notB] = W[A[B[k+1],k+1]]
             wkp1 = W + np.log(
                         self.model_interface.observation_model(
-                                                            Xt=xkp1,
+                                                            Xk=xkp1,
                                                             yt=self.outflux[k])
                             )
             W = wkp1#/wkp1.sum()
