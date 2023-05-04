@@ -65,32 +65,34 @@ class SSModel:
         for i, key in enumerate(self._theta_to_estimate):
              theta_new[i] = self.prior_model[key].rvs()
         return theta_new
-
-    def run_particle_Gibbs_AR_SAEM(self) -> None:
-        """ Run particle Gibbs with Ancestor Resampling (AR) and Stochastic Approximation of the EM algorithm (SAEM)    
+    
+    def run_particle_Gibbs_AS_SAEM(self) -> None:
+        """ Run particle Gibbs with Ancestor Sampling (AS) and Stochastic Approximation of the EM algorithm (SAEM)    
         """
+        # initialize a bunch of temp storage 
+        AA = np.zeros((self.D,self.N,self.K+1)).astype(int) 
+        WW = np.zeros((self.D,self.N))
+        XX = np.zeros((self.D,self.N,self.K+1))
+        RR = np.zeros((self.D,self.N,self.K))
 
         # initilize D chains
-        def initialize_chains(model):
+        for d in range(self.D):
             theta_new = self._sample_theta_from_prior()
             # put new theta into model
-            model.update_model(theta_new)
+            self.models_for_each_chain[d].update_model(theta_new)
             # initialize a chain using this theta
+            
             chain = Chain(
-                model_interface=model, 
+                model_interface=self.models_for_each_chain[d], 
                 theta=theta_new, 
                 R=self.R
                 )
-            return chain, theta_new
-        
-        with Pool(processes=self.D) as pool:
-            chain, theta_new = pool.map(
-                initialize_chains, 
-                self.models_for_each_chain
-            )
             chain.run_sequential_monte_carlo()
-        
-        WW = np.vstack([chain[d].state.W for d in self.D], axis=0)
+            AA[d,:,:] = chain.state.A
+            WW[d,:] = chain.state.W
+            XX[d,:,:] = chain.state.X
+            RR[d,:,:] = chain.state.R
+
         # find optimal parameters
         Qh = self.learning_step[0] * np.max(WW[:,:],axis = 1)
         ind_best_param = np.argmax(Qh)
@@ -98,41 +100,106 @@ class SSModel:
         
 
         for l in range(self.L):
-            # update chains
-            def updating_chains(model):
-                # for each theta
-                for p, key in enumerate(self._theta_to_estimate):
-                    self._update_theta_at_p(
-                            p=p,
-                            l=l,
-                            key=key
-                        )
-
+            # for each theta
+            for p, key in enumerate(self._theta_to_estimate):
+                self._update_theta_at_p(
+                        p=p,
+                        l=l,
+                        key=key
+                    )
+                # update chains
+                for d in range(self.D):
                     # put new theta into model
-                    model.update_model(theta_new)
+                    self.models_for_each_chain[d].update_model(theta_new)
                     # initialize a chain using this theta
                     chain = Chain(
-                        model_interface=model, 
+                        model_interface=self.models_for_each_chain[d], 
                         theta=theta_new, 
                         R=self.R
                         )
                     chain.run_particle_MCMC()   
-                    WW = np.vstack([chain[d].state.W for d in self.D], axis=0)
-                    # find optimal parameters
-                    Qh = self.learning_step[l+1] * np.max(WW[:,:],axis = 1)
-                    ind_best_param = np.argmax(Qh)
-                    self.theta_record[l,p] = theta_new[ind_best_param, p]   
-                    # TODO: update input record    
+                    AA[d,:,:] = chain.state.A
+                    WW[d,:] = chain.state.W
+                    XX[d,:,:] = chain.state.X
+                    RR[d,:,:] = chain.state.R
+                    
+                # find optimal parameters
+                Qh = self.learning_step[l+1] * np.max(WW[:,:],axis = 1)
+                ind_best_param = np.argmax(Qh)
+                self.theta_record[l,p] = theta_new[ind_best_param, p]   
+                # TODO: update input record    
 
 
-                return chain, theta_new
 
 
-            with Pool(processes=self.D) as pool:
-                chain, theta_new = pool.map(
-                    updating_chains, 
-                    self.models_for_each_chain
-                )
+
+    # def run_particle_Gibbs_AS_SAEM_parallel(self) -> None:
+    #     """ Run particle Gibbs with Ancestor Sampling (AS) and Stochastic Approximation of the EM algorithm (SAEM)    
+    #     """
+
+    #     # initilize D chains
+    #     def initialize_chains(model):
+    #         theta_new = self._sample_theta_from_prior()
+    #         # put new theta into model
+    #         model.update_model(theta_new)
+    #         # initialize a chain using this theta
+    #         chain = Chain(
+    #             model_interface=model, 
+    #             theta=theta_new, 
+    #             R=self.R
+    #             )
+    #         return chain, theta_new
+        
+    #     with Pool(processes=self.D) as pool:
+    #         chain, theta_new = pool.map(
+    #             initialize_chains, 
+    #             self.models_for_each_chain
+    #         )
+    #         chain.run_sequential_monte_carlo()
+        
+    #     WW = np.vstack([chain[d].state.W for d in self.D], axis=0)
+    #     # find optimal parameters
+    #     Qh = self.learning_step[0] * np.max(WW[:,:],axis = 1)
+    #     ind_best_param = np.argmax(Qh)
+    #     self.theta_record[0,:] = theta_new[ind_best_param, :]
+        
+
+    #     for l in range(self.L):
+    #         # update chains
+    #         def updating_chains(model):
+    #             # for each theta
+    #             for p, key in enumerate(self._theta_to_estimate):
+    #                 self._update_theta_at_p(
+    #                         p=p,
+    #                         l=l,
+    #                         key=key
+    #                     )
+
+    #                 # put new theta into model
+    #                 model.update_model(theta_new)
+    #                 # initialize a chain using this theta
+    #                 chain = Chain(
+    #                     model_interface=model, 
+    #                     theta=theta_new, 
+    #                     R=self.R
+    #                     )
+    #                 chain.run_particle_MCMC()   
+    #                 WW = np.vstack([chain[d].state.W for d in self.D], axis=0)
+    #                 # find optimal parameters
+    #                 Qh = self.learning_step[l+1] * np.max(WW[:,:],axis = 1)
+    #                 ind_best_param = np.argmax(Qh)
+    #                 self.theta_record[l,p] = theta_new[ind_best_param, p]   
+    #                 # TODO: update input record    
+
+
+    #             return chain, theta_new
+
+
+    #         with Pool(processes=self.D) as pool:
+    #             chain, theta_new = pool.map(
+    #                 updating_chains, 
+    #                 self.models_for_each_chain
+    #             )
 
 
 

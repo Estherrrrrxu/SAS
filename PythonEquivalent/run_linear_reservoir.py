@@ -26,11 +26,11 @@ chain = Chain(
     theta=[1, 0.00005]
 )
 # %%
-chain.run_sequential_monte_carlo()
-plot_MLE(chain.state,df,left = 0, right = 50)
+# chain.run_sequential_monte_carlo()
+# plot_MLE(chain.state,df,left = 0, right = 50)
 # %%
-chain.run_particle_MCMC()
-plot_MLE(chain.state,df,left = 0, right = 50)
+# chain.run_particle_MCMC()
+# plot_MLE(chain.state,df,left = 0, right = 50)
 
 
 # %%
@@ -41,7 +41,7 @@ model = SSModel(
     len_parameter_MCMC = 20,
     learning_step = 0.75
 )
-model.run_particle_Gibbs_AR_SAEM()
+model.run_particle_Gibbs_AS_SAEM()
 # %%
 fig, ax = plt.subplots(2,1,figsize=(10,5))
 ax[0].plot(model.theta_record[:,0])

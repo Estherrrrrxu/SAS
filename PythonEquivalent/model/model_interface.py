@@ -204,7 +204,7 @@ class ModelInterface:
 
         Currently set up for linear reservoirmodel:
             xt = (1 - k * delta_t) * x_{t-1} + k * delta_t * rt,
-                where rt = ut - N(0, theta_r)
+                where rt = ut - U(0, theta_r)
 
         Args:
             Xtm1 (np.ndarray): state X at t-1
