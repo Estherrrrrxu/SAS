@@ -11,11 +11,22 @@ T = 50
 interval = 1
 df = df[:T:interval]
 # %%
+# define theta_init
+theta_init = {
+    'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.5,0.3], 
+                            "search_dis": "normal", "search_params":[0.05]
+                        },
+                    'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
+                            "search_dis": "normal", "search_params":[0.00001],
+                        }
+                    },
+    'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
+}
 # initialize model interface settings
 model_interface = ModelInterface(
     df = df,
     customized_model = None,
-    theta_init = None,
+    theta_init = theta_init,
     config = None,
     num_input_scenarios = 5
 )
