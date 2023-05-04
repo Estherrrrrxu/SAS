@@ -85,7 +85,7 @@ class Chain:
         R = self.state.R
         W = self.state.W
         X = self.state.X
-        A = self.state.A
+        A = self.state.A.astype(int)
 
         # sample an ancestral path based on final weight
         B = self._find_traj(A, W)

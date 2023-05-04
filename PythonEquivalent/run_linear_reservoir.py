@@ -17,14 +17,13 @@ model_interface = ModelInterface(
     customized_model = None,
     theta_init = None,
     config = None,
-    num_input_scenarios = 10
+    num_input_scenarios = 5
 )
 # %%
-
-chain = Chain(
-    model_interface = model_interface,
-    theta=[1, 0.00005]
-)
+# chain = Chain(
+#     model_interface = model_interface,
+#     theta=[1, 0.00005]
+# )
 # %%
 # chain.run_sequential_monte_carlo()
 # plot_MLE(chain.state,df,left = 0, right = 50)
@@ -37,9 +36,9 @@ chain = Chain(
 # run PMCMC
 model = SSModel(
     model_interface = model_interface,
-    num_parameter_samples = 15,
-    len_parameter_MCMC = 20,
-    learning_step = 0.75
+    num_parameter_samples = 10,
+    len_parameter_MCMC = 15,
+    learning_step = 0.8
 )
 model.run_particle_Gibbs_AS_SAEM()
 # %%

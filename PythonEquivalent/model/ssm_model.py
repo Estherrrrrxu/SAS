@@ -41,8 +41,7 @@ class SSModel:
         # store necessary models
         self.prior_model = model_interface.prior_model
         self.search_model = model_interface.search_model
-        self.R = model_interface.input_model()
-     
+
         # initialize record for parameter and input
         self.theta_record = np.zeros(
             (self.L+1, self._num_theta_to_estimate)
@@ -74,19 +73,21 @@ class SSModel:
         WW = np.zeros((self.D,self.N))
         XX = np.zeros((self.D,self.N,self.K+1))
         RR = np.zeros((self.D,self.N,self.K))
+        theta_combinations = np.zeros((self.D, self._num_theta_to_estimate)) 
 
         # initilize D chains
         for d in range(self.D):
             theta_new = self._sample_theta_from_prior()
+            theta_combinations[d,:] = theta_new
             # put new theta into model
             self.models_for_each_chain[d].update_model(theta_new)
             # initialize a chain using this theta
             
             chain = Chain(
                 model_interface=self.models_for_each_chain[d], 
-                theta=theta_new, 
-                R=self.R
+                theta=theta_new
                 )
+            
             chain.run_sequential_monte_carlo()
             AA[d,:,:] = chain.state.A
             WW[d,:] = chain.state.W
@@ -96,13 +97,13 @@ class SSModel:
         # find optimal parameters
         Qh = self.learning_step[0] * np.max(WW[:,:],axis = 1)
         ind_best_param = np.argmax(Qh)
-        self.theta_record[0,:] = theta_new[ind_best_param, :]
+        self.theta_record[0,:] = theta_combinations[ind_best_param, :]
         
 
-        for l in range(self.L):
+        for l in tqdm(range(self.L)):
             # for each theta
             for p, key in enumerate(self._theta_to_estimate):
-                self._update_theta_at_p(
+                theta_new = self._update_theta_at_p(
                         p=p,
                         l=l,
                         key=key
@@ -110,12 +111,11 @@ class SSModel:
                 # update chains
                 for d in range(self.D):
                     # put new theta into model
-                    self.models_for_each_chain[d].update_model(theta_new)
+                    self.models_for_each_chain[d].update_model(theta_new[d,:])
                     # initialize a chain using this theta
                     chain = Chain(
                         model_interface=self.models_for_each_chain[d], 
-                        theta=theta_new, 
-                        R=self.R
+                        theta=theta_new
                         )
                     chain.run_particle_MCMC()   
                     AA[d,:,:] = chain.state.A
@@ -126,7 +126,7 @@ class SSModel:
                 # find optimal parameters
                 Qh = self.learning_step[l+1] * np.max(WW[:,:],axis = 1)
                 ind_best_param = np.argmax(Qh)
-                self.theta_record[l,p] = theta_new[ind_best_param, p]   
+                self.theta_record[l+1,p] = theta_new[ind_best_param, p]   
                 # TODO: update input record    
 
 

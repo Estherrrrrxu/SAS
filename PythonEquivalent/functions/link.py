@@ -98,7 +98,7 @@ class ModelLink:
             # set default theta
             theta_init = {
                 'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.2,0.3], 
-                                        "update_dis": "normal", "update_params":[0.05]
+                                        "update_dis": "normal", "update_params":[0.005]
                                     },
                                 'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
                                         "update_dis": "normal", "update_params":[0.00001],

@@ -58,7 +58,7 @@ class ModelInterface:
         self.model = customized_model
         # initialize input uncertainties
         self.R = np.zeros((self.N, self.T))
-        self.update_model([1, 0.05]) # dummy update
+        self.update_model([1, 0.0005]) # dummy update
     def _parse_config(
             self,
         ) -> None:

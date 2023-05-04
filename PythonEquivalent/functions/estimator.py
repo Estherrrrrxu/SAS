@@ -65,7 +65,7 @@ class SSModel(ABC):
         A[:, 0] = np.arange(self.N)
 
         # other states
-        R =  # input uncertainty
+        R = np.zeros((self.N, self.K))
         W = np.log(np.ones(self.N) / self.N) # last weight, initial weight on particles are all equal
 
         # TODO: work on diff k and T later
