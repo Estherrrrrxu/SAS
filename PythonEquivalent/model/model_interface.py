@@ -152,11 +152,17 @@ class ModelInterface:
             current_theta = self._theta_init['to_estimate'][key]
             # for prior distribution
             if current_theta['prior_dis'] == 'normal':
-                self.prior_model[key] = ss.norm(loc = current_theta['prior_params'][0], 
-                                                scale = current_theta['prior_params'][1])
+                self.prior_model[key] = ss.norm(
+                    loc = current_theta['prior_params'][0], 
+                    scale = current_theta['prior_params'][1]
+                                        )
             elif current_theta['prior_dis'] == 'uniform':
-                self.prior_model[key] = ss.uniform(loc = current_theta['prior_params'][0],
-                                                    scale = (current_theta['prior_params'][1] - current_theta['prior_params'][0]))
+                self.prior_model[key] = ss.uniform(
+                    loc = current_theta['prior_params'][0],
+                    scale = (
+                    current_theta['prior_params'][1] - current_theta['prior_params'][0]
+                            )
+                                                )
             else:
                 raise ValueError("This prior distribution is not implemented yet")
             
@@ -261,3 +267,4 @@ class ModelInterface:
         return 
 
     
+# %%

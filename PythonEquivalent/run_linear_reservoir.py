@@ -16,7 +16,7 @@ theta_init = {
     'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.5,0.3], 
                             "search_dis": "normal", "search_params":[0.05]
                         },
-                    'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
+                    'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0001], 
                             "search_dis": "normal", "search_params":[0.00001],
                         }
                     },
@@ -28,7 +28,7 @@ model_interface = ModelInterface(
     customized_model = None,
     theta_init = theta_init,
     config = None,
-    num_input_scenarios = 5
+    num_input_scenarios = 20
 )
 # %%
 # chain = Chain(
@@ -45,8 +45,8 @@ model_interface = ModelInterface(
 # run PMCMC
 model = SSModel(
     model_interface = model_interface,
-    num_parameter_samples = 10,
-    len_parameter_MCMC = 15,
+    num_parameter_samples = 15,
+    len_parameter_MCMC = 30,
     learning_step = 0.75
 )
 model.run_particle_Gibbs_AS_SAEM()

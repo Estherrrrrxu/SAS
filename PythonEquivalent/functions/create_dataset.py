@@ -1,3 +1,4 @@
+# %%
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -5,7 +6,6 @@ import numpy as np
 import scipy.stats as ss
 
 from typing import List
-
 # %%
 def create_nonlinear_drift_time_series(
         T: int = 100, 
