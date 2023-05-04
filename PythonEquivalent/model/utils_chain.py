@@ -28,7 +28,6 @@ class Chain:
         self.model_interface.update_model(theta)
         self.model_interface.input_model()
         self.R = self.model_interface.R
-        print(self.R)
 
         # get dimension constants
         self.N = self.model_interface.N
