@@ -24,10 +24,8 @@ model_interface = ModelInterface(
 #     model_interface = model_interface,
 #     theta=[1, 0.00005]
 # )
-# %%
 # chain.run_sequential_monte_carlo()
 # plot_MLE(chain.state,df,left = 0, right = 50)
-# %%
 # chain.run_particle_MCMC()
 # plot_MLE(chain.state,df,left = 0, right = 50)
 
@@ -38,7 +36,7 @@ model = SSModel(
     model_interface = model_interface,
     num_parameter_samples = 10,
     len_parameter_MCMC = 15,
-    learning_step = 0.8
+    learning_step = 0.75
 )
 model.run_particle_Gibbs_AS_SAEM()
 # %%
