@@ -265,6 +265,13 @@ class ModelInterface:
         for t in range(self.T):
             self.R[:,t] = ss.uniform(self.influx[t] - self.theta.input_model, self.theta.input_model).rvs(self.N)
         return 
+    
+    def state_model(
+            self,
+            x_prime,
+            xkp1
+    ):
+        return ss.norm(x_prime,0.000005).pdf(xkp1)
 
     
 # %%

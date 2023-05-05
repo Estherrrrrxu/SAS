@@ -69,25 +69,25 @@ class SSModel:
         """ Run particle Gibbs with Ancestor Sampling (AS) and Stochastic Approximation of the EM algorithm (SAEM)    
         """
         # initialize a bunch of temp storage 
-        AA = np.zeros((self.D,self.N,self.K+1)).astype(int) 
+        # AA = np.zeros((self.D,self.N,self.K+1)).astype(int) 
         WW = np.zeros((self.D,self.N))
-        XX = np.zeros((self.D,self.N,self.K+1))
-        RR = np.zeros((self.D,self.N,self.K))
+        # XX = np.zeros((self.D,self.N,self.K+1))
+        # RR = np.zeros((self.D,self.N,self.K))
         theta_new = np.zeros((self.D, self._num_theta_to_estimate)) 
+        chains = [Chain(
+            model_interface=self.models_for_each_chain[d],
+            theta=theta_new[d,:]
+        ) for d in self. D]
 
         # initilize D chains
         for d in range(self.D):
             theta_new[d,:] = self._sample_theta_from_prior()    
-            chain = Chain(
-                model_interface=self.models_for_each_chain[d], 
-                theta=theta_new[d,:] 
-                )
-            
-            chain.run_sequential_monte_carlo()
-            AA[d,:,:] = chain.state.A
-            WW[d,:] = chain.state.W
-            XX[d,:,:] = chain.state.X
-            RR[d,:,:] = chain.state.R
+            chains[d].model_interface.update_model(theta_new[d,:])      
+            chains[d].run_sequential_monte_carlo()
+            # AA[d,:,:] = chain.state.A
+            WW[d,:] = chains[d].state.W
+            # XX[d,:,:] = chain.state.X
+            # RR[d,:,:] = chain.state.R
 
         # find optimal parameters
         Qh = self.learning_step[0] * np.max(WW[:,:],axis = 1)
@@ -106,15 +106,12 @@ class SSModel:
                 # update chains
                 for d in range(self.D):
                     # initialize a chain using this theta
-                    chain = Chain(
-                        model_interface=self.models_for_each_chain[d], 
-                        theta=theta_new[d,:]
-                        )
-                    chain.run_particle_MCMC()   
-                    AA[d,:,:] = chain.state.A
-                    WW[d,:] = chain.state.W
-                    XX[d,:,:] = chain.state.X
-                    RR[d,:,:] = chain.state.R
+                    chains[d].model_interface.update_model(theta_new[d,:])
+                    chains[d].run_particle_MCMC()   
+                    # AA[d,:,:] = chain.state.A
+                    WW[d,:] = chains[d].state.W
+                    # XX[d,:,:] = chain.state.X
+                    # RR[d,:,:] = chain.state.R
                     
                 # find optimal parameters
                 Qh = self.learning_step[l+1] * np.max(WW[:,:],axis = 1)
@@ -198,10 +195,20 @@ class SSModel:
 
     def _update_theta_at_p(
             self,
-            p,
-            l,
-            key
+            p: int,
+            l: int,
+            key: str,
         ) -> np.ndarray:
+        """Generate random p-th theta
+
+        Args:
+            p (int): index of theta to update
+            l (int): index of current MCMC chain
+            key (str): key of theta to update
+        
+        Returns:
+            np.ndarray: new theta candidates
+        """
         theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[l,:]
         theta_temp[:,:p] = self.theta_record[l+1,:p]
         theta_temp[:,p] += self.search_model[key].rvs(self.D)

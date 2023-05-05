@@ -1,6 +1,6 @@
 05-04-2023
-- Move input generation to model interface
-- Optimize chain and saving part
+- Move input generation to model interface @done
+- Optimize chain part @done
 - Test linear reservoir at a different segment
 - Develop better algo for searching theta_obs
     - Bounded search
