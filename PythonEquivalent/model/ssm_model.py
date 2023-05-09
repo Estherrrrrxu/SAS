@@ -77,7 +77,7 @@ class SSModel:
         chains = [Chain(
             model_interface=self.models_for_each_chain[d],
             theta=theta_new[d,:]
-        ) for d in self. D]
+        ) for d in range(self.D)]
 
         # initilize D chains
         for d in range(self.D):

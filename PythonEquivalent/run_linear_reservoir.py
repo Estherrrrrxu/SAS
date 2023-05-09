@@ -7,9 +7,30 @@ from functions.utils import plot_MLE
 import matplotlib.pyplot as plt
 # %%
 df = pd.read_csv("Data/linear_reservoir.csv", index_col= 0)
-T = 50
+st = 0
+et = 50
 interval = 1
-df = df[:T:interval]
+df = df[st:et:interval]
+
+fig, ax = plt.subplots(2, 1, figsize=(8,5))
+ax[0].bar(df.index, df['J_true'], 
+          width = 1, color = 'b', alpha = 0.5, 
+          label = 'Truth')
+ax[0].plot(df['J_obs'], '*', color = 'b',label = 'Observation')
+ax[0].invert_yaxis()
+ax[0].set_ylabel("Precipitation [mm]")
+ax[0].legend(frameon = False)
+ax[0].set_xticks([])
+ax[0].set_title("Preciptation")
+
+ax[1].plot(df['Q_true'], color = 'b', alpha = 0.5, label = 'Truth')    
+ax[1].plot(df['Q_obs'], '*', color = 'b', label = 'Observation')
+ax[1].set_ylabel("Discharge [mm]")
+ax[1].set_xlabel("Time [day]")
+ax[1].legend(frameon = False)
+ax[1].set_title("Discharge")
+
+
 # %%
 # define theta_init
 theta_init = {
