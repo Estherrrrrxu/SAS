@@ -1,18 +1,20 @@
 05-04-2023
 - Move input generation to model interface @done
 - Optimize chain part @done
-- Test linear reservoir at a different segment
+- Test linear reservoir at a different segment @done
+- And different time interval @done
 - Develop better algo for searching theta_obs
     - search bounded by prior, properly implement this 
     - test on two linear reservoir pieces again
     - make the code look like what I have for SigROCKET
-- Design non-linear cases
-    - parallel reservoirs
-    - cascade reservoirs
 - Add records 
     - input_records
     - state_records
     - output_records
+- Make good plot to present information
+- Design non-linear cases
+    - parallel reservoirs
+    - cascade reservoirs
 - Clean up old files to reflect input/state/output
     - files in functions folder
     - post_comp.py
