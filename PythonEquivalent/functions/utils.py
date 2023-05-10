@@ -44,9 +44,10 @@ def plot_MLE(state,df,left = 0, right = 500):
     # ------------
     plt.figure()
     plt.subplot(2,1,1)
-    plt.plot(df['J_true'],label = "J true")
+    plt.bar(df.index, df['J_true'],label = "J true")
     plt.plot(J_obs,"*",label = "J obs")
     plt.plot(np.linspace(0,T,len(MLE_R)),MLE_R,'r:', label = "One Traj/MLE")
+    plt.gca().invert_yaxis()
     plt.legend(frameon = False)
     plt.legend(frameon = False)
     plt.xlim([left,right])
@@ -61,3 +62,4 @@ def plot_MLE(state,df,left = 0, right = 500):
     plt.xlim([left,right])
     plt.tight_layout()
     return MLE
+# %%

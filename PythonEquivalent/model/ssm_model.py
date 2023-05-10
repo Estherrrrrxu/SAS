@@ -46,11 +46,19 @@ class SSModel:
         self.theta_record = np.zeros(
             (self.L+1, self._num_theta_to_estimate)
             )
+        
         # TODO: assume one input for now
         self.input_record = np.zeros(
-            (self.L+1, self._num_theta_to_estimate, self.T)
+            (self.L+1, self.T)
             )
-        # TODO: write output and state record
+
+        self.state_record = np.zeros(
+            (self.L+1, self.T+1)
+            )
+        # TODO: Add output record
+        self.output_record = np.zeros(
+            (self.L+1, self.T)
+            )
         
 
 
@@ -69,10 +77,7 @@ class SSModel:
         """ Run particle Gibbs with Ancestor Sampling (AS) and Stochastic Approximation of the EM algorithm (SAEM)    
         """
         # initialize a bunch of temp storage 
-        # AA = np.zeros((self.D,self.N,self.K+1)).astype(int) 
         WW = np.zeros((self.D,self.N))
-        # XX = np.zeros((self.D,self.N,self.K+1))
-        # RR = np.zeros((self.D,self.N,self.K))
         theta_new = np.zeros((self.D, self._num_theta_to_estimate)) 
         chains = [Chain(
             model_interface=self.models_for_each_chain[d],
@@ -84,16 +89,17 @@ class SSModel:
             theta_new[d,:] = self._sample_theta_from_prior()    
             chains[d].model_interface.update_model(theta_new[d,:])      
             chains[d].run_sequential_monte_carlo()
-            # AA[d,:,:] = chain.state.A
             WW[d,:] = chains[d].state.W
-            # XX[d,:,:] = chain.state.X
-            # RR[d,:,:] = chain.state.R
 
         # find optimal parameters
         Qh = self.learning_step[0] * np.max(WW[:,:],axis = 1)
         ind_best_param = np.argmax(Qh)
         self.theta_record[0,:] = theta_new[ind_best_param, :]
-        
+
+        best_model = chains[ind_best_param]
+        B = best_model._find_traj(best_model.state.A, best_model.state.W)
+        self.input_record[0,:] = best_model._get_R_traj(best_model.state.R, B)
+        self.state_record[0,:] = best_model._get_X_traj(best_model.state.X, B)
 
         for l in tqdm(range(self.L)):
             # for each theta
@@ -114,12 +120,13 @@ class SSModel:
                     # RR[d,:,:] = chain.state.R
                     
                 # find optimal parameters
-                Qh = self.learning_step[l+1] * np.max(WW[:,:],axis = 1)
+                Qh = self.learning_step[l+1] * np.max(WW[:,:],axis = 1) * np.log(self.search_model[key].pdf(theta_new[:,p]))
                 ind_best_param = np.argmax(Qh)
                 self.theta_record[l+1,p] = theta_new[ind_best_param, p]   
-                # TODO: update input record    
-
-
+                best_model = chains[ind_best_param]  
+                B = best_model._find_traj(best_model.state.A, best_model.state.W)
+                self.input_record[l+1,:] = best_model._get_R_traj(best_model.state.R, B)
+                self.state_record[l+1,:] = best_model._get_X_traj(best_model.state.X, B)
 
 
 

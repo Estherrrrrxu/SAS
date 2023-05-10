@@ -59,6 +59,9 @@ class ModelInterface:
         # initialize input uncertainties
         self.R = np.zeros((self.N, self.T))
         self.update_model([1, 0.0005]) # dummy update
+
+        self.initial_state = self.outflux[0]
+
     def _parse_config(
             self,
         ) -> None:
@@ -226,6 +229,7 @@ class ModelInterface:
         Xt = (1 -  theta_k * theta_dt) * Xtm1 + theta_k * theta_dt * Rt
         return Xt
     
+    # TODO: observation model and observation likelihood should be separated
     def observation_model(self, 
                         Xk: np.ndarray,
                         yt: np.ndarray
@@ -246,8 +250,9 @@ class ModelInterface:
         Returns:
             np.ndarray: p(y|y_hat, sig_v)
         """
+        theta = self.theta.observation_model
         yht = Xk
-        return ss.norm(yht).pdf(yt)
+        return ss.norm(yht, theta).pdf(yt)
     
     def input_model(
             self
@@ -263,7 +268,9 @@ class ModelInterface:
             np.ndarray: Rt
         """
         for t in range(self.T):
-            self.R[:,t] = ss.uniform(self.influx[t] - self.theta.input_model, self.theta.input_model).rvs(self.N)
+            self.R[:,t] = ss.uniform(
+                self.influx[t] - self.theta.input_model, self.theta.input_model
+                ).rvs(self.N)
         return 
     
     def state_model(
@@ -271,7 +278,7 @@ class ModelInterface:
             x_prime,
             xkp1
     ):
-        return ss.norm(x_prime,0.000005).pdf(xkp1)
+        return ss.norm(x_prime, 0.000005).pdf(xkp1)
 
     
 # %%

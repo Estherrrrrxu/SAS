@@ -28,6 +28,7 @@ class Chain:
         self.model_interface.update_model(theta)
         self.model_interface.input_model()
         self.R = self.model_interface.R
+        self._state_init = self.model_interface.initial_state
 
         # get dimension constants
         self.N = self.model_interface.N
@@ -38,23 +39,21 @@ class Chain:
         self.outflux = self.model_interface.outflux
 
         # initialize state
-        self.state = State( 
+        self.state_init = State( 
             R=self.R,
             W=np.log(np.ones(self.N) / self.N),
-            X=np.zeros((self.N, self.T + 1)),
-            A=np.zeros((self.N, self.K + 1))
+            X=np.ones((self.N, self.T + 1)) * self._state_init,
+            A=(np.ones((self.N, self.K + 1)) * np.arange(self.N)).astype(int)
         )
-        # initilize state object
-        self.state.X[:, 0] = np.ones(self.N) * self.outflux[0] #TODO: change this to init state --> init as a setting in config
-        self.state.A[:, 0] = np.arange(self.N)
+
 
     def run_sequential_monte_carlo(self) -> None:
         """Run sequential Monte Carlo
         """
-        R = self.state.R
-        W = self.state.W
-        X = self.state.X
-        A = self.state.A.astype(int)
+        R = self.state_init.R
+        W = self.state_init.W
+        X = self.state_init.X
+        A = self.state_init.A
 
         # TODO: work on diff k and T later
         for k in range(self.K):
@@ -72,20 +71,20 @@ class Chain:
             X[:,k+1] = xkp1
             A[:,k+1] = _inverse_pmf(A[:,k],W, num = self.N)
 
-        self.state = State( X=X,
-                            A=A, 
-                            W=W, 
-                            R=R
-                        )      
+        self.state = State(X=X, A=A, W=W, R=R)  
+        
+        # generate new set of R
+        self.model_interface.input_model()
+        self.R = self.model_interface.R    
         return 
 
     def run_particle_MCMC(self) -> None:
         """Run particle MCMC
         """
-        R = self.state.R
-        W = self.state.W
-        X = self.state.X
-        A = self.state.A.astype(int)
+        R = self.state_init.R
+        W = self.state_init.W
+        X = self.state_init.X
+        A = self.state_init.A
 
         # sample an ancestral path based on final weight
         B = self._find_traj(A, W)
@@ -124,7 +123,10 @@ class Chain:
                             )
             W = wkp1#/wkp1.sum()
         
-        self.state = State(X = X, A = A, W = W, R = R)             
+        self.state = State(X = X, A = A, W = W, R = R)  
+        # generate new set of R
+        self.model_interface.input_model()
+        self.R = self.model_interface.R           
         return
 
     def _find_traj(self, A: np.ndarray, W: np.ndarray) -> np.ndarray:
@@ -175,3 +177,5 @@ class Chain:
         for i in range(self.K):
             traj_R[i] = R[B[i+1],i]
         return  traj_R
+
+# %%
