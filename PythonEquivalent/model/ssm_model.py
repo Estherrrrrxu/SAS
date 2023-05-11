@@ -55,9 +55,9 @@ class SSModel:
         self.state_record = np.zeros(
             (self.L+1, self.T+1)
             )
-        # TODO: Add output record
+
         self.output_record = np.zeros(
-            (self.L+1, self.T)
+            (self.L+1, self.K)
             )
         
 
@@ -100,6 +100,7 @@ class SSModel:
         B = best_model._find_traj(best_model.state.A, best_model.state.W)
         self.input_record[0,:] = best_model._get_R_traj(best_model.state.R, B)
         self.state_record[0,:] = best_model._get_X_traj(best_model.state.X, B)
+        self.output_record[0,:] = best_model._get_Y_traj(best_model.state.Y, B)
 
         for l in tqdm(range(self.L)):
             # for each theta
@@ -127,6 +128,7 @@ class SSModel:
                 B = best_model._find_traj(best_model.state.A, best_model.state.W)
                 self.input_record[l+1,:] = best_model._get_R_traj(best_model.state.R, B)
                 self.state_record[l+1,:] = best_model._get_X_traj(best_model.state.X, B)
+                self.output_record[l+1,:] = best_model._get_Y_traj(best_model.state.Y, B)
 
 
 
@@ -220,13 +222,6 @@ class SSModel:
         theta_temp[:,:p] = self.theta_record[l+1,:p]
         theta_temp[:,p] += self.search_model[key].rvs(self.D)
         return theta_temp
-                    
-
-
-
-        
-
-
-
+                
  
 # %%

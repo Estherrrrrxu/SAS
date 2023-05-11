@@ -231,8 +231,7 @@ class ModelInterface:
     
     # TODO: observation model and observation likelihood should be separated
     def observation_model(self, 
-                        Xk: np.ndarray,
-                        yt: np.ndarray
+                        Xk: np.ndarray
         ) -> np.ndarray:
         """Observation likelihood g_theta
 
@@ -244,15 +243,31 @@ class ModelInterface:
                             where y_hat(t) = x(t) 
 
         Args:
-            Xt (np.ndarray): state X at time t
-            yt (np.ndarray): observed y at time t
+            Xk (np.ndarray): state X at time k
+            yhk (np.ndarray): estimated y_hat at time k
 
         Returns:
-            np.ndarray: p(y|y_hat, sig_v)
+            np.ndarray: y_hat at time k
+        """
+        yhk = Xk
+        return yhk
+    
+    def observation_model_likelihood(self,
+                                    yhk: np.ndarray,
+                                    yk: np.ndarray
+        ) -> np.ndarray:
+        """get observation likelihood p(y|y_hat, sig_v)
+
+        Args:
+            yhk (np.ndarray): observation y_hat at time k
+            yk (np.ndarray): observation y at time k
+
+        Returns:
+            np.ndarray: the likelihood of observation
         """
         theta = self.theta.observation_model
-        yht = Xk
-        return ss.norm(yht, theta).pdf(yt)
+        return ss.norm(yhk, theta).pdf(yk)
+
     
     def input_model(
             self
@@ -278,6 +293,16 @@ class ModelInterface:
             x_prime,
             xkp1
     ):
+        """State model for linear reservoir
+        
+        Args:
+            x_prime (np.ndarray): state of ref trajectory at time t+1
+            xkp1 (np.ndarray): estimated state at time t+1
+            
+        Returns:
+            np.ndarray: likelihood of estimated state around ref trajectory
+        """
+        # TODO: change this super small number to a parameter
         return ss.norm(x_prime, 0.000005).pdf(xkp1)
 
     

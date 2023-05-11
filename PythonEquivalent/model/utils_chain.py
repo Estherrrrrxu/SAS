@@ -10,9 +10,9 @@ class State:
     """ Class for keep track of state at each timestep"""
     R: np.ndarray  # [T, N], input scenarios
     W: np.ndarray  # [N], log weight at each observed timestep
-    X: np.ndarray  # [T+1, N], state at each timestep
-    A: np.ndarray  # [T+1, N], ancestor at each timestep
-
+    X: np.ndarray  # [N, T+1], state at each timestep
+    A: np.ndarray  # [N, K+1], ancestor at each timestep
+    Y: np.ndarray  # [N, K], observation at each timestep
 class Chain:
     def __init__(self,
         model_interface: ModelInterface,
@@ -45,6 +45,7 @@ class Chain:
             R=self.R,
             W=np.log(np.ones(self.N) / self.N),
             X=np.ones((self.N, self.T + 1)) * self._state_init,
+            Y=np.zeros((self.N, self.K)),
             A=A
         )
 
@@ -56,6 +57,7 @@ class Chain:
         W = self.state_init.W
         X = self.state_init.X
         A = self.state_init.A
+        Y = self.state_init.Y
 
         # TODO: work on diff k and T later
         for k in range(self.K):
@@ -65,15 +67,19 @@ class Chain:
             xkp1 = self.model_interface.transition_model(Xtm1=xk,
                                                          Rt=R[A[:,k],k])
 
+            Y[:,k] = self.model_interface.observation_model(Xk=X[:,k+1])
             wkp1 = W + np.log(
-                self.model_interface.observation_model(Xk=xkp1,
-                                                       yt=self.outflux[k])
+                self.model_interface.observation_model_likelihood(
+                                                        yhk=Y[:,k],
+                                                        yk=self.outflux[k]
+                                                        )
                             )
             W = wkp1
             X[:,k+1] = xkp1
             A[:,k+1] = _inverse_pmf(A[:,k],W, num = self.N)
 
-        self.state = State(X=X, A=A, W=W, R=R)  
+
+        self.state = State(X=X, A=A, W=W, R=R, Y=Y)  
         
         # generate new set of R
         self.model_interface.input_model()
@@ -87,6 +93,7 @@ class Chain:
         W = self.state_init.W
         X = self.state_init.X
         A = self.state_init.A
+        Y = self.state_init.Y
 
         # sample an ancestral path based on final weight
         B = self._find_traj(A, W)
@@ -118,14 +125,16 @@ class Chain:
             R[:,k] = rr       
             W[notB] = W[A[:,k+1][notB]]
             W[~notB] = W[A[B[k+1],k+1]]
+            Y[:,k] = self.model_interface.observation_model(Xk=X[:,k+1])
             wkp1 = W + np.log(
-                        self.model_interface.observation_model(
-                                                            Xk=xkp1,
-                                                            yt=self.outflux[k])
+                self.model_interface.observation_model_likelihood(
+                                                        yhk=Y[:,k],
+                                                        yk=self.outflux[k]
+                                                        )
                             )
             W = wkp1#/wkp1.sum()
         
-        self.state = State(X = X, A = A, W = W, R = R)  
+        self.state = State(X=X, A=A, W=W, R=R, Y=Y)  
         # generate new set of R
         self.model_interface.input_model()
         self.R = self.model_interface.R           
@@ -164,6 +173,22 @@ class Chain:
         for i in range(self.K+1):
             traj_X[i] = X[B[i],i]
         return traj_X
+    
+    def _get_Y_traj(self, Y:  np.ndarray, B: np.ndarray) -> np.ndarray:
+        """Get Y trajectory based on sampled particle trajectory
+        
+        Args:
+            Y (np.ndarray): Predicted observation
+            B (np.ndarray): Trajectory indices of reference particle
+
+        Returns:
+            np.ndarray: Trajectory of X that is sampled at final timestep
+        """
+
+        traj_Y = np.zeros(self.K)
+        for i in range(self.K):
+            traj_Y[i] = Y[B[i+1],i]
+        return traj_Y
     
     def _get_R_traj(self, R: np.ndarray, B: np.ndarray) -> np.ndarray:
         """Get R trajectory based on sampled particle trajectory

@@ -58,14 +58,14 @@ model_interface = ModelInterface(
     num_input_scenarios = 5
 )
 # %%
-# chain = Chain(
-#     model_interface = model_interface,
-#     theta=[1., 0.00005]
-# )
-# chain.run_sequential_monte_carlo()
-# plot_MLE(chain.state,df_obs,left = 0, right = len(df_obs))
-# chain.run_particle_MCMC()
-# plot_MLE(chain.state,df_obs,left = 0, right = len(df_obs))
+chain = Chain(
+    model_interface = model_interface,
+    theta=[1., 0.00005]
+)
+chain.run_sequential_monte_carlo()
+plot_MLE(chain.state,df_obs,left = 0, right = len(df_obs))
+chain.run_particle_MCMC()
+plot_MLE(chain.state,df_obs,left = 0, right = len(df_obs))
 
 
 # %%
@@ -103,7 +103,7 @@ ax[0].set_title("Preciptation")
 
 ax[1].plot(df['Q_true'], color = 'b', alpha = 0.5, label = 'Truth')    
 ax[1].plot(df_obs['Q_obs'], '.', color = 'r', label = 'Observation')
-ax[1].plot(model.state_record.T[1:], color = 'g', alpha = 0.5)
+ax[1].plot(model.output_record.T, color = 'g', alpha = 0.5)
 ax[1].set_ylabel("Discharge [mm]")
 ax[1].set_xlabel("Time [day]")
 ax[1].legend(frameon = False)
