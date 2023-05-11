@@ -67,7 +67,7 @@ class Chain:
             xkp1 = self.model_interface.transition_model(Xtm1=xk,
                                                          Rt=R[A[:,k],k])
 
-            Y[:,k] = self.model_interface.observation_model(Xk=X[:,k+1])
+            Y[:,k] = self.model_interface.observation_model(Xk=xkp1)
             wkp1 = W + np.log(
                 self.model_interface.observation_model_likelihood(
                                                         yhk=Y[:,k],

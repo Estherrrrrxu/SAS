@@ -3,8 +3,10 @@ from model.model_interface import ModelInterface
 from model.ssm_model import SSModel
 import pandas as pd
 from model.utils_chain import Chain
-from functions.utils import plot_MLE
+from functions.utils import plot_MLE, plot_base
 import matplotlib.pyplot as plt
+
+
 # %%
 df = pd.read_csv("Data/linear_reservoir.csv", index_col= 0)
 # st, et = 20, 100
@@ -12,27 +14,7 @@ st, et = 300, 400
 interval = 1
 df = df[st:et]
 df_obs = df[::interval]
-
-# TODO: merge this with plot_MLE
-fig, ax = plt.subplots(2, 1, figsize=(8,5))
-ax[0].bar(df.index, df['J_true'], 
-          width = 1, color = 'b', alpha = 0.5, 
-          label = 'Truth')
-ax[0].plot(df_obs['J_obs'], '.', color = 'r', alpha = 0.5, 
-           label = 'Observation')
-ax[0].invert_yaxis()
-ax[0].set_ylabel("Precipitation [mm]")
-ax[0].legend(frameon = False)
-ax[0].set_xticks([])
-ax[0].set_title("Preciptation")
-
-ax[1].plot(df['Q_true'], color = 'b', alpha = 0.5, label = 'Truth')    
-ax[1].plot(df_obs['Q_obs'], '.', color = 'r', label = 'Observation')
-ax[1].set_ylabel("Discharge [mm]")
-ax[1].set_xlabel("Time [day]")
-ax[1].legend(frameon = False)
-ax[1].set_title("Discharge")
-
+plot_base(df, df_obs)
 df_obs.index = range(len(df_obs))
 # %%
 # define theta_init
@@ -63,9 +45,11 @@ chain = Chain(
     theta=[1., 0.00005]
 )
 chain.run_sequential_monte_carlo()
-plot_MLE(chain.state,df_obs,left = 0, right = len(df_obs))
+plot_MLE(chain.state,df,df_obs)
+# %%
 chain.run_particle_MCMC()
-plot_MLE(chain.state,df_obs,left = 0, right = len(df_obs))
+plot_MLE(chain.state,df,df_obs)
+
 
 
 # %%
@@ -88,25 +72,6 @@ ax[1].set_xlabel("MCMC Chain length")
 
 
 # %%
-fig, ax = plt.subplots(2, 1, figsize=(8,5))
-ax[0].bar(df.index, df['J_true'], 
-          width = 1, color = 'b', alpha = 0.5, 
-          label = 'Truth')
-ax[0].plot(df_obs['J_obs'], '.', color = 'r', alpha = 0.5, 
-           label = 'Observation')
-ax[0].plot(model.input_record.T, color = 'g', alpha = 0.5)
-ax[0].invert_yaxis()
-ax[0].set_ylabel("Precipitation [mm]")
-ax[0].legend(frameon = False)
-ax[0].set_xticks([])
-ax[0].set_title("Preciptation")
-
-ax[1].plot(df['Q_true'], color = 'b', alpha = 0.5, label = 'Truth')    
-ax[1].plot(df_obs['Q_obs'], '.', color = 'r', label = 'Observation')
-ax[1].plot(model.output_record.T, color = 'g', alpha = 0.5)
-ax[1].set_ylabel("Discharge [mm]")
-ax[1].set_xlabel("Time [day]")
-ax[1].legend(frameon = False)
-ax[1].set_title("Discharge")
+plot_MLE(model.state,df,df_obs)
 
 # %%

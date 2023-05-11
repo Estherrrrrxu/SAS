@@ -1,19 +1,22 @@
 05-04-2023
 - Move input generation to model interface @done
 - Optimize chain part @done
-- Test linear reservoir at a different segment @done
+- Test linear reservoir at a different time segment @done
+- Test linear reservoir at different time interval @done
 - And different time interval @done
-- Develop better algo for searching theta_obs
+- Develop better algo for searching theta_obs @done
     - search bounded by prior, properly implement this @done
     - test on two linear reservoir pieces again @done
     - bug: not working on other time pieces, possibly an index problem @done
-    - make the code look like what I have for SigROCKET
-- Add records 
+- Add records @done
     - input_records @done
     - state_records @done
-    - output_records
+    - output_records @done
 - Make good plot to present information
-
+    - merge two plot functions @done
+    - another function
+- Make T and K not consistent
+    - figure out the time sequence
 - Design non-linear cases
     - parallel reservoirs
     - cascade reservoirs
@@ -28,4 +31,4 @@
 - dissertation
 - Make rainfall generation algo more reasonable
     - If <= 0, regenerate
-- Make T and K not consistent
+
