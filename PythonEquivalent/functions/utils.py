@@ -19,6 +19,9 @@ def _inverse_pmf(x: np.ndarray,ln_pmf: np.ndarray, num: int) -> np.ndarray:
     pmf = pmf[ind] # sort pdf accordingly
     u = np.random.uniform(size = num)
     ind_sample = np.searchsorted(pmf.cumsum(), u)
+
+    ind_sample[ind_sample == len(pmf)] -= 1
+ 
     return ind[ind_sample]
 
 def plot_MLE(state,df,left = 0, right = 500):

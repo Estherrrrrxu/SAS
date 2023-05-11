@@ -7,8 +7,8 @@ from functions.utils import plot_MLE
 import matplotlib.pyplot as plt
 # %%
 df = pd.read_csv("Data/linear_reservoir.csv", index_col= 0)
-st, et = 20, 50
-# st, et = 300, 400
+# st, et = 20, 100
+st, et = 300, 400
 interval = 1
 df = df[st:et]
 df_obs = df[::interval]
@@ -58,14 +58,14 @@ model_interface = ModelInterface(
     num_input_scenarios = 5
 )
 # %%
-chain = Chain(
-    model_interface = model_interface,
-    theta=[1., 0.00005]
-)
-chain.run_sequential_monte_carlo()
-plot_MLE(chain.state,df_obs,left = 0, right = len(df_obs))
-chain.run_particle_MCMC()
-plot_MLE(chain.state,df_obs,left = 0, right = len(df_obs))
+# chain = Chain(
+#     model_interface = model_interface,
+#     theta=[1., 0.00005]
+# )
+# chain.run_sequential_monte_carlo()
+# plot_MLE(chain.state,df_obs,left = 0, right = len(df_obs))
+# chain.run_particle_MCMC()
+# plot_MLE(chain.state,df_obs,left = 0, right = len(df_obs))
 
 
 # %%

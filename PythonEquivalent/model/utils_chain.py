@@ -99,11 +99,11 @@ class Chain:
                                                          Rt=R[:,k])
             # Update 
             x_prime = X[B[k+1],k+1]
-            # TODO: design a W_tilde module --> move to model_interface
+
             W_tilde = W + np.log(
                 self.model_interface.state_model(x_prime=x_prime, xkp1=xkp1)
             )
-
+            
             A[B[k+1],k+1] = _inverse_pmf(xkp1 - x_prime,
                                          W_tilde, 
                                          num = 1)
