@@ -7,8 +7,7 @@ from functions.utils import plot_MLE
 import matplotlib.pyplot as plt
 # %%
 df = pd.read_csv("Data/linear_reservoir.csv", index_col= 0)
-st = 0
-et = 50
+st, et = 20, 50
 # st, et = 300, 400
 interval = 1
 df = df[st:et]
@@ -74,7 +73,7 @@ plot_MLE(chain.state,df_obs,left = 0, right = len(df_obs))
 model = SSModel(
     model_interface = model_interface,
     num_parameter_samples = 10,
-    len_parameter_MCMC = 20,
+    len_parameter_MCMC = 15,
     learning_step = 0.75
 )
 model.run_particle_Gibbs_AS_SAEM()
@@ -104,7 +103,7 @@ ax[0].set_title("Preciptation")
 
 ax[1].plot(df['Q_true'], color = 'b', alpha = 0.5, label = 'Truth')    
 ax[1].plot(df_obs['Q_obs'], '.', color = 'r', label = 'Observation')
-ax[1].plot(model.state_record.T, color = 'g', alpha = 0.5)
+ax[1].plot(model.state_record.T[1:], color = 'g', alpha = 0.5)
 ax[1].set_ylabel("Discharge [mm]")
 ax[1].set_xlabel("Time [day]")
 ax[1].legend(frameon = False)
