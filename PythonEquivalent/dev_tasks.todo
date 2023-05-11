@@ -6,13 +6,14 @@
 - Develop better algo for searching theta_obs
     - search bounded by prior, properly implement this @done
     - test on two linear reservoir pieces again @done
-    - bug: not working on other time pieces, possibly an index problem
+    - bug: not working on other time pieces, possibly an index problem @done
     - make the code look like what I have for SigROCKET
 - Add records 
     - input_records @done
     - state_records @done
     - output_records
 - Make good plot to present information
+
 - Design non-linear cases
     - parallel reservoirs
     - cascade reservoirs
@@ -24,5 +25,7 @@
 - Add more comments while clean up the code
 - Update GBO files accordingly
     - proposal
-    - dissertation
-
+- dissertation
+- Make rainfall generation algo more reasonable
+    - If <= 0, regenerate
+- Make T and K not consistent
