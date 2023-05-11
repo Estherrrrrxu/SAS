@@ -39,11 +39,13 @@ class Chain:
         self.outflux = self.model_interface.outflux
 
         # initialize state
+        A = np.zeros((self.N, self.K + 1)).astype(int)
+        A[:,0] = np.arange(self.N)
         self.state_init = State( 
             R=self.R,
             W=np.log(np.ones(self.N) / self.N),
             X=np.ones((self.N, self.T + 1)) * self._state_init,
-            A=(np.ones((self.N, self.K + 1)) * np.arange(self.N)).astype(int)
+            A=A
         )
 
 

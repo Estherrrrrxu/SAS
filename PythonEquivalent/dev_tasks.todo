@@ -4,12 +4,13 @@
 - Test linear reservoir at a different segment @done
 - And different time interval @done
 - Develop better algo for searching theta_obs
-    - search bounded by prior, properly implement this 
-    - test on two linear reservoir pieces again
+    - search bounded by prior, properly implement this @done
+    - test on two linear reservoir pieces again @done
+    - bug: not working on other time pieces, possibly an index problem
     - make the code look like what I have for SigROCKET
 - Add records 
-    - input_records
-    - state_records
+    - input_records @done
+    - state_records @done
     - output_records
 - Make good plot to present information
 - Design non-linear cases

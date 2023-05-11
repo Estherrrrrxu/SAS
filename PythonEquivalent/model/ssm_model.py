@@ -120,7 +120,7 @@ class SSModel:
                     # RR[d,:,:] = chain.state.R
                     
                 # find optimal parameters
-                Qh = self.learning_step[l+1] * np.max(WW[:,:],axis = 1) * np.log(self.search_model[key].pdf(theta_new[:,p]))
+                Qh = self.learning_step[l+1] * (np.max(WW[:,:],axis = 1) + np.log(self.search_model[key].pdf(theta_new[:,p])))
                 ind_best_param = np.argmax(Qh)
                 self.theta_record[l+1,p] = theta_new[ind_best_param, p]   
                 best_model = chains[ind_best_param]  
@@ -229,3 +229,4 @@ class SSModel:
 
 
  
+# %%
