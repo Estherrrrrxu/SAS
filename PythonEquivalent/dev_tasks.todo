@@ -1,3 +1,24 @@
+05-25-2023
+- Make rainfall generation algo more reasonable
+    - If <= 0, regenerate
+- Make T and K not consistent
+    - figure out the time sequence
+
+- Design non-linear cases
+    - parallel reservoirs
+    - cascade reservoirs
+- Clean up old files to reflect input/state/output
+    - files in functions folder
+    - post_comp.py
+    - post_run.py
+- Write corresponding tests
+- Add more comments while clean up the code
+- Update GBO files accordingly
+    - proposal
+- dissertation
+
+
+
 05-04-2023
 - Move input generation to model interface @done
 - Optimize chain part @done
@@ -12,23 +33,6 @@
     - input_records @done
     - state_records @done
     - output_records @done
-- Make good plot to present information
+- Make good plot to present information @done
     - merge two plot functions @done
-    - another function
-- Make T and K not consistent
-    - figure out the time sequence
-- Design non-linear cases
-    - parallel reservoirs
-    - cascade reservoirs
-- Clean up old files to reflect input/state/output
-    - files in functions folder
-    - post_comp.py
-    - post_run.py
-- Write corresponding tests
-- Add more comments while clean up the code
-- Update GBO files accordingly
-    - proposal
-- dissertation
-- Make rainfall generation algo more reasonable
-    - If <= 0, regenerate
-
+    - another function for plotting multiple trajectories @done
