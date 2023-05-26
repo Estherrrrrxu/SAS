@@ -3,7 +3,7 @@ from model.model_interface import ModelInterface
 from model.ssm_model import SSModel
 import pandas as pd
 from model.utils_chain import Chain
-from functions.utils import plot_MLE, plot_base
+from functions.utils import plot_MLE, plot_scenarios
 import matplotlib.pyplot as plt
 
 
@@ -64,14 +64,19 @@ model.run_particle_Gibbs_AS_SAEM()
 # %%
 fig, ax = plt.subplots(2,1,figsize=(10,5))
 ax[0].plot(model.theta_record[:,0])
+ax[0].plot([0,15],[1,1],'r:',label="true value")
 ax[1].plot(model.theta_record[:,1])
+ax[1].plot([0,15],[0.00005,0.00005],'r:',label="true value")
 ax[0].set_ylabel(r"$k$")
 ax[0].set_xticks([])
-ax[1].set_ylabel(r"$\theta_{obs}$")
+ax[1].set_ylabel(r"$\theta_{v}$")
 ax[1].set_xlabel("MCMC Chain length")
-
+ax[0].legend(frameon=False)
+ax[1].legend(frameon=False)
+fig.suptitle("Parameter estimation")
 
 # %%
-plot_MLE(model.state,df,df_obs)
+fig, ax = plot_scenarios(df, df_obs, model, 5)
+
 
 # %%

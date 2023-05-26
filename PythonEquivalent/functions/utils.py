@@ -102,3 +102,34 @@ def plot_MLE(state, df, df_obs: pd.DataFrame,
                label = "One Traj/MLE")
     return MLE
 # %%
+def plot_scenarios(df, df_obs, model, start_ind):
+    fig, ax = plt.subplots(2, 1, figsize=(8,5))
+    ax[0].bar(df['index'], df['J_true'], 
+            width = 1, color = 'k', label = 'Truth')
+    ax[0].plot(df_obs['index'].values, model.input_record.T[:,start_ind:],
+            "s", color='C9', markersize=7, mfc='none')
+    ax[0].plot(df_obs['index'].values, model.input_record.T[:,-1],
+            "s", color='C9', markersize=7, mfc='none', label = 'Input scenarios')
+    ax[0].plot(df_obs['index'], df_obs['J_obs'], 
+               '+', color='C3', markersize=7,label='Observation')
+    ax[0].invert_yaxis()
+    ax[0].set_ylabel("Precipitation [mm]")
+    ax[0].legend(frameon = False)
+    ax[0].set_xticks([])
+    ax[0].set_title("Preciptation")
+
+    ax[1].plot(df['index'], df['Q_true'], 
+               color = 'k', label = 'Truth')   
+    ax[1].plot(df_obs['index'].values, model.output_record.T[:,start_ind:-1],
+            linestyle=(1, (1, 1)), color='C9', linewidth=2)
+    ax[1].plot(df_obs['index'].values, model.output_record.T[:,-1],
+            linestyle=(1, (1, 1)), color='C9', linewidth=2, label = 'Trajectories') 
+    ax[1].plot(df_obs['index'], df_obs['Q_obs'], 
+               '+', color = 'C3', markersize=7,
+               label = 'Observation')
+    ax[1].set_ylabel("Discharge [mm]")
+    ax[1].set_xlabel("Time [day]")
+    ax[1].legend(frameon = False)
+    ax[1].set_title("Discharge")
+    return fig, ax
+# %%
