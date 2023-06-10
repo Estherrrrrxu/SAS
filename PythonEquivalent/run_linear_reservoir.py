@@ -3,19 +3,23 @@ from model.model_interface import ModelInterface
 from model.ssm_model import SSModel
 import pandas as pd
 from model.utils_chain import Chain
-from functions.utils import plot_MLE, plot_scenarios
+from functions.utils import plot_MLE, plot_scenarios, plot_base
 import matplotlib.pyplot as plt
-
+from input_cases_lr import perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q
 
 # %%
-df = pd.read_csv("Data/linear_reservoir.csv", index_col= 0)
-# st, et = 20, 100
-st, et = 300, 400
-interval = 1
-df = df[st:et]
-df_obs = df[::interval]
-plot_base(df, df_obs)
-df_obs.index = range(len(df_obs))
+# case = perfect
+# case = instant_gaps_2_d
+# case = instant_gaps_5_d
+# case = weekly_bulk
+# case = biweekly_bulk
+case = weekly_bulk_true_q
+
+df = case.df
+df_obs = case.df_obs
+interval = case.interval
+case_name = case.case_name
+
 # %%
 # define theta_init
 theta_init = {
@@ -40,16 +44,18 @@ model_interface = ModelInterface(
     num_input_scenarios = 5
 )
 # %%
-chain = Chain(
-    model_interface = model_interface,
-    theta=[1., 0.00005]
-)
-chain.run_sequential_monte_carlo()
-plot_MLE(chain.state,df,df_obs)
-# %%
-chain.run_particle_MCMC()
-plot_MLE(chain.state,df,df_obs)
+try: 
+    chain = Chain(
+        model_interface = model_interface,
+        theta=[1., 0.00005]
+    )
+    chain.run_sequential_monte_carlo()
+    plot_MLE(chain.state,df,df_obs)
 
+    chain.run_particle_MCMC()
+    plot_MLE(chain.state,df,df_obs)
+except IndexError:
+    print("Index needs to change for Chain obj!") 
 
 
 # %%
@@ -73,10 +79,10 @@ ax[1].set_ylabel(r"$\theta_{v}$")
 ax[1].set_xlabel("MCMC Chain length")
 ax[0].legend(frameon=False)
 ax[1].legend(frameon=False)
-fig.suptitle("Parameter estimation")
+fig.suptitle(f"Parameter estimation for {case_name}")
 
 # %%
-fig, ax = plot_scenarios(df, df_obs, model, 5)
-
+fig, ax = plot_scenarios(df, df_obs, model, 10)
+fig.suptitle(f"{case_name}")
 
 # %%

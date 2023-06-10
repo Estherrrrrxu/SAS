@@ -229,7 +229,7 @@ class ModelInterface:
         Xt = (1 -  theta_k * theta_dt) * Xtm1 + theta_k * theta_dt * Rt
         return Xt
     
-    # TODO: observation model and observation likelihood should be separated
+
     def observation_model(self, 
                         Xk: np.ndarray
         ) -> np.ndarray:
@@ -307,3 +307,20 @@ class ModelInterface:
 
     
 # %%
+class ModelInterfaceBulk(ModelInterface):
+    def input_model(self) -> None:
+        """Input model for linear reservoir
+
+        Rt = U(0, U_t)
+
+        Args:
+            Ut (float): forcing at time t
+
+        Returns:
+            np.ndarray: Rt
+        """
+        for t in range(self.T):
+            self.R[:,t] = ss.uniform(
+                self.influx[t] - self.theta.input_model, self.theta.input_model
+                ).rvs(self.N)
+        return 
