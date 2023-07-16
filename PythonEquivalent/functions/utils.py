@@ -50,6 +50,14 @@ def plot_base(df, df_obs):
     ax[1].set_title("Discharge")
     return fig, ax
 
+def plot_bulk(original, weekly_bulk):
+    fig, ax = plot_base(original, weekly_bulk)
+    temp = weekly_bulk[weekly_bulk['is_obs']]
+    ax[0].plot(temp['index'], temp["J_obs"], marker='o', markerfacecolor='none', markeredgecolor='green', linestyle='',label='Observed Time Stamp')
+    ax[0].legend(frameon=False)
+    ax[1].plot(temp['index'], temp["Q_obs"], marker='o', markerfacecolor='none', markeredgecolor='green', linestyle='',label='Observed Time Stamp')
+    ax[1].legend(frameon=False)
+    return fig, ax
 
 def plot_MLE(state, df, df_obs: pd.DataFrame,
               left: int=None, right: int=None):
@@ -132,4 +140,39 @@ def plot_scenarios(df, df_obs, model, start_ind):
     ax[1].legend(frameon = False)
     ax[1].set_title("Discharge")
     return fig, ax
+# %%
+def create_bulk_sample(original: pd.DataFrame, n: int) -> pd.DataFrame:
+    """
+    Create bulk sample from original data.
+
+    Parameters
+    ----------
+    original : pd.DataFrame
+        Original data.
+    n : int
+        Number of observations to be grouped.
+
+    Returns
+    -------
+    pd.DataFrame
+        Bulk sample.
+    """
+
+    is_obs = (original.index + 1) % n == 0
+    last_true_index = np.where(is_obs)[0][-1]
+    ind_group = original.index // n
+
+    bulk = original.iloc[:last_true_index + 1].groupby(ind_group[:last_true_index + 1]).mean()
+    bulk['index'] = original.loc[is_obs, 'index'].values
+
+    df_temp = pd.merge(original, bulk, on='index', how='left')
+    df_temp = df_temp.drop(df_temp.columns[1:5], axis=1)
+    df_temp.columns = original.columns
+    df_temp['Q_true'] = original['Q_true']
+    df_temp['J_true'] = original['J_true']
+
+    bulk = df_temp.fillna(method='bfill').dropna()
+    bulk['is_obs'] = is_obs[:last_true_index + 1]
+    return bulk
+
 # %%

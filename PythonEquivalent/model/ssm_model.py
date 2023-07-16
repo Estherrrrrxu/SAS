@@ -27,7 +27,7 @@ class SSModel:
         self.D = num_parameter_samples
         self.L = len_parameter_MCMC
         self.learning_step = learning_step
-        if isinstance(self.learning_step,float):
+        if isinstance(self.learning_step, float):
             self.learning_step = [self.learning_step] * (self.L + 1)
         
         # get info from model_interface
@@ -36,6 +36,7 @@ class SSModel:
         self.T = model_interface.T
         self.N = model_interface.N
         self.K = model_interface.K
+
         # pass model structure for each chain
         self.models_for_each_chain = [model_interface for d in range(self.D)]
         # store necessary models
@@ -57,7 +58,7 @@ class SSModel:
             )
 
         self.output_record = np.zeros(
-            (self.L+1, self.K)
+            (self.L+1, self.T)
             )
         
 

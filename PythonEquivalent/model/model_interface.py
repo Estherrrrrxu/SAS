@@ -2,7 +2,7 @@ import numpy as np
 from dataclasses import dataclass
 import scipy.stats as ss
 import pandas as pd
-from typing import Optional, Any
+from typing import Optional, Any, List
 # %%
 @dataclass
 class Parameter:
@@ -70,13 +70,17 @@ class ModelInterface:
         """
 
         # process configurations------------
+        """
+        dt: float
+        influx: str
+        outflux: str
+        observed_made_each_step: bool or int or List[bool]
+        """
         _default_config = {
             'dt': 1./24/60*15,
             'influx': 'J_obs',
             'outflux': 'Q_obs',
-            'observed_at_each_time_step': True,
-            'observed_interval': None,
-            'observed_series': None # give a boolean list of observations been made 
+            'observed_made_each_step': True,
         }   
         # replace default config with input configs
         
@@ -103,15 +107,41 @@ class ModelInterface:
             self.T = len(self.influx)
         
         self.outflux = self.df[self.config['outflux']]
+
+        obs_made = self.config['observed_made_each_step']
         
-        # set observation interval-----------
-        if self.config['observed_at_each_time_step'] == True:
-            self.K = self.T
-        elif self.config['observed_interval'] is not None:
-            self.K = int(self.T/self.config['observed_interval'])
+        # set observation K -----------
+        # if giving a single bool val
+        if isinstance(obs_made, bool):
+            # if bool val is True
+            if obs_made:
+                self.K = self.T
+                self.observed_ind = [True] * self.T
+            # if bool val is False, request to give a int val to give observation interval
+            else:
+                raise ValueError("Error: Please specify the observation interval!")
+        # give observation list
+        elif isinstance(obs_made, list):
+            # if is all bool and all True
+            if all(isinstance(entry, bool) and entry for entry in obs_made):
+                self.K = self.T
+                self.observed_ind = np.arange(self.T)
+            # if is all bool and some are not True
+            elif all(isinstance(entry, bool) for entry in obs_made):
+                self.K = sum(obs_made)
+                self.observed_ind = np.arange(self.T)[obs_made]
+            else:
+                raise ValueError("Error: Invalid input!")
+        # give observation interval as a int - how many timesteps
+        elif isinstance(obs_made, int):
+            self.K = int(self.T/obs_made)
+            self.config['dt'] *= obs_made # update dt
+            self._is_observed = [False] * self.T
+            for i in range(0, self.T, self.K):
+                self._is_observed[i] = True
         else:
-            self.K = sum(self.config['observed_series']) # total num observation is the number 
-            self._is_observed = self.config['observed_series'] # set another variable to indicate observation
+            raise ValueError("Error: Please check the input format!")
+
         return
     
     def _parse_theta_init(
@@ -311,7 +341,7 @@ class ModelInterfaceBulk(ModelInterface):
     def input_model(self) -> None:
         """Input model for linear reservoir
 
-        Rt = U(0, U_t)
+        Rt ~ Exp(Ut)
 
         Args:
             Ut (float): forcing at time t
@@ -319,8 +349,11 @@ class ModelInterfaceBulk(ModelInterface):
         Returns:
             np.ndarray: Rt
         """
+        mean = np.random.normal(self.influx, self.theta.input_model)
         for t in range(self.T):
-            self.R[:,t] = ss.uniform(
-                self.influx[t] - self.theta.input_model, self.theta.input_model
-                ).rvs(self.N)
+            self.R[:,t] = ss.expon.rvs(size=self.N, scale=mean[t])
+        for n in range(self.N):
+            self.R[n,:] /= np.sum(self.R[n,:])/self.T
+            self.R[n,:] *= mean
+            
         return 
