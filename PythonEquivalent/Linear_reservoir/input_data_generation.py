@@ -1,15 +1,18 @@
 # %%
 import pandas as pd
 import numpy as np
+import sys
+sys.path.append('../') 
 from functions.utils import plot_base, create_bulk_sample, plot_bulk
 from dataclasses import dataclass
 from typing import Optional, List
 
 # %%
 # Read original file and get a part of it
-df = pd.read_csv("Data/linear_reservoir.csv", index_col= 0)
+df = pd.read_csv("../Data/linear_reservoir.csv", index_col= 0)
 # st, et = 20, 100
 st, et = 300, 400
+plot = False
 # %%
 # For instantaneously observed data
 # observation made at each time step
@@ -24,10 +27,10 @@ instant_gaps_2_d.index = range(len(instant_gaps_2_d))
 # observation made at each 5 time steps
 instant_gaps_5_d = original[::5]
 instant_gaps_5_d.index = range(len(instant_gaps_5_d))
-
-plot_base(original, original)
-plot_base(original, instant_gaps_2_d)
-plot_base(original, instant_gaps_5_d)
+if plot:
+    plot_base(original, original)
+    plot_base(original, instant_gaps_2_d)
+    plot_base(original, instant_gaps_5_d)
 # %%
 # For bulk observed data
 weekly_bulk = create_bulk_sample(original, 7)
@@ -38,10 +41,10 @@ ind = weekly_bulk_true_q['is_obs']
 weekly_bulk_true_q["Q_obs"][ind==False] = np.nan
 weekly_bulk_true_q["Q_obs"][ind==True] = weekly_bulk_true_q["Q_true"][ind==True]
 weekly_bulk_true_q = weekly_bulk_true_q.fillna(method='bfill')
-
-plot_bulk(original, weekly_bulk)
-plot_bulk(original, biweekly_bulk)
-plot_bulk(original, weekly_bulk_true_q)
+if plot:
+    plot_bulk(original, weekly_bulk)
+    plot_bulk(original, biweekly_bulk)
+    plot_bulk(original, weekly_bulk_true_q)
 
 # %%
 @dataclass
