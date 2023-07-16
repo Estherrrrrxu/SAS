@@ -1,15 +1,19 @@
 # %%
-from model.model_interface import ModelInterface
+from model.model_interface import ModelInterface, ModelInterfaceBulk
 from model.ssm_model import SSModel
 import pandas as pd
 from model.utils_chain import Chain
 from functions.utils import plot_MLE, plot_scenarios, plot_base
 import matplotlib.pyplot as plt
-from Linear_reservoir.input_data_generation import perfect, instant_gaps_2_d, instant_gaps_5_d
+from Linear_reservoir.input_data_generation import perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q
+
 # %%
 # case = perfect
 # case = instant_gaps_2_d
-case = instant_gaps_5_d
+# case = instant_gaps_5_d
+case = weekly_bulk
+# case = biweekly_bulk
+# case = weekly_bulk_true_q
 
 df = case.df
 df_obs = case.df_obs
@@ -39,7 +43,13 @@ model_interface = ModelInterface(
     config = config,
     num_input_scenarios = 5
 )
-
+model_interface_bulk = ModelInterface(
+    df = df_obs,
+    customized_model = None,
+    theta_init = theta_init,
+    config = config,
+    num_input_scenarios = 5
+)
 # %%
 try: 
     chain = Chain(
