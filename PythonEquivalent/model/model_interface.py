@@ -42,6 +42,8 @@ class ModelInterface:
             theta_init (dict): initial values of parameters
             config (dict): configurations of the model
             num_input_scenarios (int): number of input scenarios
+            observed_made_each_step (bool or int or List[bool]): whether the input is observed or not
+            observed_ind (np.ndarray): mapping from T to K
         
         """
         self.df = df
@@ -137,11 +139,11 @@ class ModelInterface:
             self.K = int(self.T/obs_made)
             self.config['dt'] *= obs_made # update dt
             self._is_observed = [False] * self.T
-            for i in range(0, self.T, self.K):
+            for i in range(0, self.T, obs_made):
                 self._is_observed[i] = True
+            self.observed_ind = np.arange(self.T)[self._is_observed]
         else:
             raise ValueError("Error: Please check the input format!")
-
         return
     
     def _parse_theta_init(

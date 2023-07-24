@@ -9,9 +9,10 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
+            "cwd": "${fileDirname}",// For debugging tests
             "console": "integratedTerminal",
-            "env": { "PYTHONPATH": "${workspaceRoot}"},
-            "justMyCode": false
+            "env": { "PYTHONPATH": "${workspaceFolder}/mySubdir:${env:PYTHONPATH}"},
+            "justMyCode": false,
         }
     ]
 }

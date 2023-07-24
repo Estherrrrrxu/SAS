@@ -13,6 +13,7 @@ class State:
     X: np.ndarray  # [N, T+1], state at each timestep
     A: np.ndarray  # [N, K+1], ancestor at each timestep
     Y: np.ndarray  # [N, K], observation at each timestep
+    
 class Chain:
     def __init__(self,
         model_interface: ModelInterface,
@@ -34,7 +35,8 @@ class Chain:
         self.N = self.model_interface.N
         self.T = self.model_interface.T
         self.K = self.model_interface.K
-
+        # get observed indices
+        self.observed_ind = self.model_interface.observed_ind
         # get observation
         self.outflux = self.model_interface.outflux
 
@@ -45,7 +47,7 @@ class Chain:
             R=self.R,
             W=np.log(np.ones(self.N) / self.N),
             X=np.ones((self.N, self.T + 1)) * self._state_init,
-            Y=np.zeros((self.N, self.K)),
+            Y=np.zeros((self.N, self.T)),
             A=A
         )
 
@@ -99,8 +101,9 @@ class Chain:
         B = self._find_traj(A, W)
         # reinitialize weight
         W = np.log(np.ones(self.N)/self.N)
-
+        # TODO: this is the place to pass a small interval to the transition model
         for k in range(self.K):
+
             rr = R[:,k]
             xkp1 = self.model_interface.transition_model(Xtm1=X[:,k],
                                                          Rt=R[:,k])
@@ -168,10 +171,12 @@ class Chain:
         Returns:
             np.ndarray: Trajectory of X that is sampled at final timestep
         """
-
-        traj_X = np.zeros(self.K+1)
-        for i in range(self.K+1):
-            traj_X[i] = X[B[i],i]
+        traj_X = np.zeros(self.T+1)
+        t_k_map = self.observed_ind + 1
+        t_k_map = np.append(0, t_k_map)
+        traj_X[0] = X[B[0],0]
+        for i in range(1, self.K+1):
+            traj_X[t_k_map[i-1]:t_k_map[i]] = X[B[i],t_k_map[i-1]:t_k_map[i]]
         return traj_X
     
     def _get_Y_traj(self, Y:  np.ndarray, B: np.ndarray) -> np.ndarray:
@@ -184,10 +189,12 @@ class Chain:
         Returns:
             np.ndarray: Trajectory of X that is sampled at final timestep
         """
+        traj_Y = np.zeros(self.T)
+        t_k_map = self.observed_in
+        for i in range(self.K-1):
+            traj_Y[t_k_map[i]:t_k_map[i+1]] = Y[B[i+1],t_k_map[i]:t_k_map[i+1]]
+        traj_Y[t_k_map[-1]:] = Y[B[-1],t_k_map[-1]:]
 
-        traj_Y = np.zeros(self.K)
-        for i in range(self.K):
-            traj_Y[i] = Y[B[i+1],i]
         return traj_Y
     
     def _get_R_traj(self, R: np.ndarray, B: np.ndarray) -> np.ndarray:
@@ -200,9 +207,11 @@ class Chain:
         Returns:
             np.ndarray: Trajectory of R that is sampled at final timestep
         """
-        traj_R = np.zeros(self.K)
-        for i in range(self.K):
-            traj_R[i] = R[B[i+1],i]
+        traj_R = np.zeros(self.T)
+        t_k_map = self.observed_ind
+        for i in range(self.K-1):
+            traj_R[t_k_map[i]:t_k_map[i+1]] = R[B[i+1],t_k_map[i]:t_k_map[i+1]]
+        traj_R[t_k_map[-1]:] = R[B[-1],t_k_map[-1]:]
         return  traj_R
 
 # %%
