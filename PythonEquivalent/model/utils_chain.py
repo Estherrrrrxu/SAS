@@ -66,6 +66,7 @@ class Chain:
         self.pre_ind = pre_ind
         self.post_ind = post_ind
 
+        # TODO: remove after instant gap is done
         print("pre_ind: ", self.pre_ind)
         print("post_ind: ", self.post_ind)
 

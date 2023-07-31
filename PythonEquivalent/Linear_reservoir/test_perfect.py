@@ -3,8 +3,7 @@ import os
 current_path = os.getcwd()
 if current_path[-16:] != "Linear_reservoir":
     os.chdir("Linear_reservoir")
-    print("Current working directory changed to 'Linear_reservoir'.")
-    
+    print("Current working directory changed to 'Linear_reservoir'.")   
 import sys
 sys.path.append('../') 
 from model.model_interface import ModelInterface
@@ -15,6 +14,7 @@ from model.utils_chain import Chain
 from functions.utils import plot_MLE, plot_scenarios
 import matplotlib.pyplot as plt
 from Linear_reservoir.input_data_generation import perfect
+
 # %%
 case = perfect
 # case = instant_gaps_2_d
