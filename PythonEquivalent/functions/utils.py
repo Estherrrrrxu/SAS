@@ -59,7 +59,7 @@ def plot_bulk(original, weekly_bulk):
     ax[1].legend(frameon=False)
     return fig, ax
 
-def plot_MLE(state, df, df_obs: pd.DataFrame,
+def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
               left: int=None, right: int=None):
     """make the plot appropriately to present model output
 
@@ -80,7 +80,7 @@ def plot_MLE(state, df, df_obs: pd.DataFrame,
 
     J_obs = df['J_obs'].values
     Q_obs = df['Q_obs'].values
-    K = len(J_obs)
+    K = A.shape[1]-1
 
     if left is None:
         left = df_obs['index'].values[0]
@@ -91,13 +91,18 @@ def plot_MLE(state, df, df_obs: pd.DataFrame,
     B[-1] = _inverse_pmf(W,A[:,-1], num = 1)
     for i in reversed(range(1,K+1)):
         B[i-1] =  A[:,i][B[i]]
-    MLE = np.zeros(K+1)
-    MLE_R = np.zeros(K)
-    for i in range(K):
-        MLE[i] = Y[B[i+1],i]
-    for i in range(K):
-        MLE_R[i] = R[B[i+1],i]   
+
     T = len(X[0])-1
+    MLE = np.zeros(T+1)
+    MLE_R = np.zeros(T)
+
+    for i in range(K):
+        MLE[pre_ind[i]:post_ind[i]] = X[B[i+1],post_ind[i]]
+        # MLE[i] = Y[B[i+1],i]
+    for i in range(K):
+        MLE_R[pre_ind[i]:post_ind[i]] = R[B[i+1],post_ind[i]-1]
+        # MLE_R[i] = R[B[i+1],i]   
+
 
     fig, ax = plot_base(df,df_obs)
     ax[0].plot(df_obs['index'].values, MLE_R,

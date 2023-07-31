@@ -12,9 +12,9 @@ from model.ssm_model import SSModel
 import pandas as pd
 
 from model.utils_chain import Chain
-from functions.utils import plot_MLE, plot_scenarios, plot_base
+from functions.utils import plot_MLE, plot_scenarios
 import matplotlib.pyplot as plt
-from Linear_reservoir.input_data_generation import perfect, instant_gaps_2_d, instant_gaps_5_d
+from Linear_reservoir.input_data_generation import perfect
 # %%
 case = perfect
 # case = instant_gaps_2_d

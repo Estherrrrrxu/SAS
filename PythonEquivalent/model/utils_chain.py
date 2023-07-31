@@ -46,10 +46,28 @@ class Chain:
         self.state_init = State( 
             R=self.R,
             W=np.log(np.ones(self.N) / self.N),
-            X=np.ones((self.N, self.T + 1)) * self._state_init,
+            X=np.ones((self.N, self.T+1)) * self._state_init,
             Y=np.zeros((self.N, self.T)),
             A=A
         )
+        t_k_map = np.arange(0,self.T+1)[self.observed_ind]
+        # if there are no gap in data, do nothing
+        post_ind = t_k_map + 1
+        if self.K == self.T:
+            pre_ind = t_k_map
+        # if the first one is observed:
+        elif t_k_map[0] == 0:
+            pre_ind = t_k_map - 1
+            pre_ind[0] = 0
+        else:
+            pre_ind = t_k_map + 1
+            pre_ind = np.insert(pre_ind, 0, 0)
+            pre_ind = pre_ind[:-1]
+        self.pre_ind = pre_ind
+        self.post_ind = post_ind
+
+        print("pre_ind: ", self.pre_ind)
+        print("post_ind: ", self.post_ind)
 
 
     def run_sequential_monte_carlo(self) -> None:
@@ -61,31 +79,38 @@ class Chain:
         A = self.state_init.A
         Y = self.state_init.Y
 
-        # TODO: work on diff k and T later
+        xk = X[A[:,0], 0:1]
+
         for k in range(self.K):
-            # draw new state samples and associated weights based on last ancestor
-            xk = X[A[:,k],k]
+            start_ind = self.pre_ind[k]
+            end_ind = self.post_ind[k]
+
+
             # TODO: may need more more work on this cuz currently only one flux
             xkp1 = self.model_interface.transition_model(Xtm1=xk,
-                                                         Rt=R[A[:,k],k])
+                                                         Rt=R[A[:,k], start_ind:end_ind])
 
-            Y[:,k] = self.model_interface.observation_model(Xk=xkp1)
+            Y[:,start_ind:end_ind] = self.model_interface.observation_model(Xk=xkp1)
             wkp1 = W + np.log(
+                #TODO: change it to only give one
                 self.model_interface.observation_model_likelihood(
-                                                        yhk=Y[:,k],
-                                                        yk=self.outflux[k]
+                                                        yhk=Y[:,end_ind-1],
+                                                        yk=self.outflux[end_ind-1]
                                                         )
                             )
             W = wkp1
-            X[:,k+1] = xkp1
+            # This p1 takes account for initial condition
+            X[:,start_ind+1:end_ind+1] = xkp1
             A[:,k+1] = _inverse_pmf(A[:,k],W, num = self.N)
+            # draw new state samples and associated weights based on last ancestor 
+            xk = X[A[:,k+1], start_ind+1:end_ind+1]
 
 
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)  
         
-        # generate new set of R
-        self.model_interface.input_model()
-        self.R = self.model_interface.R    
+        # # generate new set of R
+        # self.model_interface.input_model()
+        # self.R = self.model_interface.R    
         return 
 
     def run_particle_MCMC(self) -> None:
@@ -103,6 +128,9 @@ class Chain:
         W = np.log(np.ones(self.N)/self.N)
         # TODO: this is the place to pass a small interval to the transition model
         for k in range(self.K):
+            
+            start_ind = self.pre_ind[k]
+            end_ind = self.post_ind[k]
 
             rr = R[:,k]
             xkp1 = self.model_interface.transition_model(Xtm1=X[:,k],
@@ -190,7 +218,7 @@ class Chain:
             np.ndarray: Trajectory of X that is sampled at final timestep
         """
         traj_Y = np.zeros(self.T)
-        t_k_map = self.observed_in
+        t_k_map = self.observed_ind
         for i in range(self.K-1):
             traj_Y[t_k_map[i]:t_k_map[i+1]] = Y[B[i+1],t_k_map[i]:t_k_map[i+1]]
         traj_Y[t_k_map[-1]:] = Y[B[-1],t_k_map[-1]:]

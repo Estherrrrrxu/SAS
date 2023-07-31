@@ -255,6 +255,7 @@ class ModelInterface:
         Returns:
             np.ndarray: state X at t
         """
+        # multiplier = Rt.shape[1] if Rt.shape[1] else 1
         theta = self.theta.transition_model
         theta_k = theta[0]
         theta_dt = theta[1]
