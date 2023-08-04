@@ -123,7 +123,10 @@ class ModelInterface:
             else:
                 raise ValueError("Error: Please specify the observation interval!")
         # give observation list
-        elif isinstance(obs_made, list):
+        elif isinstance(obs_made, np.ndarray) or isinstance(obs_made, list):
+            # convert np.ndarray to list
+            if isinstance(obs_made, np.ndarray):
+                obs_made = obs_made.tolist()
             # if is all bool and all True
             if all(isinstance(entry, bool) and entry for entry in obs_made):
                 self.K = self.T
@@ -136,12 +139,10 @@ class ModelInterface:
                 raise ValueError("Error: Invalid input!")
         # give observation interval as a int - how many timesteps
         elif isinstance(obs_made, int):
-            self.K = int(self.T/obs_made)
+            # in this case K still = T
+            self.K = self.T
             self.config['dt'] *= obs_made # update dt
-            self._is_observed = [False] * self.T
-            for i in range(0, self.T, obs_made):
-                self._is_observed[i] = True
-            self.observed_ind = np.arange(self.T)[self._is_observed]
+            self.observed_ind = np.arange(self.K)
         else:
             raise ValueError("Error: Please check the input format!")
         return

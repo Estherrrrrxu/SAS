@@ -110,9 +110,10 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
                label = "One Traj/MLE")
     ax[0].set_xlim([left,right])
 
-    ax[1].plot(df_obs['index'].values, MLE[:-1],
+    ax[1].plot(df_obs['index'].values, MLE[:-1], "|", markersize=15,markeredgewidth=1.5,
                linestyle=(0, (3, 1)), color='C9', linewidth=2, 
                label = "One Traj/MLE")
+    ax[1].set_xlim([left,right])
     return MLE
 # %%
 def plot_scenarios(df, df_obs, model, start_ind):

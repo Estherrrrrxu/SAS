@@ -113,6 +113,8 @@ class Chain:
         # self.model_interface.input_model()
         # self.R = self.model_interface.R    
         return 
+    
+    # TODO: make this part the same as the sequential monte carlo
 
     def run_particle_MCMC(self) -> None:
         """Run particle MCMC
