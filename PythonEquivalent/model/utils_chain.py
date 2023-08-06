@@ -203,11 +203,8 @@ class Chain:
             np.ndarray: Trajectory of X that is sampled at final timestep
         """
         traj_X = np.zeros(self.T+1)
-        t_k_map = self.observed_ind + 1
-        t_k_map = np.append(0, t_k_map)
-        traj_X[0] = X[B[0],0]
-        for i in range(1, self.K+1):
-            traj_X[t_k_map[i-1]:t_k_map[i]] = X[B[i],t_k_map[i-1]:t_k_map[i]]
+        for i in range(self.K):
+            traj_X[self.pre_ind[i]:self.post_ind[i]] = X[B[i],self.post_ind[i]]
         return traj_X
     
     def _get_Y_traj(self, Y:  np.ndarray, B: np.ndarray) -> np.ndarray:
@@ -221,12 +218,11 @@ class Chain:
             np.ndarray: Trajectory of X that is sampled at final timestep
         """
         traj_Y = np.zeros(self.T)
-        t_k_map = self.observed_ind
-        for i in range(self.K-1):
-            traj_Y[t_k_map[i]:t_k_map[i+1]] = Y[B[i+1],t_k_map[i]:t_k_map[i+1]]
-        traj_Y[t_k_map[-1]:] = Y[B[-1],t_k_map[-1]:]
 
-        return traj_Y
+        for i in range(self.K):
+            traj_Y[self.pre_ind[i]:self.post_ind[i]] = Y[B[i+1],self.post_ind[i]-1]
+
+        return traj_Y        
     
     def _get_R_traj(self, R: np.ndarray, B: np.ndarray) -> np.ndarray:
         """Get R trajectory based on sampled particle trajectory
@@ -238,11 +234,11 @@ class Chain:
         Returns:
             np.ndarray: Trajectory of R that is sampled at final timestep
         """
+
         traj_R = np.zeros(self.T)
-        t_k_map = self.observed_ind
+        
         for i in range(self.K-1):
-            traj_R[t_k_map[i]:t_k_map[i+1]] = R[B[i+1],t_k_map[i]:t_k_map[i+1]]
-        traj_R[t_k_map[-1]:] = R[B[-1],t_k_map[-1]:]
-        return  traj_R
+            traj_R[self.pre_ind[i]:self.post_ind[i]] = R[B[i+1],self.post_ind[i]-1]
+        return traj_R
 
 # %%
