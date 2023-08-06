@@ -17,8 +17,6 @@ from Linear_reservoir.input_data_generation import perfect
 
 # %%
 case = perfect
-# case = instant_gaps_2_d
-# case = instant_gaps_5_d
 
 df = case.df
 df_obs = case.df_obs
