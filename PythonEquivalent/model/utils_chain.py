@@ -4,6 +4,7 @@ import numpy as np
 import scipy.stats as ss
 from dataclasses import dataclass
 from functions.utils import _inverse_pmf
+import copy
 # %%
 @dataclass
 class State:
@@ -65,10 +66,6 @@ class Chain:
             pre_ind = pre_ind[:-1]
         self.pre_ind = pre_ind
         self.post_ind = post_ind
-
-        # TODO: remove after instant gap is done
-        print("pre_ind: ", self.pre_ind)
-        print("post_ind: ", self.post_ind)
 
 
     def run_sequential_monte_carlo(self) -> None:
@@ -141,11 +138,10 @@ class Chain:
             x_prime = X[B[k+1],end_ind_p1]
             # TODO: only pass the immediate next time step to avoid inversion
             xkp1_anchor = xkp1[:,-1]
-            print("xkp1_anchor: ", xkp1_anchor)
-            print("x_prime: ", x_prime)
+            sd = (xkp1_anchor - x_prime).mean()
 
             W_tilde = W + np.log(
-                self.model_interface.state_model(x_prime=x_prime, xkp1=xkp1_anchor)
+                self.model_interface.state_model(x_prime=x_prime, xkp1=xkp1_anchor,sd=abs(sd/2)) 
             )
             
             A[B[k+1],k+1] = _inverse_pmf(xkp1_anchor - x_prime,
@@ -172,7 +168,7 @@ class Chain:
                                                         )
                             )
             W = wkp1#/wkp1.sum()
-            xk = X[A[:,k+1], end_ind]
+            xk = xkp1[:,-1]
         
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)  
         # generate new set of R

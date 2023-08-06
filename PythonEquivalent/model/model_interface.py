@@ -333,7 +333,8 @@ class ModelInterface:
     def state_model(
             self,
             x_prime,
-            xkp1
+            xkp1,
+            sd
     ):
         """State model for linear reservoir
         
@@ -344,7 +345,7 @@ class ModelInterface:
         Returns:
             np.ndarray: likelihood of estimated state around ref trajectory
         """
-        sd = self.theta.state_model
+        # sd = self.theta.state_model
         return ss.norm(x_prime, sd).pdf(xkp1)
 
     
