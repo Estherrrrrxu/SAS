@@ -85,14 +85,10 @@ class Chain:
         for k in range(self.K):
             start_ind = self.pre_ind[k]
             end_ind = self.post_ind[k]
-            print("start_ind: ", start_ind)
-            print("end_ind: ", end_ind)
-
 
             # TODO: may need more more work on this cuz currently only one flux
             xkp1 = self.model_interface.transition_model(Xtm1=xk,
                                                          Rt=R[A[:,k], start_ind:end_ind])
-            print(R[A[:,k], start_ind:end_ind].shape)
             Y[:,start_ind:end_ind] = self.model_interface.observation_model(Xk=xkp1)
             wkp1 = W + np.log(
                 #TODO: change it to only give one
@@ -133,42 +129,50 @@ class Chain:
         W = np.log(np.ones(self.N)/self.N)
 
         xk = X[A[:,0], 0:1]
-        for k in range(self.K):
+        for k in range(self.K-1):
             start_ind = self.pre_ind[k]
             end_ind = self.post_ind[k]
+            end_ind_p1 = self.post_ind[k+1]
 
             rr = R[A[:,k], start_ind:end_ind]
             xkp1 = self.model_interface.transition_model(Xtm1=xk,
                                                          Rt=rr)
-            # Update start_ind+1:end_ind+1
-            x_prime = X[B[k+1],k+1]
+            # the next one in the trajectory
+            x_prime = X[B[k+1],end_ind_p1]
+            # TODO: only pass the immediate next time step to avoid inversion
+            xkp1_anchor = xkp1[:,-1]
+            print("xkp1_anchor: ", xkp1_anchor)
+            print("x_prime: ", x_prime)
 
             W_tilde = W + np.log(
-                self.model_interface.state_model(x_prime=x_prime, xkp1=xkp1)
+                self.model_interface.state_model(x_prime=x_prime, xkp1=xkp1_anchor)
             )
             
-            A[B[k+1],k+1] = _inverse_pmf(xkp1 - x_prime,
+            A[B[k+1],k+1] = _inverse_pmf(xkp1_anchor - x_prime,
                                          W_tilde, 
                                          num = 1)
-            # now update everything in new state
+            # chain mixing
             notB = np.arange(0,self.N)!=B[k+1]
             A[:,k+1][notB] = _inverse_pmf(X[:,k],W, num = self.N-1)
             xkp1[notB] = xkp1[A[:,k+1][notB]]
             rr[notB] = rr[A[:,k+1][notB]]
             xkp1[~notB] = xkp1[A[B[k+1],k+1]]
             rr[~notB] = R[:,k][A[B[k+1],k+1]]
-            X[:,k+1] = xkp1   
-            R[:,k] = rr       
+            # update state
+            X[:,start_ind+1:end_ind+1] = xkp1   
+            R[:,start_ind:end_ind] = rr
+            # update weight       
             W[notB] = W[A[:,k+1][notB]]
             W[~notB] = W[A[B[k+1],k+1]]
-            Y[:,k] = self.model_interface.observation_model(Xk=X[:,k+1])
+            Y[:,start_ind:end_ind] = self.model_interface.observation_model(Xk=xkp1)
             wkp1 = W + np.log(
                 self.model_interface.observation_model_likelihood(
-                                                        yhk=Y[:,k],
-                                                        yk=self.outflux[k]
+                                                        yhk=Y[:,end_ind-1],
+                                                        yk=self.outflux[end_ind-1]
                                                         )
                             )
             W = wkp1#/wkp1.sum()
+            xk = X[A[:,k+1], end_ind]
         
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)  
         # generate new set of R

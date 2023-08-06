@@ -9,7 +9,7 @@ class Parameter:
     input_model: np.ndarray
     transition_model: np.ndarray
     observation_model: np.ndarray
-
+    state_model: np.ndarray
 # %%
 class ModelInterface:
     """Customize necessary model functionalities here
@@ -61,6 +61,7 @@ class ModelInterface:
         # initialize input uncertainties
         self.R = np.zeros((self.N, self.T))
         self.update_model([1, 0.0005]) # dummy update
+        print(self.theta)
 
         self.initial_state = self.outflux[0]
 
@@ -166,9 +167,10 @@ class ModelInterface:
                                         "search_dis": "normal", "search_params":[0.00001],
                                     }
                                 },
-                'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
+                'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15, 'state_peak': 0.0005}
             }
         self._theta_init = theta_init
+        print(self._theta_init)
         # find params to update
         self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
         self._num_theta_to_estimate = len(self._theta_to_estimate )
@@ -229,11 +231,14 @@ class ModelInterface:
         transition_param = [theta_new[0], self.config['dt']]
         # observation model param is to estimate
         obs_param = theta_new[1]
+        # state model param is fixed for now
+        state_param = self._theta_init['not_to_estimate']['state_peak']
 
         self.theta = Parameter(
                             input_model=input_param,
                             transition_model=transition_param, 
-                            observation_model=obs_param
+                            observation_model=obs_param,
+                            state_model=state_param
                             )
         return 
     
@@ -339,28 +344,7 @@ class ModelInterface:
         Returns:
             np.ndarray: likelihood of estimated state around ref trajectory
         """
-        # TODO: change this super small number to a parameter
-        return ss.norm(x_prime, 0.000005).pdf(xkp1)
+        sd = self.theta.state_model
+        return ss.norm(x_prime, sd).pdf(xkp1)
 
     
-# %%
-class ModelInterfaceBulk(ModelInterface):
-    def input_model(self) -> None:
-        """Input model for linear reservoir
-
-        Rt ~ Exp(Ut)
-
-        Args:
-            Ut (float): forcing at time t
-
-        Returns:
-            np.ndarray: Rt
-        """
-        mean = np.random.normal(self.influx, self.theta.input_model)
-        for t in range(self.T):
-            self.R[:,t] = ss.expon.rvs(size=self.N, scale=mean[t])
-        for n in range(self.N):
-            self.R[n,:] /= np.sum(self.R[n,:])/self.T
-            self.R[n,:] *= mean
-            
-        return 

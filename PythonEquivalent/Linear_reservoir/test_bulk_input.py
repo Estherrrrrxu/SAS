@@ -33,7 +33,7 @@ theta_init = {
                             "search_dis": "normal", "search_params":[0.00001],
                         }
                     },
-    'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
+    'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15, 'state_peak': 0.0005}
 }
 
 config = {'observed_made_each_step': obs_made}
@@ -51,7 +51,7 @@ model_interface = ModelInterface(
 try: 
     chain = Chain(
         model_interface = model_interface,
-        theta=[1., 0.00005]
+        theta=[1., 0.000005]
     )
     chain.run_sequential_monte_carlo()
     plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
@@ -67,7 +67,7 @@ except IndexError:
 model = SSModel(
     model_interface = model_interface,
     num_parameter_samples = 10,
-    len_parameter_MCMC = 30,
+    len_parameter_MCMC = 5,
     learning_step = 0.75
 )
 model.run_particle_Gibbs_AS_SAEM()
