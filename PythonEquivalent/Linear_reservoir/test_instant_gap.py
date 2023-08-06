@@ -53,10 +53,14 @@ def run_instant(case):
             theta=[1., 0.00005]
         )
         chain.run_sequential_monte_carlo()
-        plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
+        plot_MLE(chain.state, 
+                 df, df_obs, 
+                 chain.pre_ind, chain.post_ind)
 
         chain.run_particle_MCMC()
-        plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
+        plot_MLE(chain.state,
+                 df, df_obs,
+                 chain.pre_ind, chain.post_ind)
     except IndexError:
         print("Index needs to change for Chain obj!") 
 
@@ -71,6 +75,11 @@ def run_instant(case):
     )
     model.run_particle_Gibbs_AS_SAEM()
     # %%
+    if not os.path.exists("Results"):
+        os.makedirs("Results")
+    case_name_save = case_name.replace("/"," ")
+    # %%
+
     fig, ax = plt.subplots(2,1,figsize=(10,5))
     ax[0].plot(model.theta_record[:,0])
     ax[0].plot([0,15],[1,1],'r:',label="true value")
@@ -83,14 +92,15 @@ def run_instant(case):
     ax[0].legend(frameon=False)
     ax[1].legend(frameon=False)
     fig.suptitle(f"Parameter estimation for {case_name}")
+    fig.savefig(f"Results/parameter_estimation_{case_name_save}.pdf")
 
     # %%
     fig, ax = plot_scenarios(df, df_obs, model, 10)
-    fig.suptitle(f"{case_name}")
+    fig.suptitle(f"{case_name}")    
+    fig.savefig(f"Results/scenarios_{case_name_save}.pdf")
     return
 
 # %%
 if __name__ == "__main__":
     run_instant(instant_gaps_2_d)
     run_instant(instant_gaps_5_d)
-
