@@ -18,7 +18,6 @@ from Linear_reservoir.input_data_generation import weekly_bulk, biweekly_bulk, w
 # %%
 case = weekly_bulk
 
-
 df = case.df
 df_obs = case.df_obs
 obs_made = case.obs_made

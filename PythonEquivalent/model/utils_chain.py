@@ -85,12 +85,14 @@ class Chain:
         for k in range(self.K):
             start_ind = self.pre_ind[k]
             end_ind = self.post_ind[k]
+            print("start_ind: ", start_ind)
+            print("end_ind: ", end_ind)
 
 
             # TODO: may need more more work on this cuz currently only one flux
             xkp1 = self.model_interface.transition_model(Xtm1=xk,
                                                          Rt=R[A[:,k], start_ind:end_ind])
-
+            print(R[A[:,k], start_ind:end_ind].shape)
             Y[:,start_ind:end_ind] = self.model_interface.observation_model(Xk=xkp1)
             wkp1 = W + np.log(
                 #TODO: change it to only give one
@@ -104,7 +106,7 @@ class Chain:
             X[:,start_ind+1:end_ind+1] = xkp1
             A[:,k+1] = _inverse_pmf(A[:,k],W, num = self.N)
             # draw new state samples and associated weights based on last ancestor 
-            xk = X[A[:,k+1], start_ind+1:end_ind+1]
+            xk = X[A[:,k+1], end_ind]
 
 
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)  
@@ -129,16 +131,16 @@ class Chain:
         B = self._find_traj(A, W)
         # reinitialize weight
         W = np.log(np.ones(self.N)/self.N)
-        # TODO: this is the place to pass a small interval to the transition model
+
+        xk = X[A[:,0], 0:1]
         for k in range(self.K):
-            
             start_ind = self.pre_ind[k]
             end_ind = self.post_ind[k]
 
-            rr = R[:,k]
-            xkp1 = self.model_interface.transition_model(Xtm1=X[:,k],
-                                                         Rt=R[:,k])
-            # Update 
+            rr = R[A[:,k], start_ind:end_ind]
+            xkp1 = self.model_interface.transition_model(Xtm1=xk,
+                                                         Rt=rr)
+            # Update start_ind+1:end_ind+1
             x_prime = X[B[k+1],k+1]
 
             W_tilde = W + np.log(

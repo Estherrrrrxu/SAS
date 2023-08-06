@@ -239,7 +239,6 @@ class ModelInterface:
     
     def transition_model(self, 
                         Xtm1: np.ndarray, 
-                        Ut: Optional[np.ndarray] = None,
                         Rt: Optional[np.ndarray] = None
         ) -> np.ndarray:
         """State estimaton model f_theta(Xt-1, Rt)
@@ -249,19 +248,23 @@ class ModelInterface:
                 where rt = ut - U(0, theta_r)
 
         Args:
-            Xtm1 (np.ndarray): state X at t-1
-            Ut (np.ndarray, Optional): input forcing U at t
-            Rt (np.ndarray, Optional): uncertainty R at t
+            Xtm1 (np.ndarray): state X at t = k-1
+            Rt (np.ndarray, Optional): uncertainty R at t = k-1:k
 
         Returns:
             np.ndarray: state X at t
         """
-        # multiplier = Rt.shape[1] if Rt.shape[1] else 1
+        # Get parameters
         theta = self.theta.transition_model
         theta_k = theta[0]
         theta_dt = theta[1]
-        Xt = (1 -  theta_k * theta_dt) * Xtm1 + theta_k * theta_dt * Rt
-        return Xt
+        
+        # update from last observation
+        num_iter = Rt.shape[1]
+        Xt = np.ones((self.N, num_iter+1)) * Xtm1.reshape(-1, 1)        
+        for i in range(1,num_iter+1):
+            Xt[:,i] = (1 -  theta_k * theta_dt) * Xt[:,i-1] + theta_k * theta_dt * Rt[:,i-1]
+        return Xt[:,1:]
     
 
     def observation_model(self, 
