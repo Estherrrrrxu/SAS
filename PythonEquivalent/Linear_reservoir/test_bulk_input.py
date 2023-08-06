@@ -33,7 +33,7 @@ theta_init = {
                             "search_dis": "normal", "search_params":[0.00001],
                         }
                     },
-    'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15, 'state_peak': 0.0005}
+    'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15, 'state_peak': 0.005}
 }
 
 config = {'observed_made_each_step': obs_made}
@@ -67,7 +67,7 @@ except IndexError:
 model = SSModel(
     model_interface = model_interface,
     num_parameter_samples = 10,
-    len_parameter_MCMC = 5,
+    len_parameter_MCMC = 50,
     learning_step = 0.75
 )
 model.run_particle_Gibbs_AS_SAEM()
