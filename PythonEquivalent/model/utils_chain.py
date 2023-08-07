@@ -126,10 +126,13 @@ class Chain:
         W = np.log(np.ones(self.N)/self.N)
 
         xk = X[A[:,0], 0:1]
-        for k in range(self.K-1):
+        for k in range(self.K):
             start_ind = self.pre_ind[k]
             end_ind = self.post_ind[k]
-            end_ind_p1 = self.post_ind[k+1]
+            if k == self.K-1:
+                end_ind_p1 = self.T
+            else:
+                end_ind_p1 = self.post_ind[k+1]
 
             rr = R[A[:,k], start_ind:end_ind]
             xkp1 = self.model_interface.transition_model(Xtm1=xk,
@@ -206,7 +209,7 @@ class Chain:
         """
         traj_X = np.zeros(self.T+1)
         for i in range(self.K):
-            traj_X[self.pre_ind[i]:self.post_ind[i]] = X[B[i],self.post_ind[i]]
+            traj_X[self.pre_ind[i]+1:self.post_ind[i]+1] = X[B[i],self.pre_ind[i]+1:self.post_ind[i]+1]
         return traj_X
     
     def _get_Y_traj(self, Y:  np.ndarray, B: np.ndarray) -> np.ndarray:
@@ -222,7 +225,7 @@ class Chain:
         traj_Y = np.zeros(self.T)
 
         for i in range(self.K):
-            traj_Y[self.pre_ind[i]:self.post_ind[i]] = Y[B[i+1],self.post_ind[i]-1]
+            traj_Y[self.pre_ind[i]:self.post_ind[i]] = Y[B[i+1],self.pre_ind[i]:self.post_ind[i]]
 
         return traj_Y        
     
@@ -240,7 +243,7 @@ class Chain:
         traj_R = np.zeros(self.T)
         
         for i in range(self.K-1):
-            traj_R[self.pre_ind[i]:self.post_ind[i]] = R[B[i+1],self.post_ind[i]-1]
+            traj_R[self.pre_ind[i]:self.post_ind[i]] = R[B[i+1],self.pre_ind[i]:self.post_ind[i]]
         return traj_R
 
 # %%

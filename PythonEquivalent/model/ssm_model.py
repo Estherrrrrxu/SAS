@@ -41,6 +41,7 @@ class SSModel:
         self.models_for_each_chain = [model_interface for d in range(self.D)]
         # store necessary models
         self.prior_model = model_interface.prior_model
+        # TODO: make search model only work within uniform prior
         self.search_model = model_interface.search_model
 
         # initialize record for parameter and input

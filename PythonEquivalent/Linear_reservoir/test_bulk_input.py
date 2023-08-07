@@ -26,14 +26,18 @@ case_name = case.case_name
 # %%
 # define theta_init
 theta_init = {
-    'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.5,0.3], 
+    'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.5,0.03], 
                             "search_dis": "normal", "search_params":[0.05]
                         },
-                    'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.01], 
-                            "search_dis": "normal", "search_params":[0.00001],
-                        }
-                    },
-    'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15, 'state_peak': 0.005}
+                    'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.005,0.01], 
+                            "search_dis": "normal", "search_params":[0.001],
+                        },
+                    'input_uncertainty':{"prior_dis": "uniform", "prior_params":[0.0,0.05],
+                            "search_dis": "normal", "search_params":[0.001],
+                    }
+                },
+    'not_to_estimate': {}
+
 }
 
 config = {'observed_made_each_step': obs_made}
@@ -51,7 +55,7 @@ model_interface = ModelInterface(
 try: 
     chain = Chain(
         model_interface = model_interface,
-        theta=[1., 0.000005]
+        theta=[1., 0.005, 0.05]
     )
     chain.run_sequential_monte_carlo()
     plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
@@ -67,10 +71,11 @@ except IndexError:
 model = SSModel(
     model_interface = model_interface,
     num_parameter_samples = 10,
-    len_parameter_MCMC = 50,
+    len_parameter_MCMC = 15,
     learning_step = 0.75
 )
 model.run_particle_Gibbs_AS_SAEM()
+
 # %%
 fig, ax = plt.subplots(2,1,figsize=(10,5))
 ax[0].plot(model.theta_record[:,0])
@@ -86,7 +91,8 @@ ax[1].legend(frameon=False)
 fig.suptitle(f"Parameter estimation for {case_name}")
 
 # %%
-fig, ax = plot_scenarios(df, df_obs, model, 10)
+fig, ax = plot_scenarios(df, df_obs, model, 11)
 fig.suptitle(f"{case_name}")
+
 
 # %%

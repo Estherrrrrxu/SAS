@@ -3,13 +3,13 @@ from dataclasses import dataclass
 import scipy.stats as ss
 import pandas as pd
 from typing import Optional, Any, List
+from functions.utils import normalize_intervals
 # %%
 @dataclass
 class Parameter:
     input_model: np.ndarray
     transition_model: np.ndarray
     observation_model: np.ndarray
-    state_model: np.ndarray
 # %%
 class ModelInterface:
     """Customize necessary model functionalities here
@@ -60,8 +60,7 @@ class ModelInterface:
         self.model = customized_model
         # initialize input uncertainties
         self.R = np.zeros((self.N, self.T))
-        self.update_model([1, 0.0005]) # dummy update
-        print(self.theta)
+        self.update_model([1, 0.0005, 0.0005]) # dummy update
 
         self.initial_state = self.outflux[0]
 
@@ -167,10 +166,9 @@ class ModelInterface:
                                         "search_dis": "normal", "search_params":[0.00001],
                                     }
                                 },
-                'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15, 'state_peak': 0.0005}
+                'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
             }
         self._theta_init = theta_init
-        print(self._theta_init)
         # find params to update
         self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
         self._num_theta_to_estimate = len(self._theta_to_estimate )
@@ -195,6 +193,7 @@ class ModelInterface:
                     scale = current_theta['prior_params'][1]
                                         )
             elif current_theta['prior_dis'] == 'uniform':
+                # first param: lower bound, second param: interval length
                 self.prior_model[key] = ss.uniform(
                     loc = current_theta['prior_params'][0],
                     scale = (
@@ -225,20 +224,20 @@ class ModelInterface:
         Set:
             Parameter: update parameter object for later
         """
-        # input model param is fixed
-        input_param = self._theta_init['not_to_estimate']['input_uncertainty']
+
+
         # transition model param [0] is theta to estimate, and [1] is fixed dt
         transition_param = [theta_new[0], self.config['dt']]
         # observation model param is to estimate
         obs_param = theta_new[1]
-        # state model param is fixed for now
-        state_param = self._theta_init['not_to_estimate']['state_peak']
+
+        # input model param is to estimate
+        input_param = theta_new[2]
 
         self.theta = Parameter(
                             input_model=input_param,
                             transition_model=transition_param, 
-                            observation_model=obs_param,
-                            state_model=state_param
+                            observation_model=obs_param
                             )
         return 
     
@@ -324,23 +323,31 @@ class ModelInterface:
         Returns:
             np.ndarray: Rt
         """
+
         for t in range(self.T):
-            self.R[:,t] = ss.uniform(
-                self.influx[t] - self.theta.input_model, self.theta.input_model
-                ).rvs(self.N)
+            # self.R[:,t] = ss.uniform(
+            #     self.influx[t] - self.theta.input_model, self.theta.input_model
+            #     ).rvs(self.N)
+            self.R[:,t] = ss.expon(scale=self.influx[t]).rvs(self.N)
+        for n in range(self.N):
+            self.R[n,:] = normalize_intervals(self.R[n,:], self.observed_ind)
+            self.R[n,:] *= (self.influx - ss.norm(0,self.theta.input_model).rvs(self.T))
+            self.R[n,:][self.R[n,:] < 0] = 0
+
         return 
     
     def state_model(
             self,
-            x_prime,
-            xkp1,
-            sd
+            x_prime: float,
+            xkp1: np.ndarray,
+            sd: float
     ):
         """State model for linear reservoir
         
         Args:
-            x_prime (np.ndarray): state of ref trajectory at time t+1
+            x_prime (float): state of ref trajectory at time t+1
             xkp1 (np.ndarray): estimated state at time t+1
+            sd (float): standard deviation of state model, set to be adaptive for now
             
         Returns:
             np.ndarray: likelihood of estimated state around ref trajectory

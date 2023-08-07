@@ -72,6 +72,12 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
     Returns:
         _type_: _description_
     """
+    # state = chain.state
+    # df=case.df
+    # df_obs=case.df_obs
+    # pre_ind = chain.pre_ind
+    # post_ind = chain.post_ind
+    # left,right = None,None
     X = state.X
     A = state.A
     W = state.W
@@ -97,10 +103,10 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
     MLE_R = np.zeros(T)
 
     for i in range(K):
-        MLE[pre_ind[i]:post_ind[i]] = X[B[i+1],post_ind[i]]
+        MLE[pre_ind[i]:post_ind[i]] = X[B[i+1],pre_ind[i]+1:post_ind[i]+1]
         # MLE[i] = Y[B[i+1],i]
     for i in range(K):
-        MLE_R[pre_ind[i]:post_ind[i]] = R[B[i+1],post_ind[i]-1]
+        MLE_R[pre_ind[i]:post_ind[i]] = R[B[i+1],pre_ind[i]:post_ind[i]]
         # MLE_R[i] = R[B[i+1],i]   
 
 
@@ -181,4 +187,27 @@ def create_bulk_sample(original: pd.DataFrame, n: int) -> pd.DataFrame:
     bulk['is_obs'] = is_obs[:last_true_index + 1]
     return bulk
 
+# %%
+def normalize_intervals(arr, index_array):
+    normalized_arr = arr.copy()
+
+    # Normalize each interval separately
+    for i in range(len(index_array) - 1):
+        start_index = index_array[i]
+        end_index = index_array[i + 1]
+
+        # Extract the subarray between the specified indices
+        subarray = arr[start_index:end_index + 1]
+
+        # Find the minimum and maximum values within the subarray
+        min_val = min(subarray)
+        max_val = max(subarray)
+
+        # Normalize the subarray between 0 and 1
+        normalized_subarray = [max(0,(x - min_val) / (max_val - min_val)) for x in subarray]
+
+        # Replace the original subarray with the normalized values
+        normalized_arr[start_index:end_index + 1] = normalized_subarray
+
+    return normalized_arr
 # %%

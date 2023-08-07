@@ -31,9 +31,13 @@ theta_init = {
                         },
                     'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0001], 
                             "search_dis": "normal", "search_params":[0.00001],
-                        }
-                    },
-    'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
+                        },
+                    'input_uncertainty':{"prior_dis": "uniform", "prior_params":[0.0,0.05],
+                            "search_dis": "normal", "search_params":[0.001],
+                    }
+                },
+    'not_to_estimate': {}
+
 }
 
 config = {'observed_made_each_step': obs_made}
@@ -51,7 +55,7 @@ model_interface = ModelInterface(
 try: 
     chain = Chain(
         model_interface = model_interface,
-        theta=[1., 0.00005]
+        theta=[1., 0.000005, 0.01]
     )
     chain.run_sequential_monte_carlo()
     plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
@@ -88,5 +92,6 @@ fig.suptitle(f"Parameter estimation for {case_name}")
 # %%
 fig, ax = plot_scenarios(df, df_obs, model, 10)
 fig.suptitle(f"{case_name}")
+
 
 # %%

@@ -15,8 +15,9 @@ from model.utils_chain import Chain
 from functions.utils import plot_MLE, plot_scenarios, plot_base
 import matplotlib.pyplot as plt
 from Linear_reservoir.input_data_generation import instant_gaps_2_d, instant_gaps_5_d
-# %%
-def run_instant(case):
+    # %%
+    # def run_instant(case):
+    case = instant_gaps_5_d
     df = case.df
     df_obs = case.df_obs
     obs_made = case.obs_made
@@ -30,11 +31,14 @@ def run_instant(case):
                             },
                         'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0001], 
                                 "search_dis": "normal", "search_params":[0.00001],
-                            }
-                        },
-        'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
-    }
+                            },
+                        'input_uncertainty':{"prior_dis": "uniform", "prior_params":[0.0,0.05],
+                                "search_dis": "normal", "search_params":[0.001],
+                        }
+                    },
+        'not_to_estimate': {}
 
+    }
     config = {'observed_made_each_step': obs_made}
 
     # initialize model interface settings
@@ -50,7 +54,7 @@ def run_instant(case):
     try: 
         chain = Chain(
             model_interface = model_interface,
-            theta=[1., 0.00005]
+            theta=[1., 0.00005, 0.005]
         )
         chain.run_sequential_monte_carlo()
         plot_MLE(chain.state, 
@@ -98,7 +102,7 @@ def run_instant(case):
     fig, ax = plot_scenarios(df, df_obs, model, 10)
     fig.suptitle(f"{case_name}")    
     fig.savefig(f"Results/scenarios_{case_name_save}.pdf")
-    return
+    # return
 
 # %%
 if __name__ == "__main__":
