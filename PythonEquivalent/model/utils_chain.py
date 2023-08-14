@@ -30,7 +30,7 @@ class Chain:
         self.model_interface.update_model(theta)
         self.model_interface.input_model()
         self.R = self.model_interface.R
-        self._state_init = self.model_interface.initial_state
+        self._state_init = self.model_interface.theta.initial_state
 
         # get dimension constants
         self.N = self.model_interface.N

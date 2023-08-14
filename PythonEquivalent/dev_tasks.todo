@@ -4,6 +4,7 @@
 - Put initial state as a parameter to be estimated in theta
     - Change _parse_config to accomodate this
 - Clean up config parse @done
+- Add "is_nonnegative" to handle nonnegative constraints
 - Clean up old files to reflect input/state/output
     - files in functions folder
     - post_comp.py

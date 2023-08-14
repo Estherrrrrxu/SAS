@@ -53,7 +53,7 @@ model_interface = ModelInterface(
 try: 
     chain = Chain(
         model_interface = model_interface,
-        theta=[1., 0.000005, 0.01]
+        theta=[1., 0.000005, 0.01, 0.05]
     )
     chain.run_sequential_monte_carlo()
     plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)

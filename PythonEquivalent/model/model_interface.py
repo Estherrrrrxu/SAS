@@ -11,6 +11,7 @@ class Parameter:
     input_model: np.ndarray
     transition_model: np.ndarray
     observation_model: np.ndarray
+    initial_state: np.ndarray
 # %%
 class ModelInterface:
     """Customize necessary model functionalities here
@@ -68,7 +69,7 @@ class ModelInterface:
         self.R = np.zeros((self.N, self.T))
 
         # initialize theta with a dummy update
-        self.update_model([1, 0.0005, 0.0005])
+        self.update_model([1, 0.0005, 0.0005, 0.05])
 
     def _parse_config(self) -> None:
         """Parse config and set default values
@@ -191,36 +192,65 @@ class ModelInterface:
 
         Args:
             theta_init (dict): initial values of theta
-        """        
-        self.initial_state = self.df[self.config['outflux']][0]
+        """   
 
         # set default theta
         if theta_init == None:
-
             theta_init = {
-                'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.2,0.3], 
-                                        "search_dis": "normal", "search_params":[0.05]
+                'to_estimate': {'k':{"prior_dis": "normal", 
+                                     "prior_params":[1.2,0.3], 
+                                     "search_dis": "normal", "search_params":[0.05],
+                                     "is_nonnegative": True
                                     },
-                                'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0005], 
-                                        "search_dis": "normal", "search_params":[0.00001],
-                                    }
+                                'initial_state':{"prior_dis": "normal", 
+                                                 "prior_params":[self.df[self.config['outflux']][0], 0.0005],
+                                                 "search_dis": "normal", "search_params":[0.00001],
+                                                 "is_nonnegative": True
+                                    },
+                                'obs_uncertainty':{"prior_dis": "uniform", 
+                                                   "prior_params":[0.00005,0.0005], 
+                                                   "search_dis": "normal", "search_params":[0.00001],
+                                                   "is_nonnegative": True
+                                    },
+                                'input_uncertainty':{"prior_dis": "normal", 
+                                                     "prior_params":[0.0,0.005],
+                                                     "search_dis": "normal", "search_params":[0.001],
+                                                     "is_nonnegative": True
+                                    },
                                 },
-                'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
+                'not_to_estimate': {}
             }
-
         self._theta_init = theta_init
+
         # find params to update
         self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
-        self._num_theta_to_estimate = len(self._theta_to_estimate )
+        self._num_theta_to_estimate = len(self._theta_to_estimate)
 
+        # Set parameter constraints and distributions
+        self._set_parameter_constraints()
         self._set_parameter_distribution()  
         return
     
-    def _set_parameter_distribution(
-            self,
-        ) -> None:
+    def _set_parameter_constraints(self) -> None:
+        """Set parameter constraints
+
+        Set:
+            param_constraints (dict): whether this parameter is nonnegative
+        """
+        # save models
+        self.param_constraints = {}
+
+        for key in self._theta_to_estimate:
+            current_theta = self._theta_init['to_estimate'][key]
+            self.param_constraints[key] = current_theta['is_nonnegative']
+        return
+
+    def _set_parameter_distribution(self) -> None:
         """Set prior and update distributions for parameters
 
+        Set:
+            prior_model (dict): prior distribution for parameters
+            search_model (dict): update distribution for parameters
         """
         # save models
         self.prior_model = {}
@@ -228,12 +258,14 @@ class ModelInterface:
 
         for key in self._theta_to_estimate:
             current_theta = self._theta_init['to_estimate'][key]
-            # for prior distribution
+
+            # set parameters for prior distribution
             if current_theta['prior_dis'] == 'normal':
+                # first param: mean, second param: std
                 self.prior_model[key] = ss.norm(
                     loc = current_theta['prior_params'][0], 
                     scale = current_theta['prior_params'][1]
-                                        )
+                    )
             elif current_theta['prior_dis'] == 'uniform':
                 # first param: lower bound, second param: interval length
                 self.prior_model[key] = ss.uniform(
@@ -241,17 +273,18 @@ class ModelInterface:
                     scale = (
                     current_theta['prior_params'][1] - current_theta['prior_params'][0]
                             )
-                                                )
+                    )
             else:
                 raise ValueError("This prior distribution is not implemented yet")
             
-            # for update distributions
+            # set parameter for search/update distributions
             if current_theta['search_dis'] == 'normal':
                 self.search_model[key] = ss.norm(loc = 0, scale = current_theta['search_params'][0])
             else:
                 raise ValueError("This search distribution is not implemented yet")
-                # need theta be decoded in this way
-
+        return
+    
+    # TODO: 08-14-23 from here 
     def update_model(
             self,
             theta_new: np.ndarray
@@ -276,10 +309,13 @@ class ModelInterface:
         # input model param is to estimate
         input_param = theta_new[2]
 
+        init_state = theta_new[3]
+
         self.theta = Parameter(
                             input_model=input_param,
                             transition_model=transition_param, 
-                            observation_model=obs_param
+                            observation_model=obs_param,
+                            initial_state=init_state
                             )
         return 
     
