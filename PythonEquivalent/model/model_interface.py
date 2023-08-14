@@ -5,6 +5,7 @@ import pandas as pd
 from typing import Optional, Any, List
 from functions.utils import normalize_intervals
 # %%
+# a class to store parameters
 @dataclass
 class Parameter:
     input_model: np.ndarray
@@ -23,8 +24,6 @@ class ModelInterface:
         update_model: update model using the new theta values
         transition_model: transition model for/to link user-defined model
         observation_model: observation model for/to link user-defined model
-
-
     """
     def __init__(
             self, 
@@ -34,130 +33,170 @@ class ModelInterface:
             config: Optional[dict[str, Any]] = None,
             num_input_scenarios: Optional[int] = 10,   
         ) -> None:
-        """Initialize the model interface
+        """Initialize the model interface, and parse any parameters
 
         Args:
             df (pd.DataFrame): dataframe of input data
-            customized_model (Any): any model structure that is necessary to import info
-            theta_init (dict): initial values of parameters
+            customized_model (Optional, Any): any model structure that is necessary to import info. Refer to Linear_reservoir for example.
+            theta_init (Optional, dict): initial values of parameters
+            config (Optional, dict): configurations of the model
+            num_input_scenarios (Optional, int): number of input scenarios
+        
+        Set:
+            df (pd.DataFrame): dataframe of input data
+            model (Any): any model structure that pass through customized_model. Refer to Linear_reservoir for example. 
+            N (int): number of input scenarios
+            T (int): number of timesteps
             config (dict): configurations of the model
-            num_input_scenarios (int): number of input scenarios
-            observed_made_each_step (bool or int or List[bool]): whether the input is observed or not
-            observed_ind (np.ndarray): mapping from T to K
+            R (np.ndarray): input uncertainty storage matrix
+
         
         """
         self.df = df
+        self.model = customized_model # pass your own model here
         self.N = num_input_scenarios
+        self.T = len(self.df) # set T to be the length of the dataframe
 
+        # Set configurations according your own need here
         self.config = config
-        # customize the config according to model structure here
         self._parse_config()
-        self._set_fluxes()
-        # parse theta - add customization here
+
+        # Set parameters to be estimated here
         self._parse_theta_init(theta_init=theta_init)
-        self._set_parameter_distribution()
-        # initialize model
-        self.model = customized_model
+
         # initialize input uncertainties
         self.R = np.zeros((self.N, self.T))
-        self.update_model([1, 0.0005, 0.0005]) # dummy update
 
-        self.initial_state = self.outflux[0]
+        # initialize theta with a dummy update
+        self.update_model([1, 0.0005, 0.0005])
 
-    def _parse_config(
-            self,
-        ) -> None:
+    def _parse_config(self) -> None:
         """Parse config and set default values
 
-        """
+        Set:
+            dt (float): time step
+            config (dict): configurations of the model
 
-        # process configurations------------
+            observed_made_each_step (bool or int or List[bool]): whether the input is observed or not. If True, all are observed. If False, ask to pass interval steps as int or observation as a list of bool. If a list of bool, then each entry corresponds to each timestep.   
+
         """
-        dt: float
-        influx: str
-        outflux: str
-        observed_made_each_step: bool or int or List[bool]
-        """
+      
         _default_config = {
             'dt': 1./24/60*15,
             'influx': 'J_obs',
             'outflux': 'Q_obs',
             'observed_made_each_step': True,
         }   
-        # replace default config with input configs
-        
 
-        if self.config is not None:
+        if self.config is None:
+            self.config = _default_config
+
+        elif not isinstance(self.config, dict):
+            raise ValueError("Error: Please check the input format!")
+        else:
+            # make sure all keys are valid
+            for key in self.config.keys():
+                if key not in _default_config.keys():
+                    raise ValueError(f'Invalid config key: {key}')
+            
+            # replace default config with input configs
             for key in _default_config.keys():
                 if key not in self.config:
                     self.config[key] = _default_config[key]
-            # else:
-            #     raise ValueError(f'Invalid config key: {key}')
-        else:
-            self.config = _default_config
-            
+
         # set delta_t------------------------
         self.dt = self.config['dt']
+
+        # get observation interval set
+        self._set_observed_made_each_step()
+        # get fluxes set
+        self._set_fluxes()
+
         return
     
-    def _set_fluxes(self) -> None:
-        """Set fluxes
-        """
-        # TODO: flexible way to insert multiple influx and outflux
-        if self.config['influx'] is not None:
-            self.influx = self.df[self.config['influx']]
-            self.T = len(self.influx)
-        
-        self.outflux = self.df[self.config['outflux']]
+    def _set_observed_made_each_step(self) -> None:
+        """Set observation interval
 
+        Set:
+            K (int): number of observed timesteps
+            observed_ind (np.ndarray): indices of observed timesteps
+        """
         obs_made = self.config['observed_made_each_step']
         
-        # set observation K -----------
         # if giving a single bool val
         if isinstance(obs_made, bool):
             # if bool val is True
             if obs_made:
                 self.K = self.T
-                self.observed_ind = [True] * self.T
+                self.observed_ind = np.arange(self.T)
             # if bool val is False, request to give a int val to give observation interval
             else:
                 raise ValueError("Error: Please specify the observation interval!")
-        # give observation list
+            
+        # give observation interval as a list
         elif isinstance(obs_made, np.ndarray) or isinstance(obs_made, list):
             # convert np.ndarray to list
             if isinstance(obs_made, np.ndarray):
                 obs_made = obs_made.tolist()
-            # if is all bool and all True
-            if all(isinstance(entry, bool) and entry for entry in obs_made):
-                self.K = self.T
-                self.observed_ind = np.arange(self.T)
-            # if is all bool and some are not True
-            elif all(isinstance(entry, bool) for entry in obs_made):
-                self.K = sum(obs_made)
-                self.observed_ind = np.arange(self.T)[obs_made]
+            
+            # check if the length of the list is the same as the length of the time series
+            if len(obs_made) == self.T:
+                # if is all bool and all True
+                if all(isinstance(entry, bool) and entry for entry in obs_made):
+                    self.K = self.T
+                    self.observed_ind = np.arange(self.T)
+
+                # if is all bool and some are not True
+                elif all(isinstance(entry, bool) for entry in obs_made):
+                    self.K = sum(obs_made)
+                    self.observed_ind = np.arange(self.T)[obs_made]
+
             else:
-                raise ValueError("Error: Invalid input!")
+                raise ValueError("Error: Check the format of your observation indicator!")
+            
         # give observation interval as a int - how many timesteps
         elif isinstance(obs_made, int):
-            # in this case K still = T
+            # in this case K is still equal to T
             self.K = self.T
-            self.config['dt'] *= obs_made # update dt
+            self.config['dt'] *= obs_made # update dt to account for the interval
             self.observed_ind = np.arange(self.K)
         else:
-            raise ValueError("Error: Please check the input format!")
+            raise ValueError("Error: Input format not supported!")
+    
+    def _set_fluxes(self) -> None:
+        """Set influx and outflux
+
+        Set:
+            influx (np.ndarray): influx
+            outflux (np.ndarray): outflux
+        """
+        # TODO: flexible way to insert multiple influx and outflux
+        if self.config['influx'] is not None:
+            self.influx = self.df[self.config['influx']]
+        else:
+            print("Warning: No influx is given!")
+
+        if self.config['outflux'] is not None:
+            self.outflux = self.df[self.config['outflux']]
+        else:
+            print("Warning: No outflux is given!")
+
         return
     
     def _parse_theta_init(
             self,
             theta_init: Optional[dict[str, Any]] = None            
     ) -> None:
-        """Parse theta and set default values
+        """Parse theta from theta_init
 
         Args:
             theta_init (dict): initial values of theta
-        """
+        """        
+        self.initial_state = self.df[self.config['outflux']][0]
+
+        # set default theta
         if theta_init == None:
-            # set default theta
+
             theta_init = {
                 'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.2,0.3], 
                                         "search_dis": "normal", "search_params":[0.05]
@@ -168,10 +207,13 @@ class ModelInterface:
                                 },
                 'not_to_estimate': {'input_uncertainty': 0.254*1./24/60*15}
             }
+
         self._theta_init = theta_init
         # find params to update
         self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
         self._num_theta_to_estimate = len(self._theta_to_estimate )
+
+        self._set_parameter_distribution()  
         return
     
     def _set_parameter_distribution(
@@ -325,9 +367,6 @@ class ModelInterface:
         """
 
         for t in range(self.T):
-            # self.R[:,t] = ss.uniform(
-            #     self.influx[t] - self.theta.input_model, self.theta.input_model
-            #     ).rvs(self.N)
             self.R[:,t] = ss.expon(scale=self.influx[t]).rvs(self.N)
         for n in range(self.N):
             self.R[n,:] = normalize_intervals(self.R[n,:], self.observed_ind)
