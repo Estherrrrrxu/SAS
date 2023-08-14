@@ -8,6 +8,7 @@ import sys
 sys.path.append('../') 
 from model.model_interface import ModelInterface
 from model.ssm_model import SSModel
+from model.your_model import LinearReservoir
 import pandas as pd
 
 from model.utils_chain import Chain
@@ -26,7 +27,7 @@ case_name = case.case_name
 # %%
 # define theta_init
 theta_init = {
-    'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.5,0.03], 
+    'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.5,0.3], 
                             "search_dis": "normal", "search_params":[0.05]
                         },
                     'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0001], 
@@ -40,14 +41,11 @@ theta_init = {
 
 }
 
-config = {'observed_made_each_step': obs_made}
-
 # initialize model interface settings
 model_interface = ModelInterface(
     df = df_obs,
-    customized_model = None,
+    customized_model = LinearReservoir,
     theta_init = theta_init,
-    config = config,
     num_input_scenarios = 5
 )
 

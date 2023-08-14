@@ -1,12 +1,9 @@
-05-25-2023
-- Make rainfall generation algo more reasonable
-    - If <= 0, regenerate
-- Make T and K not consistent
-    - figure out the time sequence
 
-- Design non-linear cases
-    - parallel reservoirs
-    - cascade reservoirs
+
+08-13-2023
+- Put initial state as a parameter to be estimated in theta
+    - Change _parse_config to accomodate this
+- Clean up config parse @done
 - Clean up old files to reflect input/state/output
     - files in functions folder
     - post_comp.py
@@ -16,6 +13,20 @@
 - Update GBO files accordingly
     - proposal
 - dissertation
+
+
+
+
+05-25-2023
+- Make rainfall generation algo more reasonable @done
+    - If <= 0, regenerate @done
+- Make T and K not consistent @done
+    - figure out the time sequence @done
+
+- Design non-linear cases
+    - parallel reservoirs
+    - cascade reservoirs
+
 
 
 
