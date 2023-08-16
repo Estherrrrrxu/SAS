@@ -26,21 +26,21 @@ case_name = case.case_name
 
 # %%
 # define theta_init
-theta_init = {
-    'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.5,0.3], 
-                            "search_dis": "normal", "search_params":[0.05]
-                        },
-                    'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0001], 
-                            "search_dis": "normal", "search_params":[0.00001],
-                        },
-                    'input_uncertainty':{"prior_dis": "uniform", "prior_params":[0.0,0.05],
-                            "search_dis": "normal", "search_params":[0.001],
-                    }
-                },
-    'not_to_estimate': {}
+# theta_init = {
+#     'to_estimate': {'k':{"prior_dis": "normal", "prior_params":[1.5,0.3], 
+#                             "search_dis": "normal", "search_params":[0.05]
+#                         },
+#                     'obs_uncertainty':{"prior_dis": "uniform", "prior_params":[0.00005,0.0001], 
+#                             "search_dis": "normal", "search_params":[0.00001],
+#                         },
+#                     'input_uncertainty':{"prior_dis": "uniform", "prior_params":[0.0,0.05],
+#                             "search_dis": "normal", "search_params":[0.001],
+#                     }
+#                 },
+#     'not_to_estimate': {}
 
-}
-
+# }
+theta_init = None
 # initialize model interface settings
 model_interface = ModelInterface(
     df = df_obs,
@@ -53,7 +53,7 @@ model_interface = ModelInterface(
 try: 
     chain = Chain(
         model_interface = model_interface,
-        theta=[1., 0.000005, 0.01, 0.05]
+        theta=[1., 0.000005, 0.01, 0.0]
     )
     chain.run_sequential_monte_carlo()
     plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
