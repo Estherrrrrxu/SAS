@@ -69,7 +69,8 @@ class ModelInterface:
         self.R = np.zeros((self.N, self.T))
 
         # initialize theta with a dummy update
-        self.update_model([1, 0.0005, 0.0005, 0.05])
+        # order: [k, obs_uncertainty, input_uncertainty, initial_state]
+        self.update_model([1, 0.0005, 0.0005, 0.0])
 
     def _parse_config(self) -> None:
         """Parse config and set default values
@@ -258,14 +259,21 @@ class ModelInterface:
 
         for key in self._theta_to_estimate:
             current_theta = self._theta_init['to_estimate'][key]
+            is_nonnegative = self.param_constraints[key]
 
             # set parameters for prior distribution
             if current_theta['prior_dis'] == 'normal':
-                # first param: mean, second param: std
-                self.prior_model[key] = ss.norm(
-                    loc = current_theta['prior_params'][0], 
-                    scale = current_theta['prior_params'][1]
-                    )
+                if is_nonnegative:
+                    self.prior_model[key] = ss.truncnorm(a=0, b=np.inf,
+                        s = current_theta['prior_params'][1], 
+                        scale = np.exp(current_theta['prior_params'][0])
+                        )
+                else:
+                    # first param: mean, second param: std
+                    self.prior_model[key] = ss.norm(
+                        loc = current_theta['prior_params'][0], 
+                        scale = current_theta['prior_params'][1]
+                        )
             elif current_theta['prior_dis'] == 'uniform':
                 # first param: lower bound, second param: interval length
                 self.prior_model[key] = ss.uniform(
@@ -284,7 +292,7 @@ class ModelInterface:
                 raise ValueError("This search distribution is not implemented yet")
         return
     
-    # TODO: 08-14-23 from here 
+
     def update_model(
             self,
             theta_new: np.ndarray
@@ -295,20 +303,23 @@ class ModelInterface:
         
         Args:
             theta_new (np.ndarray): new theta to update the model
+                                    order: [k, obs_uncertainty, input_uncertainty, initial_state]
 
         Set:
             Parameter: update parameter object for later
         """
 
 
-        # transition model param [0] is theta to estimate, and [1] is fixed dt
+        # transition model param [0] is k to estimate, and [1] is fixed dt
         transition_param = [theta_new[0], self.config['dt']]
-        # observation model param is to estimate
+
+        # observation uncertainty param is to estimate
         obs_param = theta_new[1]
 
-        # input model param is to estimate
+        # input uncertainty param is to estimate
         input_param = theta_new[2]
 
+        # initial state param is to estimate
         init_state = theta_new[3]
 
         self.theta = Parameter(
