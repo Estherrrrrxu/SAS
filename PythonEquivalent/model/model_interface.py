@@ -70,8 +70,7 @@ class ModelInterface:
         # initialize input uncertainties
         self.R = np.zeros((self.N, self.T))
 
-        # initialize theta with a dummy update
-        # order: [k, obs_uncertainty, input_uncertainty, initial_state]
+        # initialize theta
         self.update_model()
 
     def _parse_config(self) -> None:
@@ -266,9 +265,10 @@ class ModelInterface:
             # set parameters for prior distribution
             if current_theta['prior_dis'] == 'normal':
                 if is_nonnegative:
-                    self.prior_model[key] = ss.truncnorm(a=0, b=np.inf,
-                        loc = current_theta['prior_params'][1], 
-                        scale = np.exp(current_theta['prior_params'][0])
+                    a = (0-current_theta['prior_params'][0])/(current_theta['prior_params'][1])
+                    self.prior_model[key] = ss.truncnorm(a=a, b=np.inf,
+                        loc = current_theta['prior_params'][0], 
+                        scale = current_theta['prior_params'][1]
                         )
                 else:
                     # first param: mean, second param: std
@@ -309,23 +309,23 @@ class ModelInterface:
             Parameter: update parameter object for later
         """
         if theta_new is None:
-            k = self.prior_model['k'].rvs()
-            obs_uncertainty = self.prior_model['obs_uncertainty'].rvs()
-            input_uncertainty = self.prior_model['input_uncertainty'].rvs()
-            initial_state = self.prior_model['initial_state'].rvs()
-            theta_new = [k, obs_uncertainty, input_uncertainty, initial_state]
+            theta_new = []
+            for key in self._theta_to_estimate:
+                theta_new.append(self.prior_model[key].rvs())
 
+        for i, key in enumerate(self._theta_to_estimate):
+            self._theta_init['to_estimate'][key]['current_value'] = theta_new[i]
         # transition model param [0] is k to estimate, and [1] is fixed dt
-        transition_param = [theta_new[0], self.config['dt']]
+        transition_param = [self._theta_init['to_estimate']['k']['current_value'], self.config['dt']]
 
         # observation uncertainty param is to estimate
-        obs_param = theta_new[1]
+        obs_param = self._theta_init['to_estimate']['obs_uncertainty']['current_value']
 
         # input uncertainty param is to estimate
-        input_param = theta_new[2]
+        input_param = self._theta_init['to_estimate']['input_uncertainty']['current_value']
 
         # initial state param is to estimate
-        init_state = theta_new[3]
+        init_state = self._theta_init['to_estimate']['initial_state']['current_value']
 
         self.theta = Parameter(
                             input_model=input_param,
@@ -410,7 +410,7 @@ class ModelInterface:
         """Input model for linear reservoir
 
         Rt' ~ Exp(Ut)
-        Rt = Rt' * (Ut + N(0, theta_r))
+        multiplier * Rk' = Uk + N(0, theta_r)
 
         Args:
             Ut (float): forcing at time t

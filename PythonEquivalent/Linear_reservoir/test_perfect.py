@@ -28,11 +28,11 @@ case_name = case.case_name
 theta_init = {
     'to_estimate': {'k':{"prior_dis": "normal", 
                             "prior_params":[1,0.003], 
-                            "search_dis": "normal", "search_params":[0.05],
+                            "search_dis": "normal", "search_params":[0.000005],
                             "is_nonnegative": True
                         },
                     'initial_state':{"prior_dis": "normal", 
-                                        "prior_params":[df_obs['Q_obs'].iloc[0], 0.005],
+                                        "prior_params":[df_obs['Q_obs'].iloc[0], 0.00005],
                                         "search_dis": "normal", "search_params":[0.00001],
                                         "is_nonnegative": True
                         },
@@ -42,8 +42,8 @@ theta_init = {
                                         "is_nonnegative": True
                         },
                     'input_uncertainty':{"prior_dis": "uniform", 
-                                            "prior_params":[0.0,0.005],
-                                            "search_dis": "normal", "search_params":[0.0001],
+                                            "prior_params":[0.0,0.0005],
+                                            "search_dis": "normal", "search_params":[0.0000001],
                                             "is_nonnegative": True
                         },
                     },

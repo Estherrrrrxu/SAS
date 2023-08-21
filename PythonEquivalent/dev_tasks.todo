@@ -1,10 +1,12 @@
-
+08-20-2023
+- Regenerate output benchmark values
+- Modify Chain param estiamation part
 
 08-13-2023
-- Put initial state as a parameter to be estimated in theta
-    - Change _parse_config to accomodate this
+- Put initial state as a parameter to be estimated in theta @done
+    - Change _parse_config to accomodate this @done
 - Clean up config parse @done
-- Add "is_nonnegative" to handle nonnegative constraints
+- Add "is_nonnegative" to handle nonnegative constraints @done
 - Clean up old files to reflect input/state/output
     - files in functions folder
     - post_comp.py
