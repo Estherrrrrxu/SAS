@@ -1,9 +1,10 @@
+# %%
 import numpy as np
 from dataclasses import dataclass
 import scipy.stats as ss
 import pandas as pd
 from typing import Optional, Any, List
-from functions.utils import normalize_intervals
+from functions.utils import normalize_over_interval
 # %%
 # a class to store parameters
 @dataclass
@@ -18,6 +19,7 @@ class ModelInterface:
 
     Methods:
         _parse_config: parse configurations
+        _set_observed_made_each_step: set observation interval
         _set_fluxes: set fluxes and observations using info from config
         _parse_theta_init: parse initial values of parameters
         _set_parameter_distribution: set parameter distribution using info from theta_init
@@ -70,7 +72,7 @@ class ModelInterface:
 
         # initialize theta with a dummy update
         # order: [k, obs_uncertainty, input_uncertainty, initial_state]
-        self.update_model([1, 0.0005, 0.0005, 0.0])
+        self.update_model()
 
     def _parse_config(self) -> None:
         """Parse config and set default values
@@ -87,7 +89,7 @@ class ModelInterface:
             'dt': 1./24/60*15,
             'influx': 'J_obs',
             'outflux': 'Q_obs',
-            'observed_made_each_step': True,
+            'observed_made_each_step': True
         }   
 
         if self.config is None:
@@ -204,7 +206,7 @@ class ModelInterface:
                                      "is_nonnegative": True
                                     },
                                 'initial_state':{"prior_dis": "normal", 
-                                                 "prior_params":[self.df[self.config['outflux']][0], 0.0005],
+                                                 "prior_params":[self.df[self.config['outflux']][0], 0.00005],
                                                  "search_dis": "normal", "search_params":[0.00001],
                                                  "is_nonnegative": True
                                     },
@@ -216,7 +218,7 @@ class ModelInterface:
                                 'input_uncertainty':{"prior_dis": "normal", 
                                                      "prior_params":[0.0,0.005],
                                                      "search_dis": "normal", "search_params":[0.001],
-                                                     "is_nonnegative": True
+                                                     "is_nonnegative": False
                                     },
                                 },
                 'not_to_estimate': {}
@@ -265,7 +267,7 @@ class ModelInterface:
             if current_theta['prior_dis'] == 'normal':
                 if is_nonnegative:
                     self.prior_model[key] = ss.truncnorm(a=0, b=np.inf,
-                        s = current_theta['prior_params'][1], 
+                        loc = current_theta['prior_params'][1], 
                         scale = np.exp(current_theta['prior_params'][0])
                         )
                 else:
@@ -295,20 +297,23 @@ class ModelInterface:
 
     def update_model(
             self,
-            theta_new: np.ndarray
+            theta_new: Optional[List[float]] = None
         ) -> None:       
         """Update the model object with a new parameter set
         
         Set/reset theta to the model
         
         Args:
-            theta_new (np.ndarray): new theta to update the model
-                                    order: [k, obs_uncertainty, input_uncertainty, initial_state]
-
+            theta_new (Optional, Theta): new theta to initialize/update the model
         Set:
             Parameter: update parameter object for later
         """
-
+        if theta_new is None:
+            k = self.prior_model['k'].rvs()
+            obs_uncertainty = self.prior_model['obs_uncertainty'].rvs()
+            input_uncertainty = self.prior_model['input_uncertainty'].rvs()
+            initial_state = self.prior_model['initial_state'].rvs()
+            theta_new = [k, obs_uncertainty, input_uncertainty, initial_state]
 
         # transition model param [0] is k to estimate, and [1] is fixed dt
         transition_param = [theta_new[0], self.config['dt']]
@@ -404,7 +409,8 @@ class ModelInterface:
         ) -> None:
         """Input model for linear reservoir
 
-        Rt = Ut - U(0, U_upper)
+        Rt' ~ Exp(Ut)
+        Rt = Rt' * (Ut + N(0, theta_r))
 
         Args:
             Ut (float): forcing at time t
@@ -412,12 +418,10 @@ class ModelInterface:
         Returns:
             np.ndarray: Rt
         """
-
-        for t in range(self.T):
-            self.R[:,t] = ss.expon(scale=self.influx[t]).rvs(self.N)
         for n in range(self.N):
-            self.R[n,:] = normalize_intervals(self.R[n,:], self.observed_ind)
-            self.R[n,:] *= (self.influx - ss.norm(0,self.theta.input_model).rvs(self.T))
+            self.R[n,] = ss.expon(scale=self.influx).rvs()
+            normalized = normalize_over_interval(self.R[n,:], self.observed_ind, self.influx)
+            self.R[n,:] = normalized - ss.norm(0,self.theta.input_model).rvs(self.T)
             self.R[n,:][self.R[n,:] < 0] = 0
 
         return 
@@ -440,5 +444,3 @@ class ModelInterface:
         """
         # sd = self.theta.state_model
         return ss.norm(x_prime, sd).pdf(xkp1)
-
-    

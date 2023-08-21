@@ -5,6 +5,7 @@ import scipy.stats as ss
 from dataclasses import dataclass
 from functions.utils import _inverse_pmf
 import copy
+from typing import Optional
 # %%
 @dataclass
 class State:
@@ -18,7 +19,7 @@ class State:
 class Chain:
     def __init__(self,
         model_interface: ModelInterface,
-        theta: np.ndarray
+        theta: Optional[np.ndarray] = None
     ) -> None:
         """
         Args:
@@ -27,7 +28,7 @@ class Chain:
         """
         # TODO: think about this more
         self.model_interface = model_interface
-        self.model_interface.update_model(theta)
+        self.model_interface.update_model(theta_new=theta)
         self.model_interface.input_model()
         self.R = self.model_interface.R
         self._state_init = self.model_interface.theta.initial_state

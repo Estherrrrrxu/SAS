@@ -188,26 +188,38 @@ def create_bulk_sample(original: pd.DataFrame, n: int) -> pd.DataFrame:
     return bulk
 
 # %%
-def normalize_intervals(arr, index_array):
+def normalize_over_interval(
+        arr: np.ndarray, 
+        index_array: np.ndarray, 
+        input: np.ndarray
+    ):
+    """Normalize the values of the array over interval before making observation
+
+    Args:
+        arr (np.ndarray): Generated array
+        index_array (np.ndarray): Array of observed indices
+        input (np.ndarray): Input array that generated array should be similar to
+    
+    """
     normalized_arr = arr.copy()
-
+    post_ind = index_array + 1
+    pre_ind = np.concatenate(([0], post_ind[:-1]))
     # Normalize each interval separately
-    for i in range(len(index_array) - 1):
-        start_index = index_array[i]
-        end_index = index_array[i + 1]
-
+    for i in range(len(index_array)):
+        start_index = pre_ind[i]
+        end_index = post_ind[i]
         # Extract the subarray between the specified indices
-        subarray = arr[start_index:end_index + 1]
+        subarray = arr[start_index:end_index]
 
         # Find the minimum and maximum values within the subarray
-        min_val = min(subarray)
-        max_val = max(subarray)
+        sum_val = sum(subarray)
+        multiplier = [x / sum_val for x in subarray]
 
-        # Normalize the subarray between 0 and 1
-        normalized_subarray = [max(0,(x - min_val) / (max_val - min_val)) for x in subarray]
+        target_val = input[end_index-1]
+        normalized_subarray = [x * target_val * len(subarray) for x in multiplier]
 
         # Replace the original subarray with the normalized values
-        normalized_arr[start_index:end_index + 1] = normalized_subarray
+        normalized_arr[start_index:end_index] = normalized_subarray
 
     return normalized_arr
 # %%
