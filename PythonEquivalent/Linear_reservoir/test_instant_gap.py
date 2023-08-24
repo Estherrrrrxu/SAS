@@ -14,7 +14,7 @@ import pandas as pd
 from model.utils_chain import Chain
 from functions.utils import plot_MLE, plot_scenarios
 import matplotlib.pyplot as plt
-from Linear_reservoir.run_data import perfect
+from Linear_reservoir.test_data import perfect
 
 # %%
 case = perfect
@@ -28,7 +28,7 @@ case_name = case.case_name
 # %%
 theta_init = {
     'to_estimate': {'k':{"prior_dis": "normal", 
-                            "prior_params":[1.5,0.03], 
+                            "prior_params":[1.2,0.3], 
                             "search_dis": "normal", "search_params":[0.1],
                             "is_nonnegative": True
                         },
@@ -78,7 +78,7 @@ model = SSModel(
     model_interface = model_interface,
     num_parameter_samples = 10,
     len_parameter_MCMC = 15,
-    learning_step = 0.75
+    learning_step = 0.6
 )
 model.run_particle_Gibbs_AS_SAEM()
 # %%

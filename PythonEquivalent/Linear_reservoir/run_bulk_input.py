@@ -13,7 +13,7 @@ import pandas as pd
 from model.utils_chain import Chain
 from functions.utils import plot_MLE, plot_scenarios
 import matplotlib.pyplot as plt
-from Linear_reservoir.input_data_generation import weekly_bulk, biweekly_bulk, weekly_bulk_true_q
+from Linear_reservoir.test_data import weekly_bulk, biweekly_bulk, weekly_bulk_true_q
 
 # %%
 case = weekly_bulk

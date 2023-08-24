@@ -31,7 +31,6 @@ class Chain:
         self.model_interface.update_model(theta_new=theta)
         self.model_interface.input_model()
         self.R = self.model_interface.R
-        self._state_init = self.model_interface.theta.initial_state
 
         # get dimension constants
         self.N = self.model_interface.N
@@ -48,7 +47,7 @@ class Chain:
         self.state_init = State( 
             R=self.R,
             W=np.log(np.ones(self.N) / self.N),
-            X=np.ones((self.N, self.T+1)) * self._state_init,
+            X=np.ones((self.N, self.T+1)) * self.model_interface.theta.initial_state,
             Y=np.zeros((self.N, self.T)),
             A=A
         )
@@ -68,6 +67,16 @@ class Chain:
         self.pre_ind = pre_ind
         self.post_ind = post_ind
 
+    def _update_state_init(self) -> None:
+        A = np.zeros((self.N, self.K + 1)).astype(int)
+        A[:,0] = np.arange(self.N)
+        self.state_init = State( 
+            R=self.R,
+            W=np.log(np.ones(self.N) / self.N),
+            X=np.ones((self.N, self.T+1)) * self.model_interface.theta.initial_state,
+            Y=np.zeros((self.N, self.T)),
+            A=A
+        )
 
     def run_sequential_monte_carlo(self) -> None:
         """Run sequential Monte Carlo
@@ -115,18 +124,20 @@ class Chain:
     def run_particle_MCMC(self) -> None:
         """Run particle MCMC
         """
+        self._update_state_init()
         R = self.state_init.R
         W = self.state_init.W
         X = self.state_init.X
         A = self.state_init.A
         Y = self.state_init.Y
-
+        
         # sample an ancestral path based on final weight
         B = self._find_traj(A, W)
         # reinitialize weight
         W = np.log(np.ones(self.N)/self.N)
 
         xk = X[A[:,0], 0:1]
+
         for k in range(self.K):
             start_ind = self.pre_ind[k]
             end_ind = self.post_ind[k]

@@ -69,7 +69,7 @@ class ModelInterface:
 
         # initialize input uncertainties
         self.R = np.zeros((self.N, self.T))
-        print(self._theta_init)
+
         # initialize theta
         self.update_model()
 

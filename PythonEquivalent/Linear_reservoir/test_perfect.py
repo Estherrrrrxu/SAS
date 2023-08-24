@@ -14,7 +14,7 @@ import pandas as pd
 from model.utils_chain import Chain
 from functions.utils import plot_MLE, plot_scenarios
 import matplotlib.pyplot as plt
-from Linear_reservoir.input_data_generation import perfect
+from Linear_reservoir.test_data import perfect
 
 # %%
 case = perfect
@@ -28,13 +28,13 @@ case_name = case.case_name
 # %%
 theta_init = {
     'to_estimate': {'k':{"prior_dis": "normal", 
-                            "prior_params":[1.2,0.3], 
+                            "prior_params":[1.5,0.03], 
                             "search_dis": "normal", "search_params":[0.1],
                             "is_nonnegative": True
                         },
                     'initial_state':{"prior_dis": "normal", 
-                                        "prior_params":[df_obs['Q_obs'].iloc[0], 0.05],
-                                        "search_dis": "normal", "search_params":[0.01],
+                                        "prior_params":[df_obs['Q_obs'].iloc[0], 0.005],
+                                        "search_dis": "normal", "search_params":[0.001],
                                         "is_nonnegative": True
                         },
                     'obs_uncertainty':{"prior_dis": "uniform", 
