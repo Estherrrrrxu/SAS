@@ -69,7 +69,7 @@ class ModelInterface:
 
         # initialize input uncertainties
         self.R = np.zeros((self.N, self.T))
-
+        print(self._theta_init)
         # initialize theta
         self.update_model()
 
@@ -195,10 +195,7 @@ class ModelInterface:
         Args:
             theta_init (dict): initial values of theta
         """   
-
-        # set default theta
-        if theta_init == None:
-            theta_init = {
+        _default_theta_init = {
                 'to_estimate': {'k':{"prior_dis": "normal", 
                                      "prior_params":[1.2,0.3], 
                                      "search_dis": "normal", "search_params":[0.05],
@@ -223,7 +220,23 @@ class ModelInterface:
                 'not_to_estimate': {}
             }
         self._theta_init = theta_init
+        # set default theta
+        if theta_init == None:
+            self._theta_init = _default_theta_init
 
+        elif not isinstance(theta_init, dict):
+            raise ValueError("Error: Please check the input format!")
+        else:
+            # make sure all keys are valid
+            for key in self._theta_init['to_estimate'].keys():
+                if key not in _default_theta_init['to_estimate'].keys():
+                    raise ValueError(f'Invalid config key: {key}')
+            
+            # replace default config with input configs
+            for key in _default_theta_init['to_estimate'].keys():
+                if key not in self._theta_init['to_estimate']:
+                    self._theta_init['to_estimate'][key] = _default_theta_init['to_estimate'][key]
+            
         # find params to update
         self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
         self._num_theta_to_estimate = len(self._theta_to_estimate)
@@ -244,7 +257,10 @@ class ModelInterface:
 
         for key in self._theta_to_estimate:
             current_theta = self._theta_init['to_estimate'][key]
-            self.param_constraints[key] = current_theta['is_nonnegative']
+            if 'is_nonnegative' in current_theta:
+                self.param_constraints[key] = current_theta['is_nonnegative']
+            else:
+                self.param_constraints[key] = False
         return
 
     def _set_parameter_distribution(self) -> None:
