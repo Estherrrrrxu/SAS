@@ -33,18 +33,18 @@ theta_init = {
                             "is_nonnegative": True
                         },
                     'initial_state':{"prior_dis": "normal", 
-                                        "prior_params":[df_obs['Q_obs'].iloc[0], 0.005],
-                                        "search_dis": "normal", "search_params":[0.001],
-                                        "is_nonnegative": True
-                        },
-                    'obs_uncertainty':{"prior_dis": "uniform", 
-                                        "prior_params":[0.000001,0.0001], 
+                                        "prior_params":[df_obs['Q_obs'].iloc[0], 0.0005],
                                         "search_dis": "normal", "search_params":[0.0001],
                                         "is_nonnegative": True
                         },
-                    'input_uncertainty':{"prior_dis": "uniform", 
-                                            "prior_params":[0.0,0.005],
-                                            "search_dis": "normal", "search_params":[0.001],
+                    'obs_uncertainty':{"prior_dis": "normal", 
+                                        "prior_params":[0.0001,0.00005], 
+                                        "search_dis": "normal", "search_params":[0.00001],
+                                        "is_nonnegative": True
+                        },
+                    'input_uncertainty':{"prior_dis": "normal", 
+                                            "prior_params":[0.001,0.00008],
+                                            "search_dis": "normal", "search_params":[0.00001],
                                             "is_nonnegative": True
                         },
                     },
@@ -78,7 +78,7 @@ model = SSModel(
     model_interface = model_interface,
     num_parameter_samples = 10,
     len_parameter_MCMC = 15,
-    learning_step = 0.6
+    learning_step = 0.75
 )
 model.run_particle_Gibbs_AS_SAEM()
 # %%
