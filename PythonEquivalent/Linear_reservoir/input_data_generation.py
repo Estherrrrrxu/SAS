@@ -9,7 +9,7 @@ from typing import Optional, List
 
 # %%
 # Read original file and get a part of it
-df = pd.read_csv("../Data/linear_reservoir.csv", index_col= 0)
+df = pd.read_csv("../Data/LR_ipt_0.0005_obs_5e-05.csv", index_col= 0)
 # st, et = 20, 100
 st, et = 300, 400
 plot = False
@@ -31,6 +31,7 @@ if plot:
     plot_base(original, original)
     plot_base(original, instant_gaps_2_d)
     plot_base(original, instant_gaps_5_d)
+
 # %%
 # For bulk observed data
 weekly_bulk = create_bulk_sample(original, 7)

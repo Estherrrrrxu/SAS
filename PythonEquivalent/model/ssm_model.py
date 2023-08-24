@@ -131,6 +131,7 @@ class SSModel:
                 self.input_record[l+1,:] = best_model._get_R_traj(best_model.state.R, B)
                 self.state_record[l+1,:] = best_model._get_X_traj(best_model.state.X, B)
                 self.output_record[l+1,:] = best_model._get_Y_traj(best_model.state.Y, B)
+                
 
 
 
@@ -222,7 +223,15 @@ class SSModel:
         """
         theta_temp = np.ones((self.D,self._num_theta_to_estimate)) * self.theta_record[l,:]
         theta_temp[:,:p] = self.theta_record[l+1,:p]
-        theta_temp[:,p] += self.search_model[key].rvs(self.D)
+        # add random noise to the p-th theta
+        temp = theta_temp[:,p] + self.search_model[key].rvs(self.D)
+        sanity_check = np.where(self.prior_model[key].pdf(temp) <= 0)
+        # regenerate random number if exceed prior range
+        if sanity_check[0].size > 0:
+            for i in sanity_check[0]:
+                while self.prior_model[key].pdf(temp[i]) <= 0:
+                    temp[i] = theta_temp[i,p] + self.search_model[key].rvs()
+        theta_temp[:,p] = temp
         return theta_temp
                 
  

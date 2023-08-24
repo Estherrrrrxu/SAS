@@ -211,6 +211,8 @@ class Chain:
         traj_X = np.zeros(self.T+1)
         for i in range(self.K):
             traj_X[self.pre_ind[i]+1:self.post_ind[i]+1] = X[B[i],self.pre_ind[i]+1:self.post_ind[i]+1]
+        # update initial state
+        traj_X[0] = self.model_interface.theta.initial_state
         return traj_X
     
     def _get_Y_traj(self, Y:  np.ndarray, B: np.ndarray) -> np.ndarray:
