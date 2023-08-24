@@ -24,26 +24,27 @@ df_obs = case.df_obs
 obs_made = case.obs_made
 case_name = case.case_name
 
+
 # %%
 theta_init = {
     'to_estimate': {'k':{"prior_dis": "normal", 
-                            "prior_params":[1,0.003], 
-                            "search_dis": "normal", "search_params":[0.000005],
+                            "prior_params":[1.2,0.3], 
+                            "search_dis": "normal", "search_params":[0.05],
                             "is_nonnegative": True
                         },
                     'initial_state':{"prior_dis": "normal", 
-                                        "prior_params":[df_obs['Q_obs'].iloc[0], 0.00005],
-                                        "search_dis": "normal", "search_params":[0.00001],
+                                        "prior_params":[df_obs['Q_obs'].iloc[0], 0.005],
+                                        "search_dis": "normal", "search_params":[0.001],
                                         "is_nonnegative": True
                         },
                     'obs_uncertainty':{"prior_dis": "uniform", 
-                                        "prior_params":[0.00005,0.0005], 
-                                        "search_dis": "normal", "search_params":[0.00001],
+                                        "prior_params":[0.000001,0.0005], 
+                                        "search_dis": "normal", "search_params":[0.0001],
                                         "is_nonnegative": True
                         },
                     'input_uncertainty':{"prior_dis": "uniform", 
-                                            "prior_params":[0.0,0.0005],
-                                            "search_dis": "normal", "search_params":[0.0000001],
+                                            "prior_params":[0.0,0.001],
+                                            "search_dis": "normal", "search_params":[0.001],
                                             "is_nonnegative": True
                         },
                     },
@@ -81,18 +82,27 @@ model = SSModel(
 )
 model.run_particle_Gibbs_AS_SAEM()
 # %%
-fig, ax = plt.subplots(2,1,figsize=(10,5))
+fig, ax = plt.subplots(4,1,figsize=(10,5))
 ax[0].plot(model.theta_record[:,0])
 ax[0].plot([0,15],[1,1],'r:',label="true value")
 ax[1].plot(model.theta_record[:,1])
-ax[1].plot([0,15],[0.00005,0.00005],'r:',label="true value")
+ax[1].plot([0,15],[df_obs['Q_true'].iloc[0],df_obs['Q_true'].iloc[0]],'r:',label="true value")
+ax[2].plot(model.theta_record[:,2])
+ax[2].plot([0,15],[0.00005,0.00005],'r:',label="true value")
+ax[3].plot(model.theta_record[:,3])
+ax[3].plot([0,15],[0.0005,0.0005],'r:',label="true value")
 ax[0].set_ylabel(r"$k$")
 ax[0].set_xticks([])
-ax[1].set_ylabel(r"$\theta_{v}$")
-ax[1].set_xlabel("MCMC Chain length")
+ax[1].set_ylabel(r"$S_0$")
+ax[1].set_xticks([])
+ax[2].set_ylabel(r"$\theta_{v}$")
+ax[2].set_xticks([])
+ax[3].set_ylabel(r"$\theta_{u}$")
+ax[3].set_xlabel("MCMC Chain length")
 ax[0].legend(frameon=False)
 ax[1].legend(frameon=False)
 fig.suptitle(f"Parameter estimation for {case_name}")
+
 
 # %%
 fig, ax = plot_scenarios(df, df_obs, model, 10)
