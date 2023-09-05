@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from Linear_reservoir.test_data import *
 
 # %%
-def run_given_case(case: Cases):
+def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
     df = case.df
     df_obs = case.df_obs
     obs_made = case.obs_made
@@ -25,7 +25,7 @@ def run_given_case(case: Cases):
 
     theta_init = {
         'to_estimate': {'k':{"prior_dis": "normal", 
-                                "prior_params":[1.2,0.3], 
+                                "prior_params":[1.2,0.1], 
                                 "search_dis": "normal", "search_params":[0.1],
                                 "is_nonnegative": True
                             },
@@ -107,7 +107,7 @@ def run_given_case(case: Cases):
 
 
     # 
-    fig, ax = plot_scenarios(df, df_obs, model, 10)
+    fig, ax = plot_scenarios(df, df_obs, model, 10, unified_color)
     fig.suptitle(f"{case_name}")
     fig.show()
 
@@ -116,17 +116,18 @@ def run_given_case(case: Cases):
 # %%
 if __name__ == "__main__":
     print("Running perfect case...")
-    run_given_case(perfect)
+    run_given_case(perfect, unified_color=True)
     print("Running instant gap 2 days case...")
-    run_given_case(instant_gaps_2_d)
+    run_given_case(instant_gaps_2_d, unified_color=True)
     print("Running instant gap 5 days case...")
-    run_given_case(instant_gaps_5_d)
+    run_given_case(instant_gaps_5_d, unified_color=True)
     print("Running weekly bulk case...")
-    run_given_case(weekly_bulk)
+    run_given_case(weekly_bulk, unified_color=True)
     print("Running biweekly bulk case...")
-    run_given_case(biweekly_bulk)
+    run_given_case(biweekly_bulk, unified_color=True)
     print("Running weekly bulk true Q case...")
-    run_given_case(weekly_bulk_true_q)
+    run_given_case(weekly_bulk_true_q, unified_color=True)
+    print("Done!")
 
 
 # %%

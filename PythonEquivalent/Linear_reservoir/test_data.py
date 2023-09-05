@@ -11,7 +11,7 @@ from typing import Optional, List
 # Read original file and get a part of it
 df = pd.read_csv("../Data/LR_ipt_0.0005_obs_5e-05.csv", index_col= 0)
 # st, et = 20, 100
-st, et = 300, 400
+st, et = 300, 380
 plot = False
 # %%
 # For instantaneously observed data
@@ -27,6 +27,7 @@ instant_gaps_2_d.index = range(len(instant_gaps_2_d))
 # observation made at each 5 time steps
 instant_gaps_5_d = original[::5]
 instant_gaps_5_d.index = range(len(instant_gaps_5_d))
+
 if plot:
     plot_base(original, original)
     plot_base(original, instant_gaps_2_d)
@@ -42,11 +43,16 @@ ind = weekly_bulk_true_q['is_obs']
 weekly_bulk_true_q["Q_obs"][ind==False] = np.nan
 weekly_bulk_true_q["Q_obs"][ind==True] = weekly_bulk_true_q["Q_true"][ind==True]
 weekly_bulk_true_q = weekly_bulk_true_q.fillna(method='bfill')
+
 if plot:
     plot_bulk(original, weekly_bulk)
     plot_bulk(original, biweekly_bulk)
     plot_bulk(original, weekly_bulk_true_q)
 
+# %%
+original['is_obs'] = True
+instant_gaps_2_d['is_obs'] = True
+instant_gaps_5_d['is_obs'] = True
 # %%
 @dataclass
 class Cases:

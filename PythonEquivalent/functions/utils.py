@@ -122,14 +122,19 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
     ax[1].set_xlim([left,right])
     return MLE
 # %%
-def plot_scenarios(df, df_obs, model, start_ind):
+def plot_scenarios(df, df_obs, model, start_ind, unified_color=False):
     fig, ax = plt.subplots(2, 1, figsize=(8,5))
     ax[0].bar(df['index'], df['J_true'], 
             width = 1, color = 'k', label = 'Truth')
-    ax[0].plot(df_obs['index'].values, model.input_record.T[:,start_ind:],
-            "s", color='C9', markersize=7, mfc='none')
-    ax[0].plot(df_obs['index'].values, model.input_record.T[:,-1],
-            "s", color='C9', markersize=7, mfc='none', label = 'Input scenarios')
+    if unified_color:
+        ax[0].plot(df_obs['index'].values, model.input_record.T[:,start_ind:],
+                "s", color='C9', markersize=7, mfc='none')
+        ax[0].plot(df_obs['index'].values, model.input_record.T[:,-1],
+                "s", color='C9', markersize=7, mfc='none', label = 'Input scenarios')
+    else:
+        ax[0].plot(df_obs['index'].values, model.input_record.T[:,start_ind:],
+                "s", markersize=7, mfc='none')
+
     ax[0].plot(df_obs['index'], df_obs['J_obs'], 
                '+', color='C3', markersize=7,label='Observation')
     ax[0].invert_yaxis()
@@ -140,11 +145,15 @@ def plot_scenarios(df, df_obs, model, start_ind):
 
     ax[1].plot(df['index'], df['Q_true'], 
                color = 'k', label = 'Truth')   
-    ax[1].plot(df_obs['index'].values, model.output_record.T[:,start_ind:-1],
-            linestyle=(1, (1, 1)), color='C9', linewidth=2)
-    ax[1].plot(df_obs['index'].values, model.output_record.T[:,-1],
-            linestyle=(1, (1, 1)), color='C9', linewidth=2, label = 'Trajectories') 
-    ax[1].plot(df_obs['index'], df_obs['Q_obs'], 
+    if unified_color:
+        ax[1].plot(df_obs['index'].values, model.output_record.T[:,start_ind:-1],
+                linestyle=(1, (1, 1)), color='C9', linewidth=2)
+        ax[1].plot(df_obs['index'].values, model.output_record.T[:,-1],
+                linestyle=(1, (1, 1)), color='C9', linewidth=2, label = 'Trajectories')
+    else:
+        ax[1].plot(df_obs['index'].values, model.output_record.T[:,start_ind:-1],
+                linestyle=(1, (1, 1)), linewidth=2)
+    ax[1].plot(df_obs['index'][df_obs['is_obs'] == True], df_obs['Q_obs'][df_obs['is_obs'] == True], 
                '+', color = 'C3', markersize=7,
                label = 'Observation')
     ax[1].set_ylabel("Discharge [mm]")
