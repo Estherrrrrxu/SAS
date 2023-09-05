@@ -1,21 +1,28 @@
-08-20-2023
-- Regenerate output benchmark values
-- Modify Chain param estiamation part
+The start cannot be modified ugh
+
+09-04-23
+- reality and input model
+    - white noise
+    - exponential
+- non-linear model: see slack pic
+
+
+08-20-23
+- Regenerate output benchmark values @done
+- Modify Chain param estiamation part @done
 
 08-13-2023
 - Put initial state as a parameter to be estimated in theta @done
     - Change _parse_config to accomodate this @done
 - Clean up config parse @done
 - Add "is_nonnegative" to handle nonnegative constraints @done
-- Clean up old files to reflect input/state/output
-    - files in functions folder
-    - post_comp.py
-    - post_run.py
-- Write corresponding tests
-- Add more comments while clean up the code
-- Update GBO files accordingly
-    - proposal
-- dissertation
+- Clean up old files to reflect input/state/output @done
+    - files in functions folder @done
+    - post_comp.py @done
+    - post_run.py @done
+- Write corresponding tests @done
+- Add more comments while clean up the code @done
+
 
 
 
@@ -26,9 +33,9 @@
 - Make T and K not consistent @done
     - figure out the time sequence @done
 
-- Design non-linear cases
-    - parallel reservoirs
-    - cascade reservoirs
+- Design non-linear cases - not happening @done
+    - parallel reservoirs @done
+    - cascade reservoirs @done
 
 
 
