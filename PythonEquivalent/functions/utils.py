@@ -33,9 +33,9 @@ def plot_base(df, df_obs):
             width = 1, color = 'k', label = 'Truth')
     ax[0].plot(df_obs['index'], df_obs['J_obs'], 
                '+', color='C3', markersize=7,label='Observation')
-    ax[0].invert_yaxis()
     ax[0].set_ylabel("Precipitation [mm]")
-    ax[0].legend(frameon = False)
+    ax[0].set_ylim([max(df['J_true'])+0.02, 0])
+    ax[0].legend(frameon = False, ncol=2)
     ax[0].set_xticks([])
     ax[0].set_title("Preciptation")
 
@@ -54,9 +54,10 @@ def plot_bulk(original, weekly_bulk):
     fig, ax = plot_base(original, weekly_bulk)
     temp = weekly_bulk[weekly_bulk['is_obs']]
     ax[0].plot(temp['index'], temp["J_obs"], marker='o', markerfacecolor='none', markeredgecolor='green', linestyle='',label='Observed Time Stamp')
-    ax[0].legend(frameon=False)
+    ax[0].legend(frameon=False, ncol=3)
+    ax[0].set_ylim([max(original['J_true'])+0.02, 0])
     ax[1].plot(temp['index'], temp["Q_obs"], marker='o', markerfacecolor='none', markeredgecolor='green', linestyle='',label='Observed Time Stamp')
-    ax[1].legend(frameon=False)
+    ax[1].legend(frameon=False, ncol=3)
     return fig, ax
 
 def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
@@ -187,8 +188,8 @@ def create_bulk_sample(original: pd.DataFrame, n: int) -> pd.DataFrame:
     bulk['index'] = original.loc[is_obs, 'index'].values
 
     df_temp = pd.merge(original, bulk, on='index', how='left')
-    df_temp = df_temp.drop(df_temp.columns[1:5], axis=1)
-    df_temp.columns = original.columns
+    df_temp = df_temp.drop(['J_true_x', 'J_obs_x', 'Q_true_x', 'Q_obs_x'], axis=1)
+    df_temp.columns = ['index', 'J_true', 'J_obs', 'Q_true', 'Q_obs']
     df_temp['Q_true'] = original['Q_true']
     df_temp['J_true'] = original['J_true']
 
