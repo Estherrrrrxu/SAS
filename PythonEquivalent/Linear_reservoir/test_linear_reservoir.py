@@ -17,36 +17,56 @@ import matplotlib.pyplot as plt
 from Linear_reservoir.data_linear_reservoir import *
 
 # %%
-def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
+def plot_parameters_linear_reservoir(
+        len_parameter_MCMC: int,
+        k: List[float],
+        S0: List[float],
+        theta_u: List[float],
+        S0_true: float,
+        case_name: str
+    ) -> None:
+    fig, ax = plt.subplots(3,1,figsize=(10,5))
+    ax[0].plot(k)
+    ax[1].plot(S0)
+    ax[2].plot(theta_u)
+
+    ax[0].plot([0,len_parameter_MCMC],[1,1],'r:',label="true value")
+    ax[1].plot([0,len_parameter_MCMC],[S0_true, S0_true],'r:',label="true approximation")
+    ax[2].plot([0,len_parameter_MCMC],[0.00005,0.00005],'r:',label="true value")
+
+    ax[0].set_ylabel(r"$k$")
+    ax[0].set_xticks([])
+    ax[1].set_ylabel(r"$S_0$")
+    ax[1].set_xticks([])
+    ax[2].set_ylabel(r"$\theta_{v}$")
+    ax[2].set_xticks([])
+
+
+    ax[0].legend(frameon=False)
+    ax[1].legend(frameon=False)
+    ax[2].legend(frameon=False)
+
+    fig.suptitle(f"Parameter estimation for {case_name}")
+    fig.show()
+
+# %%
+def run_linear_reservoir(
+        case: Cases, 
+        theta_init: Optional[dict],
+        unified_color: Optional[bool] = False,
+        num_input_scenarios: Optional[int] = 5,
+        plot_preliminary: Optional[bool] = False,
+        num_parameter_samples: Optional[int] = 10,
+        len_parameter_MCMC: Optional[int] = 15,
+        learning_step: Optional[int] = 0.6,
+        start_ind: Optional[int] = 1
+    ) -> None:
+
+    # Get data
     df = case.df
     df_obs = case.df_obs
     obs_made = case.obs_made
     case_name = case.case_name
-
-    theta_init = {
-        'to_estimate': {'k':{"prior_dis": "normal", 
-                                "prior_params":[1.2,0.1], 
-                                "search_dis": "normal", "search_params":[0.1],
-                                "is_nonnegative": True
-                            },
-                        'initial_state':{"prior_dis": "normal", 
-                                            "prior_params":[df_obs['Q_obs'].iloc[0], 0.0005],
-                                            "search_dis": "normal", "search_params":[0.0001],
-                                            "is_nonnegative": True
-                            },
-                        'obs_uncertainty':{"prior_dis": "normal", 
-                                            "prior_params":[0.00008, 0.00002], 
-                                            "search_dis": "normal", "search_params":[0.00001],
-                                            "is_nonnegative": True
-                            },
-                        'input_uncertainty':{"prior_dis": "normal", 
-                                                "prior_params":[0.0008, 0.0002],
-                                                "search_dis": "normal", "search_params":[0.0001],
-                                                "is_nonnegative": True
-                            },
-                        },
-        'not_to_estimate': {}
-    }
 
     config = {'observed_made_each_step':obs_made}
 
@@ -55,12 +75,11 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
         df = df_obs,
         customized_model = LinearReservoir,
         theta_init = theta_init,
-        num_input_scenarios = 15,
+        num_input_scenarios = num_input_scenarios,
         config = config
     )
 
-    #
-    try: 
+    if plot_preliminary:
         chain = Chain(
             model_interface = model_interface
         )
@@ -69,47 +88,28 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
 
         chain.run_particle_MCMC()
         plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
-    except IndexError:
-        print("Index needs to change for Chain obj!") 
-
 
     # 
     # run PMCMC
     model = SSModel(
         model_interface = model_interface,
-        num_parameter_samples = 20,
-        len_parameter_MCMC = 35,
-        learning_step = 0.6,
+        num_parameter_samples = num_parameter_samples,
+        len_parameter_MCMC = len_parameter_MCMC,
+        learning_step = learning_step,
     )
     model.run_particle_Gibbs_AS_SAEM()
-    # 
-    fig, ax = plt.subplots(4,1,figsize=(10,5))
-    ax[0].plot(model.theta_record[:,0])
-    ax[0].plot([0,35],[1,1],'r:',label="true value")
-    ax[1].plot(model.theta_record[:,1])
-    ax[1].plot([0,35],[df_obs['Q_true'].iloc[0],df_obs['Q_true'].iloc[0]],'r:',label="true approximation")
-    ax[2].plot(model.theta_record[:,2])
-    ax[2].plot([0,35],[0.00005,0.00005],'r:',label="true value")
-    ax[3].plot(model.theta_record[:,3])
-    ax[3].plot([0,35],[0.0005,0.0005],'r:',label="true value")
-    ax[0].set_ylabel(r"$k$")
-    ax[0].set_xticks([])
-    ax[1].set_ylabel(r"$S_0$")
-    ax[1].set_xticks([])
-    ax[2].set_ylabel(r"$\theta_{v}$")
-    ax[2].set_xticks([])
-    ax[3].set_ylabel(r"$\theta_{u}$")
-    ax[3].set_xlabel("MCMC Chain length")
-    ax[0].legend(frameon=False)
-    ax[1].legend(frameon=False)
-    ax[2].legend(frameon=False)
-    ax[3].legend(frameon=False)
-    fig.suptitle(f"Parameter estimation for {case_name}")
-    fig.show()
-
-
-    # 
-    fig, ax = plot_scenarios(df, df_obs, model, 10, unified_color)
+    #
+    # plot parameters
+    plot_parameters_linear_reservoir(
+        len_parameter_MCMC,
+        model.theta_record[:,0],
+        model.theta_record[:,1],
+        model.theta_record[:,2],
+        df_obs['Q_obs'].iloc[0],
+        case_name
+    )
+    # plot scenarios
+    fig, ax = plot_scenarios(df, df_obs, model, start_ind, unified_color)
     fig.suptitle(f"{case_name}")
     fig.show()
 
@@ -117,19 +117,42 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
 
 # %%
 if __name__ == "__main__":
-    print("Running perfect case...")
-    run_given_case(perfect, unified_color=True)
-    print("Running instant gap 2 days case...")
-    run_given_case(instant_gaps_2_d, unified_color=True)
-    print("Running instant gap 5 days case...")
-    run_given_case(instant_gaps_5_d, unified_color=True)
-    print("Running weekly bulk case...")
-    run_given_case(weekly_bulk, unified_color=True)
-    print("Running biweekly bulk case...")
-    run_given_case(biweekly_bulk, unified_color=True)
-    print("Running weekly bulk true Q case...")
-    run_given_case(weekly_bulk_true_q, unified_color=True)
-    print("Done!")
+    # setups
+    theta_init = {
+        'to_estimate': {'k':{"prior_dis": "normal", 
+                                "prior_params":[1.2,0.1], 
+                                "search_dis": "normal", "search_params":[0.1],
+                                "is_nonnegative": True
+                            },
+                        'initial_state':{"prior_dis": "normal", 
+                                            "prior_params":[0, 0.0005],
+                                            "search_dis": "normal", "search_params":[0.0001],
+                                            "is_nonnegative": True
+                            },
+                        'input_uncertainty':{"prior_dis": "normal", 
+                                                "prior_params":[0.0009, 0.0002],
+                                                "search_dis": "normal", "search_params":[0.0002],
+                                                "is_nonnegative": True
+                            },
+                        },
+        'not_to_estimate': {'obs_uncertainty':0.00005}
+    }
 
+    num_input_scenarios = 5
+    num_parameter_samples = 10
+    len_parameter_MCMC = 15
+    plot_preliminary = False
+    learning_step = 0.6
+    start_ind = 0
+    unified_color = True
+
+
+    # run different cases
+    run_linear_reservoir(perfect, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
+    run_linear_reservoir(instant_gaps_2_d, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
+    run_linear_reservoir(instant_gaps_5_d, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
+    run_linear_reservoir(weekly_bulk, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
+    run_linear_reservoir(biweekly_bulk, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
+    run_linear_reservoir(weekly_bulk_true_q, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
 
 # %%

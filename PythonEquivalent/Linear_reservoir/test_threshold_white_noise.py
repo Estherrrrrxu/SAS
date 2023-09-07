@@ -6,20 +6,53 @@ if current_path[-16:] != "Linear_reservoir":
     print("Current working directory changed to 'Linear_reservoir'.")   
 import sys
 sys.path.append('../') 
-from model.model_interface import ModelInterface
+from model.model_interface import ModelInterface, Parameter
 from model.ssm_model import SSModel
 from model.your_model import LinearReservoir
 import pandas as pd
 
 from model.utils_chain import Chain
-from functions.utils import plot_MLE, plot_scenarios
+from functions.utils import plot_MLE, plot_scenarios, normalize_over_interval
 import matplotlib.pyplot as plt
-from Linear_reservoir.test_data_white_noise_filter import *
-
+from Linear_reservoir.data_threshold_white_noise import *
+from copy import deepcopy
 import scipy.stats as ss
+
 # %%
 class ModelInterfaceWN(ModelInterface):
-            
+    def update_model(
+            self,
+            theta_new: Optional[List[float]] = None
+        ) -> None:       
+        if theta_new is None:
+            theta_new = []
+            for key in self._theta_to_estimate:
+                theta_new.append(self.prior_model[key].rvs())
+
+        for i, key in enumerate(self._theta_to_estimate):
+            self._theta_init['to_estimate'][key]['current_value'] = theta_new[i]
+        # transition model param [0] is k to estimate, and [1] is fixed dt
+        transition_param = [self._theta_init['to_estimate']['k']['current_value'], self.config['dt']]
+
+        # observation uncertainty param is to estimate
+        obs_param = self._theta_init['to_estimate']['obs_uncertainty']['current_value']
+
+        # input uncertainty param is to estimate
+        input_param = [self._theta_init['to_estimate']['input_mean']['current_value'], 
+                       self._theta_init['to_estimate']['input_std']['current_value'],
+                       self._theta_init['to_estimate']['input_uncertainty']['current_value']
+                       ]
+
+        # initial state param is to estimate
+        init_state = self._theta_init['to_estimate']['initial_state']['current_value']
+
+        self.theta = Parameter(
+                            input_model=input_param,
+                            transition_model=transition_param, 
+                            observation_model=obs_param,
+                            initial_state=init_state
+                            )
+        return 
     def input_model(
             self
         ) -> None:
@@ -28,17 +61,21 @@ class ModelInterfaceWN(ModelInterface):
         Rt' ~ N(Ut, sigma_ipt)
         """
         for n in range(self.N):
-            self.R[n,:] = ss.norm(loc=self.influx, scale=self.theta.input_model).rvs()
+            self.R[n,:] = ss.norm(loc=self.theta.input_model[0], scale=self.theta.input_model[1]).rvs()
+            self.R[n,:][self.R[n,:] < 0] = 0     
+            normalized = normalize_over_interval(self.R[n,:], self.observed_ind, self.influx)
+            self.R[n,:] = normalized + ss.norm(loc=0, scale=self.theta.input_model[2]).rvs(self.T)
             self.R[n,:][self.R[n,:] < 0] = 0
+
+
         return 
 
 
-
-
-
-
+#%%
 
 def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
+    # %%
+    case = weekly_bulk_true_q
     df = case.df
     df_obs = case.df_obs
     obs_made = case.obs_made
@@ -51,21 +88,32 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
                                 "is_nonnegative": True
                             },
                         'initial_state':{"prior_dis": "normal", 
-                                            "prior_params":[df_obs['Q_obs'].iloc[0], 0.005],
+                                            "prior_params":[df_obs['Q_obs'].iloc[0], 0.0005],
                                             "search_dis": "normal", "search_params":[0.0005],
                                             "is_nonnegative": True
                             },
                         'obs_uncertainty':{"prior_dis": "uniform", 
-                                            "prior_params":[0.00001,0.0001], 
-                                            "search_dis": "normal", "search_params":[0.0001],
+                                            "prior_params":[0.000008,0.00006], 
+                                            "search_dis": "normal", "search_params":[0.000001],
                                             "is_nonnegative": True
                             },
                         'input_uncertainty':{"prior_dis": "normal", 
-                                                "prior_params":[0.005,0.002],
+                                                "prior_params":[0.002,0.002],
                                                 "search_dis": "normal", "search_params":[0.001],
                                                 "is_nonnegative": True
                             },
-                        },
+                        'input_mean':{"prior_dis": "normal",
+                                            "prior_params":[-0.01, 0.001],
+                                            "search_dis": "normal", "search_params":[0.01],
+                                            "is_nonnegative": False
+                            },
+                        'input_std':{"prior_dis": "normal",
+                                            "prior_params":[0.02,0.005], 
+                                            "search_dis": "normal", "search_params":[0.001],   
+                                            "is_nonnegative": True
+                            },
+                    },                     
+                                     
         'not_to_estimate': {}
     }
 
@@ -76,7 +124,7 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
         df = df_obs,
         customized_model = LinearReservoir,
         theta_init = theta_init,
-        num_input_scenarios = 5,
+        num_input_scenarios = 15,
         config = config
     )
 
@@ -98,9 +146,9 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
     # run PMCMC
     model = SSModel(
         model_interface = model_interface,
-        num_parameter_samples = 10,
-        len_parameter_MCMC = 15,
-        learning_step = 0.6,
+        num_parameter_samples = 20,
+        len_parameter_MCMC = 35,
+        learning_step = 0.75,
     )
     model.run_particle_Gibbs_AS_SAEM()
     # 
@@ -127,8 +175,11 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
     fig.show()
 
 
-    # 
-    fig, ax = plot_scenarios(df, df_obs, model, 10, unified_color)
+    
+    fig, ax = plot_scenarios(df, df_obs, model, 1, unified_color)
+    fig.suptitle(f"{case_name}")
+    fig.show()
+    fig, ax = plot_scenarios(df, df_obs, model, 30, unified_color)
     fig.suptitle(f"{case_name}")
     fig.show()
 

@@ -206,18 +206,13 @@ class ModelInterface:
                                                  "search_dis": "normal", "search_params":[0.00001],
                                                  "is_nonnegative": True
                                     },
-                                'obs_uncertainty':{"prior_dis": "uniform", 
-                                                   "prior_params":[0.00005,0.0005], 
-                                                   "search_dis": "normal", "search_params":[0.00001],
-                                                   "is_nonnegative": True
-                                    },
                                 'input_uncertainty':{"prior_dis": "normal", 
                                                      "prior_params":[0.0,0.005],
                                                      "search_dis": "normal", "search_params":[0.001],
                                                      "is_nonnegative": False
                                     },
                                 },
-                'not_to_estimate': {}
+                'not_to_estimate': {'obs_uncertainty':0.00005}
             }
         self._theta_init = theta_init
         # set default theta
@@ -230,7 +225,8 @@ class ModelInterface:
             # make sure all keys are valid
             for key in self._theta_init['to_estimate'].keys():
                 if key not in _default_theta_init['to_estimate'].keys():
-                    raise ValueError(f'Invalid config key: {key}')
+                    print(f'key: {key} not in default config!')
+                    # raise ValueError(f'Invalid config key: {key}')
             
             # replace default config with input configs
             for key in _default_theta_init['to_estimate'].keys():
@@ -335,7 +331,7 @@ class ModelInterface:
         transition_param = [self._theta_init['to_estimate']['k']['current_value'], self.config['dt']]
 
         # observation uncertainty param is to estimate
-        obs_param = self._theta_init['to_estimate']['obs_uncertainty']['current_value']
+        obs_param = self._theta_init['not_to_estimate']['obs_uncertainty']
 
         # input uncertainty param is to estimate
         input_param = self._theta_init['to_estimate']['input_uncertainty']['current_value']
