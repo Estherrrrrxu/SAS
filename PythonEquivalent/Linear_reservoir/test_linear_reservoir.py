@@ -14,7 +14,7 @@ import pandas as pd
 from model.utils_chain import Chain
 from functions.utils import plot_MLE, plot_scenarios
 import matplotlib.pyplot as plt
-from Linear_reservoir.test_data import *
+from Linear_reservoir.data_linear_reservoir import *
 
 # %%
 def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
@@ -34,14 +34,14 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
                                             "search_dis": "normal", "search_params":[0.0001],
                                             "is_nonnegative": True
                             },
-                        'obs_uncertainty':{"prior_dis": "uniform", 
-                                            "prior_params":[0.000001,0.0001], 
-                                            "search_dis": "normal", "search_params":[0.0001],
+                        'obs_uncertainty':{"prior_dis": "normal", 
+                                            "prior_params":[0.00008, 0.00002], 
+                                            "search_dis": "normal", "search_params":[0.00001],
                                             "is_nonnegative": True
                             },
-                        'input_uncertainty':{"prior_dis": "uniform", 
-                                                "prior_params":[0.0,0.005],
-                                                "search_dis": "normal", "search_params":[0.001],
+                        'input_uncertainty':{"prior_dis": "normal", 
+                                                "prior_params":[0.0008, 0.0002],
+                                                "search_dis": "normal", "search_params":[0.0001],
                                                 "is_nonnegative": True
                             },
                         },
@@ -55,7 +55,7 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
         df = df_obs,
         customized_model = LinearReservoir,
         theta_init = theta_init,
-        num_input_scenarios = 5,
+        num_input_scenarios = 15,
         config = config
     )
 
@@ -77,21 +77,21 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
     # run PMCMC
     model = SSModel(
         model_interface = model_interface,
-        num_parameter_samples = 10,
-        len_parameter_MCMC = 15,
+        num_parameter_samples = 20,
+        len_parameter_MCMC = 35,
         learning_step = 0.6,
     )
     model.run_particle_Gibbs_AS_SAEM()
     # 
     fig, ax = plt.subplots(4,1,figsize=(10,5))
     ax[0].plot(model.theta_record[:,0])
-    ax[0].plot([0,15],[1,1],'r:',label="true value")
+    ax[0].plot([0,35],[1,1],'r:',label="true value")
     ax[1].plot(model.theta_record[:,1])
-    ax[1].plot([0,15],[df_obs['Q_true'].iloc[0],df_obs['Q_true'].iloc[0]],'r:',label="true value")
+    ax[1].plot([0,35],[df_obs['Q_true'].iloc[0],df_obs['Q_true'].iloc[0]],'r:',label="true approximation")
     ax[2].plot(model.theta_record[:,2])
-    ax[2].plot([0,15],[0.00005,0.00005],'r:',label="true value")
+    ax[2].plot([0,35],[0.00005,0.00005],'r:',label="true value")
     ax[3].plot(model.theta_record[:,3])
-    ax[3].plot([0,15],[0.0005,0.0005],'r:',label="true value")
+    ax[3].plot([0,35],[0.0005,0.0005],'r:',label="true value")
     ax[0].set_ylabel(r"$k$")
     ax[0].set_xticks([])
     ax[1].set_ylabel(r"$S_0$")
@@ -102,6 +102,8 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
     ax[3].set_xlabel("MCMC Chain length")
     ax[0].legend(frameon=False)
     ax[1].legend(frameon=False)
+    ax[2].legend(frameon=False)
+    ax[3].legend(frameon=False)
     fig.suptitle(f"Parameter estimation for {case_name}")
     fig.show()
 

@@ -5,7 +5,7 @@ import pandas as pd
 from model.utils_chain import Chain
 from functions.utils import plot_MLE, plot_scenarios, plot_base
 import matplotlib.pyplot as plt
-from Linear_reservoir.test_data import perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q
+from Linear_reservoir.data_linear_reservoir import perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q
 
 # %%
 # case = perfect

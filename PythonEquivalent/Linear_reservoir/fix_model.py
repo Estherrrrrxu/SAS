@@ -14,7 +14,7 @@ import pandas as pd
 from model.utils_chain import Chain
 from functions.utils import plot_MLE, plot_scenarios
 import matplotlib.pyplot as plt
-from Linear_reservoir.test_data import *
+from Linear_reservoir.data_linear_reservoir import *
 import scipy.stats as ss
 # %%   
 case = biweekly_bulk
