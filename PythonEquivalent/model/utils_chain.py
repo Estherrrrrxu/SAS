@@ -258,6 +258,7 @@ class Chain:
         
         for i in range(self.K-1):
             traj_R[self.pre_ind[i]:self.post_ind[i]] = R[B[i+1],self.pre_ind[i]:self.post_ind[i]]
+        traj_R[self.pre_ind[-1]:] = R[B[-1],self.pre_ind[-1]:]
         return traj_R
 
 # %%

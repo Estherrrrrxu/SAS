@@ -12,7 +12,7 @@ from typing import Optional, List
 df = pd.read_csv("../Data/PureWN_ipt_0.002_obs_6e-05.csv", index_col= 0)
 # st, et = 20, 100
 st, et = 0,len(df)
-plot = True
+plot = False
 # %%
 # For instantaneously observed data
 # observation made at each time step

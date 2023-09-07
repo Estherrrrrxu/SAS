@@ -138,9 +138,9 @@ def plot_scenarios(df, df_obs, model, start_ind, unified_color=False):
 
     ax[0].plot(df_obs['index'], df_obs['J_obs'], 
                '+', color='C3', markersize=7,label='Observation')
-    ax[0].invert_yaxis()
+    ax[0].set_ylim([max(df['J_true'])+0.02, 0])
     ax[0].set_ylabel("Precipitation [mm]")
-    ax[0].legend(frameon = False)
+    ax[0].legend(frameon = False, ncol=3)
     ax[0].set_xticks([])
     ax[0].set_title("Preciptation")
 

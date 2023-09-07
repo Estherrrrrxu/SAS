@@ -11,7 +11,7 @@ from typing import Optional, List
 # Read original file and get a part of it
 df = pd.read_csv("../Data/LR_ipt_0.0005_obs_5e-05.csv", index_col= 0)
 # st, et = 20, 100
-st, et = 300, 380
+st, et = 300, 420
 plot = False
 # %%
 # For instantaneously observed data
