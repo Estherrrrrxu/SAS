@@ -81,6 +81,9 @@ class SSModel:
         # initialize a bunch of temp storage 
         WW = np.zeros((self.D,self.N))
         theta_new = np.zeros((self.D, self._num_theta_to_estimate)) 
+        for d in range(self.D):
+            theta_new[d,:] = self._sample_theta_from_prior()
+            
         chains = [Chain(
             model_interface=self.models_for_each_chain[d],
             theta=theta_new[d,:]

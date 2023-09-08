@@ -323,8 +323,9 @@ class ModelInterface:
         if theta_new is None:
             theta_new = []
             for key in self._theta_to_estimate:
-                theta_new.append(self.prior_model[key].rvs())
-
+                val = self.prior_model[key].rvs()
+                theta_new.append(val)
+                
         for i, key in enumerate(self._theta_to_estimate):
             self._theta_init['to_estimate'][key]['current_value'] = theta_new[i]
         # transition model param [0] is k to estimate, and [1] is fixed dt

@@ -223,6 +223,8 @@ def normalize_over_interval(
 
         # Find the minimum and maximum values within the subarray
         sum_val = sum(subarray)
+        if sum_val == 0:
+            print("sum_val is 0")
         multiplier = [x / sum_val for x in subarray]
 
         target_val = input[end_index-1]
