@@ -61,7 +61,10 @@ class ModelInterfaceWN(ModelInterface):
         """
         for n in range(self.N):
             self.R[n,:] = ss.norm(loc=self.theta.input_model[0], scale=self.theta.input_model[1]).rvs()
-            self.R[n,:][self.R[n,:] <= 0] = min(10**(-8), min(self.R[n,:][self.R[n,:] > 0]))     
+            if self.R[n,:][self.R[n,:] >0].size == 0:
+                self.R[n,:][self.R[n,:] <= 0] = 10**(-8)
+            else:
+                self.R[n,:][self.R[n,:] <= 0] = min(10**(-8), min(self.R[n,:][self.R[n,:] > 0]))     
             normalized = normalize_over_interval(self.R[n,:], self.observed_ind, self.influx)
             self.R[n,:] = normalized + ss.norm(loc=0, scale=self.theta.input_model[2]).rvs(self.T)
             self.R[n,:][self.R[n,:] < 0] = 0

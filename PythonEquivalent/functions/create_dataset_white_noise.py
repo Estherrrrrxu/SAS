@@ -13,7 +13,7 @@ def transition_model(qt: float,k: float,delta_t: float,jt: float):
         give four inputs about the watershed at timestep t
         return the calculated discharge at t+1
     """
-    qtp1 = (1 - k * delta_t) * qt + k * delta_t * jt
+    qtp1 = (1 - k * delta_t) * qt + delta_t * jt
     return qtp1
 
 # make function
