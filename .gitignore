@@ -1,2 +1,4 @@
 PythonEquivalent/model/__pycache__/
 PythonEquivalent/functions/__pycache__/
+PythonEquivalent/tests/__pycache__/test_linear_reservoir.cpython-310.pyc
+PythonEquivalent/tests/__pycache__/test_nonlinear_drift.cpython-310.pyc
