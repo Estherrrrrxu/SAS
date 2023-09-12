@@ -12,6 +12,7 @@ import scipy.stats as ss
 
 from typing import List, Optional
 from copy import deepcopy
+import os
 # %%
 def linear_reservoir_transition_model(
         qt: float,
@@ -136,7 +137,7 @@ def generate_w_diff_noise_level(
     Q_true = deepcopy(Q)
     
     # add noise according to signal to noise ratio
-    noise_j = sig_e/stn_ipt/delta_t
+    noise_j = sig_e/delta_t/stn_ipt
     noise_q = sig_q/stn_obs
 
     a = (0 - Q)/noise_q
@@ -159,51 +160,39 @@ def generate_w_diff_noise_level(
     plt.title('Output')
     plt.legend(frameon=False)
     plt.tight_layout()
-    plt.savefig(root + f"{type_ipt}_stn_{stn_ipt}_{int(stn_obs)}.pdf")
+    if not os.path.exists(root + f"{type_ipt}/"):
+        os.mkdir(root + f"{type_ipt}/")
 
-    df.to_csv(root + f"{type_ipt}_stn_{stn_ipt}_{int(snt_obs)}.csv")
+    plt.savefig(root + f"{type_ipt}/stn_{stn_ipt}_{stn_obs}.pdf")
+    df.to_csv(root + f"{type_ipt}/stn_{stn_ipt}_{snt_obs}.csv")
     return
 
-def noise_conversion_ratio(sig_e: float, phi: float) -> float:
-    """Calculate the conversion ratio between noise in input and output
-    Args:
-        sig_e (float): standard deviation of input precipitation
-    Returns:
-        float: conversion ratio
-    """
-    sig_q = np.sqrt(sig_e ** 2/(1 - phi ** 2))
-    return sig_q/sig_e
 
 # %%
 if __name__ == "__main__":
     root = "/Users/esthersida/Documents/Code/particle/SAS/PythonEquivalent/Data/"
     # universal constants
-    length = 200
+    length = 1000
     delta_t = 1./24/60*15
     k = 1.
     phi = 1 - k * delta_t
     # for input and output stn ratio are consistent
-    for stn_ipt in [1, 2, 3, 4 ,5]:
-        # white noise
-        params_ips = [0.5, 0.02]
-        ratio = noise_conversion_ratio(params_ips[1], phi)
-        snt_obs = stn_ipt * ratio
-        generate_w_diff_noise_level(root, stn_ipt, snt_obs, params_ips, type_ipt="WhiteNoise", length=length, k=k, delta_t=delta_t, Q_init=0.5)
+    for stn_ipt in [1, 2, 3, 4, 5]:
+        for ratio in [0.5, 1, 2]:
+            # white noise
+            params_ips = [0.5, 0.02]
+            snt_obs = stn_ipt * ratio
+            generate_w_diff_noise_level(root, stn_ipt, snt_obs, params_ips, type_ipt="WhiteNoise", length=length, k=k, delta_t=delta_t, Q_init=0.5)
 
-        # exponential decay
-        params_ips = 0.5
-        ratio = noise_conversion_ratio(np.sqrt(params_ips**2), phi)
-        snt_obs = stn_ipt * ratio
-        generate_w_diff_noise_level(root, stn_ipt, snt_obs, params_ips, type_ipt="ExpDecay", length=length, k=k, delta_t=delta_t, Q_init=0.5)
+            # exponential decay
+            params_ips = 0.5
+            generate_w_diff_noise_level(root, stn_ipt, snt_obs, params_ips, type_ipt="ExpDecay", length=length, k=k, delta_t=delta_t, Q_init=0.5)
 
-        # real precipitation
-        precip = pd.read_csv(root + "precip.csv")
-        input_precip = precip['45'].to_numpy()
-        input_precip = input_precip[900:900+length]
-        ratio = noise_conversion_ratio(np.std(input_precip, ddof=1), phi)
-        snt_obs = stn_ipt * ratio
-        generate_w_diff_noise_level(root, stn_ipt, snt_obs, input_precip=input_precip, type_ipt="RealPrecip", length=length, k=k, delta_t=delta_t, Q_init=0.01)
+            # real precipitation
+            precip = pd.read_csv(root + "precip.csv")
+            input_precip = precip['45'].to_numpy()
+            input_precip = input_precip[900:900+length]
 
+            generate_w_diff_noise_level(root, stn_ipt, snt_obs, input_precip=input_precip, type_ipt="RealPrecip", length=length, k=k, delta_t=delta_t, Q_init=0.01)
 
-  
 # %%
