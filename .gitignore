@@ -214,3 +214,4 @@ PythonEquivalent/Data/WhiteNoise/stn_5_30.csv
 PythonEquivalent/Data/WhiteNoise/stn_5_30.pdf
 PythonEquivalent/test_white_noises/__pycache__/data_white_noises.cpython-310.pyc
 .gitignore
+PythonEquivalent/tests_linear_reservoir/__pycache__/data_white_noises.cpython-310.pyc
