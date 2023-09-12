@@ -93,8 +93,8 @@ def generate_outflow(
 # %%
 def generate_w_diff_noise_level(
         root: str,
-        stn_ipt: float,
-        stn_obs: float,
+        stn_ipts: List[float],
+        stn_ratios: List[float],
         params_ipt: Optional[List[float]]=None,
         input_precip: List[float]=None,
         type_ipt: str="WhiteNoise",
@@ -136,35 +136,40 @@ def generate_w_diff_noise_level(
     J_true = deepcopy(J)
     Q_true = deepcopy(Q)
     
-    # add noise according to signal to noise ratio
-    noise_j = sig_e/delta_t/stn_ipt
-    noise_q = sig_q/stn_obs
+    for stn_ipt in stn_ipts:
+        for ratio in stn_ratios:
+            J = deepcopy(J_true)
+            Q = deepcopy(Q_true)
+            stn_obs = stn_ipt * ratio
+            # add noise according to signal to noise ratio
+            noise_j = sig_e/delta_t/stn_ipt
+            noise_q = sig_q/stn_obs
 
-    a = (0 - Q)/noise_q
-    Q = ss.truncnorm.rvs(a, np.inf, loc=Q, scale=noise_q)
-    a = (0 - J)/noise_j
-    J = ss.truncnorm.rvs(a, np.inf, loc=J, scale=noise_j)
+            a = (0 - Q)/noise_q
+            Q = ss.truncnorm.rvs(a, np.inf, loc=Q, scale=noise_q)
+            a = (0 - J)/noise_j
+            J = ss.truncnorm.rvs(a, np.inf, loc=J, scale=noise_j)
 
-    df = pd.DataFrame({'J_true': J_true,'J_obs': J, 'Q_true': Q_true, 'Q_obs': Q})
+            df = pd.DataFrame({'J_true': J_true,'J_obs': J, 'Q_true': Q_true, 'Q_obs': Q})
 
-    plt.figure()
-    plt.subplot(2,1,1)
-    plt.plot(df['J_true'], label="Truth")
-    plt.plot(df['J_obs'], "*", label="Obs")
-    plt.legend(frameon=False)
-    plt.title('Input')
+            plt.figure()
+            plt.subplot(2,1,1)
+            plt.plot(df['J_true'], label="Truth")
+            plt.plot(df['J_obs'], "*", label="Obs")
+            plt.legend(frameon=False)
+            plt.title('Input')
 
-    plt.subplot(2,1,2)
-    plt.plot(df['Q_true'], label="Truth")
-    plt.plot(df['Q_obs'], "*", label="Obs")
-    plt.title('Output')
-    plt.legend(frameon=False)
-    plt.tight_layout()
-    if not os.path.exists(root + f"{type_ipt}/"):
-        os.mkdir(root + f"{type_ipt}/")
+            plt.subplot(2,1,2)
+            plt.plot(df['Q_true'], label="Truth")
+            plt.plot(df['Q_obs'], "*", label="Obs")
+            plt.title('Output')
+            plt.legend(frameon=False)
+            plt.tight_layout()
+            if not os.path.exists(root + f"{type_ipt}/"):
+                os.mkdir(root + f"{type_ipt}/")
 
-    plt.savefig(root + f"{type_ipt}/stn_{stn_ipt}_{stn_obs}.pdf")
-    df.to_csv(root + f"{type_ipt}/stn_{stn_ipt}_{snt_obs}.csv")
+            plt.savefig(root + f"{type_ipt}/stn_{stn_ipt}_{stn_obs}.pdf")
+            df.to_csv(root + f"{type_ipt}/stn_{stn_ipt}_{stn_obs}.csv")
     return
 
 
@@ -177,22 +182,21 @@ if __name__ == "__main__":
     k = 1.
     phi = 1 - k * delta_t
     # for input and output stn ratio are consistent
-    for stn_ipt in [1, 2, 3, 4, 5]:
-        for ratio in [0.5, 1, 2, 3, 4, 5, 6]:
-            # white noise
-            params_ips = [0.5, 0.02]
-            snt_obs = stn_ipt * ratio
-            generate_w_diff_noise_level(root, stn_ipt, snt_obs, params_ips, type_ipt="WhiteNoise", length=length, k=k, delta_t=delta_t, Q_init=0.5)
+    stn_ipts = [1, 2, 3, 4, 5]
+    stn_ratios = [0.5, 1, 2, 3, 4, 5, 6]
+    # white noise
+    params_ips = [0.5, 0.02]
+    generate_w_diff_noise_level(root, stn_ipts, stn_ratios, params_ips, type_ipt="WhiteNoise", length=length, k=k, delta_t=delta_t, Q_init=0.5)
 
-            # exponential decay
-            params_ips = 0.5
-            generate_w_diff_noise_level(root, stn_ipt, snt_obs, params_ips, type_ipt="ExpDecay", length=length, k=k, delta_t=delta_t, Q_init=0.5)
+    # exponential decay
+    params_ips = 0.5
+    generate_w_diff_noise_level(root, stn_ipts, stn_ratios, params_ips, type_ipt="ExpDecay", length=length, k=k, delta_t=delta_t, Q_init=0.5)
 
-            # real precipitation
-            precip = pd.read_csv(root + "precip.csv")
-            input_precip = precip['45'].to_numpy()
-            input_precip = input_precip[900:900+length]
+    # real precipitation
+    precip = pd.read_csv(root + "precip.csv")
+    input_precip = precip['45'].to_numpy()
+    input_precip = input_precip[900:900+length]
 
-            generate_w_diff_noise_level(root, stn_ipt, snt_obs, input_precip=input_precip, type_ipt="RealPrecip", length=length, k=k, delta_t=delta_t, Q_init=0.01)
+    generate_w_diff_noise_level(root, stn_ipts, stn_ratios, input_precip=input_precip, type_ipt="RealPrecip", length=length, k=k, delta_t=delta_t, Q_init=0.01)
 
 # %%
