@@ -178,7 +178,7 @@ if __name__ == "__main__":
     phi = 1 - k * delta_t
     # for input and output stn ratio are consistent
     for stn_ipt in [1, 2, 3, 4, 5]:
-        for ratio in [0.5, 1, 2]:
+        for ratio in [0.5, 1, 2, 3, 4, 5, 6]:
             # white noise
             params_ips = [0.5, 0.02]
             snt_obs = stn_ipt * ratio

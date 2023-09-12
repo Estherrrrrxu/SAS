@@ -1,8 +1,8 @@
 # %%
 import os
 current_path = os.getcwd()
-if current_path[-16:] != "Linear_reservoir":
-    os.chdir("Linear_reservoir")
+if current_path[-17:] != "test_white_noises":
+    os.chdir("test_white_noises")
     print("Current working directory changed to 'Linear_reservoir'.")   
 import sys
 sys.path.append('../') 
@@ -13,9 +13,10 @@ from model.your_model import LinearReservoir
 from model.utils_chain import Chain
 from functions.utils import plot_MLE, plot_scenarios, normalize_over_interval
 import matplotlib.pyplot as plt
-from Linear_reservoir.data_threshold_white_noise import *
+from data_white_noises import *
 
 import scipy.stats as ss
+from typing import Optional, List
 
 # %%
 class ModelInterfaceWN(ModelInterface):
@@ -111,7 +112,7 @@ def plot_parameters_linear_reservoir(
 
 # %%
 def run_linear_reservoir(
-        case: Cases, 
+        case, 
         theta_init: Optional[dict],
         unified_color: Optional[bool] = False,
         num_input_scenarios: Optional[int] = 5,
@@ -189,7 +190,7 @@ if __name__ == "__main__":
                                 "is_nonnegative": True
                             },
                         'initial_state':{"prior_dis": "normal", 
-                                            "prior_params":[0.004, 0.002],
+                                            "prior_params":[0.5, 0.002],
                                             "search_dis": "normal", "search_params":[0.002],
                                             "is_nonnegative": True
                             },
@@ -227,6 +228,7 @@ if __name__ == "__main__":
     run_linear_reservoir(instant_gaps_5_d, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
     run_linear_reservoir(weekly_bulk, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
     run_linear_reservoir(biweekly_bulk, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
+    # %%
     run_linear_reservoir(weekly_bulk_true_q, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
 
 
