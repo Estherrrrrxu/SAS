@@ -134,90 +134,52 @@ def plot_parameters_linear_reservoir(
     fig.show()
 
 # %%
-num_input_scenarios = 15
-num_parameter_samples = 20
-len_parameter_MCMC = 35
-plot_preliminary = True
-learning_step = 0.5
-start_ind = 0
-unified_color = True
-perfects = []
+def run_linear_reservoir(
+        case, 
+        theta_init: Optional[dict],
+        unified_color: Optional[bool] = False,
+        num_input_scenarios: Optional[int] = 5,
+        plot_preliminary: Optional[bool] = False,
+        num_parameter_samples: Optional[int] = 10,
+        len_parameter_MCMC: Optional[int] = 15,
+        learning_step: Optional[int] = 0.6,
+        start_ind: Optional[int] = 1
+    ) -> None:
 
-df = pd.read_csv(f"../Data/WhiteNoise/stn_5_30.csv", index_col= 0)
-interval = [0,100]
+    # Get data
+    df = case.df
+    df_obs = case.df_obs
+    obs_made = case.obs_made
+    case_name = case.case_name
 
-perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q = get_different_input_scenarios(df, interval, plot=False)
+    config = {'observed_made_each_step':obs_made}
 
-case = perfect
-# Get data
-df = case.df
-df_obs = case.df_obs
-obs_made = case.obs_made
-case_name = case.case_name
-
-config = {'observed_made_each_step':obs_made}
-
-
-theta_init = {
-    'to_estimate': {'k':{"prior_dis": "normal", 
-                            "prior_params":[1.,0.01], 
-                            "search_dis": "normal", "search_params":[0.01],
-                            "is_nonnegative": True
-                        },
-                    'initial_state':{"prior_dis": "normal", 
-                                        "prior_params":[df_obs['Q_obs'][0], 0.01],
-                                        "search_dis": "normal", "search_params":[0.01],
-                                        "is_nonnegative": False
-                        },
-                    'input_mean':{"prior_dis": "normal",
-                                    "prior_params":[df_obs['J_obs'].mean(), 0.001],
-                                    "search_dis": "normal", "search_params":[0.01],
-                                    "is_nonnegative": False
-                        },
-                    'input_std':{"prior_dis": "normal",
-                                    "prior_params":[df_obs['J_obs'].std(ddof=1), 0.001],
-                                    "search_dis": "normal", "search_params":[0.01],
-                                    "is_nonnegative": True
-                        },
-                    'input_uncertainty':{"prior_dis": "normal",
-                                            "prior_params":[df_obs['J_obs'].std(ddof=1), 0.001],
-                                            "search_dis": "normal", "search_params":[0.01],
-                                            "is_nonnegative": True
-                        },
-                    },
-    'not_to_estimate': {'obs_uncertainty': (df['Q_obs'] - df['Q_true']).std(ddof=1)*10}
-}
-
-
-
-# initialize model interface settings
-model_interface = ModelInterfaceWN(
-    df = df_obs,
-    customized_model = LinearReservoir,
-    theta_init = theta_init,
-    num_input_scenarios = num_input_scenarios,
-    config = config
-)
-
-if plot_preliminary:
-    chain = Chain(
-        model_interface = model_interface
+    # initialize model interface settings
+    model_interface = ModelInterfaceWN(
+        df = df_obs,
+        customized_model = LinearReservoir,
+        theta_init = theta_init,
+        num_input_scenarios = num_input_scenarios,
+        config = config
     )
-    chain.run_sequential_monte_carlo()
-    plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
 
-    chain.run_particle_MCMC()
-    plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
+    if plot_preliminary:
+        chain = Chain(
+            model_interface = model_interface
+        )
+        chain.run_sequential_monte_carlo()
+        plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
 
-    #%%
+        chain.run_particle_MCMC()
+        plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
 
+    # 
     # run PMCMC
     model = SSModel(
         model_interface = model_interface,
         num_parameter_samples = num_parameter_samples,
         len_parameter_MCMC = len_parameter_MCMC,
         learning_step = learning_step,
-        debug=False
     )
     model.run_particle_Gibbs_AS_SAEM()
     #
@@ -236,10 +198,93 @@ if plot_preliminary:
     fig, ax = plot_scenarios(df, df_obs, model, start_ind, unified_color)
     fig.suptitle(f"{case_name}")
     fig.show()
-    fig, ax = plot_scenarios(df, df_obs, model, 10, unified_color)
+    fig, ax = plot_scenarios(df, df_obs, model, 20, unified_color)
     fig.suptitle(f"{case_name}")
     fig.show()
+    return
 
+# %%
+if __name__ == "__main__":
+
+    num_input_scenarios = 15
+    num_parameter_samples = 20
+    len_parameter_MCMC = 25
+    plot_preliminary = True
+    learning_step = 0.6
+    start_ind = 0
+    unified_color = True
+    perfects = []
+
+    df = pd.read_csv(f"../Data/WhiteNoise/stn_5_30.csv", index_col= 0)
+    interval = [0,100]
+
+    perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q = get_different_input_scenarios(df, interval, plot=False)
+    #%%
+    case = perfect
+        # Get data
+    df = case.df
+    df_obs = case.df_obs
+    obs_made = case.obs_made
+    case_name = case.case_name
+    theta_init = {
+        'to_estimate': {'k':{"prior_dis": "normal", 
+                                "prior_params":[1.,0.001], 
+                                "search_dis": "normal", "search_params":[0.001],
+                                "is_nonnegative": True
+                            },
+                        'initial_state':{"prior_dis": "normal", 
+                                            "prior_params":[df_obs['Q_obs'][0], 0.001],
+                                            "search_dis": "normal", "search_params":[0.001],
+                                            "is_nonnegative": True
+                            },
+                        'input_mean':{"prior_dis": "normal",
+                                        "prior_params":[df_obs['J_obs'].mean(), 0.001],
+                                        "search_dis": "normal", "search_params":[0.001],
+                                        "is_nonnegative": True
+                            },
+                        'input_std':{"prior_dis": "normal",
+                                        "prior_params":[df_obs['J_obs'].std(ddof=1), 0.001],
+                                        "search_dis": "normal", "search_params":[0.001],
+                                        "is_nonnegative": True
+                            },
+                        'input_uncertainty':{"prior_dis": "normal",
+                                                "prior_params":[df_obs['J_obs'].std(ddof=1)/5, 0.001],
+                                                "search_dis": "normal", "search_params":[0.001],
+                                                "is_nonnegative": True
+                            },
+                        },
+        'not_to_estimate': {'obs_uncertainty':0.00001}
+    }
+    (df['Q_obs'] - df['Q_true']).std(ddof=1)
+
+
+    # for perfect in perfects:
+
+    # run different cases
+    run_linear_reservoir(perfect, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
+
+
+
+    #%%
+    # # %%
+    # stn_ipts = [1, 2, 3, 4, 5]
+    # stn_ratios = [0.5, 1, 2, 3, 4, 5, 6]
+    #%%
+    # perfects = []
+    # for stn_ipt in stn_ipts:
+    #     for stn_ratio in stn_ratios:
+    #         stn_obs = stn_ipt * stn_ratio
+    #         df = pd.read_csv(f"../Data/WhiteNoise/stn_{stn_ipt}_{stn_obs}.csv", index_col= 0)
+    #         interval = [0,100]
+
+    #         perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q = get_different_input_scenarios(df, interval, plot=False)
+
+    #         perfects.append(perfect)
+
+    # # for perfect in perfects:
+
+    # # run different cases
+    # run_linear_reservoir(perfect, theta_init, unified_color, num_input_scenarios, plot_preliminary, num_parameter_samples, len_parameter_MCMC, learning_step, start_ind)
 
 
 

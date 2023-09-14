@@ -185,8 +185,8 @@ if __name__ == "__main__":
     # setups
     theta_init = {
         'to_estimate': {'k':{"prior_dis": "normal", 
-                                "prior_params":[1.2,0.1], 
-                                "search_dis": "normal", "search_params":[0.1],
+                                "prior_params":[1.,0.0001], 
+                                "search_dis": "normal", "search_params":[0.001],
                                 "is_nonnegative": True
                             },
                         'initial_state':{"prior_dis": "normal", 

@@ -197,7 +197,7 @@ class ModelInterface:
         """   
         _default_theta_init = {
                 'to_estimate': {'k':{"prior_dis": "normal", 
-                                     "prior_params":[1.2,0.3], 
+                                     "prior_params":[1.2, 0.3], 
                                      "search_dis": "normal", "search_params":[0.05],
                                      "is_nonnegative": True
                                     },
@@ -259,43 +259,45 @@ class ModelInterface:
                 self.param_constraints[key] = False
         return
 
-    def _set_parameter_distribution(self) -> None:
+    def _set_parameter_distribution(self, update: Optional[bool]=False) -> None:
         """Set prior and update distributions for parameters
 
         Set:
             prior_model (dict): prior distribution for parameters
             search_model (dict): update distribution for parameters
         """
-        # save models
-        self.prior_model = {}
-        self.search_model = {}
+        if not update:
+            # save models
+            self.prior_model = {}
+            self.search_model = {}
 
         for key in self._theta_to_estimate:
             current_theta = self._theta_init['to_estimate'][key]
             is_nonnegative = self.param_constraints[key]
-
-            # set parameters for prior distribution
+            # set parameters for prior distribution: [first param: mean, second param: std]
             if current_theta['prior_dis'] == 'normal':
-                if is_nonnegative:
-                    a = (0-current_theta['prior_params'][0])/(current_theta['prior_params'][1])
-                    self.prior_model[key] = ss.truncnorm(a=a, b=np.inf,
-                        loc = current_theta['prior_params'][0], 
-                        scale = current_theta['prior_params'][1]
-                        )
+
+                # update or not
+                if not update:
+                    mean = current_theta['prior_params'][0]
+                    
                 else:
-                    # first param: mean, second param: std
-                    self.prior_model[key] = ss.norm(
-                        loc = current_theta['prior_params'][0], 
-                        scale = current_theta['prior_params'][1]
-                        )
-            elif current_theta['prior_dis'] == 'uniform':
-                # first param: lower bound, second param: interval length
-                self.prior_model[key] = ss.uniform(
-                    loc = current_theta['prior_params'][0],
-                    scale = (
-                    current_theta['prior_params'][1] - current_theta['prior_params'][0]
-                            )
-                    )
+                    mean = current_theta['current_value']
+                std = current_theta['prior_params'][1]
+                # truncate or not
+                if is_nonnegative:
+                    a = (0 - mean) / std
+                    self.prior_model[key] = ss.truncnorm(a=a, b=np.inf, loc=mean, scale=std)      
+                else:
+                    
+                    self.prior_model[key] = ss.norm(loc=mean, scale=std)
+
+            elif current_theta['prior_dis'] == 'uniform': # first param: lower bound, second param: upper bound
+                # Note: uniform distribution is non-informative prior, so we don't update it
+                lower_bound = current_theta['prior_params'][0]
+                interval_length = current_theta['prior_params'][1] - current_theta['prior_params'][0]
+                self.prior_model[key] = ss.uniform(loc=lower_bound, scale=interval_length)
+
             else:
                 raise ValueError("This prior distribution is not implemented yet")
             
@@ -347,6 +349,16 @@ class ModelInterface:
                             initial_state=init_state
                             )
         return 
+    
+    def update_parameter_distribution(
+            self
+        ) -> dict[str, Any]:
+        """Update parameter distribution for SAEM
+        """
+        self._set_parameter_distribution(update=True)
+        return self.prior_model
+
+    
     
     def transition_model(self, 
                         Xtm1: np.ndarray, 
@@ -457,3 +469,5 @@ class ModelInterface:
         """
         # sd = self.theta.state_model
         return ss.norm(x_prime, sd).pdf(xkp1)
+
+# %%

@@ -121,7 +121,7 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
                linestyle=(0, (3, 1)), color='C9', linewidth=2, 
                label = "One Traj/MLE")
     ax[1].set_xlim([left,right])
-    return MLE
+    return MLE[:-1]
 # %%
 def plot_scenarios(df, df_obs, model, start_ind, unified_color=False):
     fig, ax = plt.subplots(2, 1, figsize=(8,5))

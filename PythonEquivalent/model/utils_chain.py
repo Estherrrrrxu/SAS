@@ -156,7 +156,7 @@ class Chain:
             sd = (xkp1_anchor - x_prime).mean()
 
             W_tilde = W + np.log(
-                self.model_interface.state_model(x_prime=x_prime, xkp1=xkp1_anchor,sd=abs(sd/2)) 
+                self.model_interface.state_model(x_prime=x_prime, xkp1=xkp1_anchor, sd=abs(sd/4.)) 
             )
             
             A[B[k+1],k+1] = _inverse_pmf(xkp1_anchor - x_prime,
@@ -209,7 +209,7 @@ class Chain:
             B[i-1] =  A[:,i][B[i]]
         return B
 
-    def _get_X_traj(self, X:  np.ndarray, B: np.ndarray) -> np.ndarray:
+    def _get_X_traj(self, X: np.ndarray, B: np.ndarray) -> np.ndarray:
         """Get X trajectory based on sampled particle trajectory
         
         Args:
@@ -219,11 +219,9 @@ class Chain:
         Returns:
             np.ndarray: Trajectory of X that is sampled at final timestep
         """
-        traj_X = np.zeros(self.T+1)
+        traj_X = np.ones(self.T+1) * self.model_interface.theta.initial_state
         for i in range(self.K):
             traj_X[self.pre_ind[i]+1:self.post_ind[i]+1] = X[B[i],self.pre_ind[i]+1:self.post_ind[i]+1]
-        # update initial state
-        traj_X[0] = self.model_interface.theta.initial_state
         return traj_X
     
     def _get_Y_traj(self, Y:  np.ndarray, B: np.ndarray) -> np.ndarray:
