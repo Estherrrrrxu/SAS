@@ -29,7 +29,7 @@ class ModelInterfaceWN(ModelInterface):
         if theta_new is None:
             theta_new = []
             for key in self._theta_to_estimate:
-                theta_new.append(self.prior_model[key].rvs())
+                theta_new.append(self.dist_model[key].rvs())
 
         for i, key in enumerate(self._theta_to_estimate):
             self._theta_init['to_estimate'][key]['current_value'] = theta_new[i]
@@ -37,7 +37,7 @@ class ModelInterfaceWN(ModelInterface):
         transition_param = [self._theta_init['to_estimate']['k']['current_value'], self.config['dt']]
 
         # observation uncertainty param is to estimate
-        obs_param = self._theta_init['not_to_estimate']['obs_uncertainty']
+        obs_param = self._theta_init['to_estimate']['obs_uncertainty']['current_value']
 
         # input uncertainty param is to estimate
         input_param = [self._theta_init['to_estimate']['input_mean']['current_value'], 
@@ -138,7 +138,7 @@ num_input_scenarios = 15
 num_parameter_samples = 20
 len_parameter_MCMC = 35
 plot_preliminary = True
-learning_step = 0.5
+fast_convergence_phase_length = 5
 start_ind = 0
 unified_color = True
 perfects = []
@@ -161,31 +161,31 @@ config = {'observed_made_each_step':obs_made}
 theta_init = {
     'to_estimate': {'k':{"prior_dis": "normal", 
                             "prior_params":[1.,0.01], 
-                            "search_dis": "normal", "search_params":[0.01],
                             "is_nonnegative": True
                         },
                     'initial_state':{"prior_dis": "normal", 
                                         "prior_params":[df_obs['Q_obs'][0], 0.01],
-                                        "search_dis": "normal", "search_params":[0.01],
                                         "is_nonnegative": False
                         },
                     'input_mean':{"prior_dis": "normal",
-                                    "prior_params":[df_obs['J_obs'].mean(), 0.001],
-                                    "search_dis": "normal", "search_params":[0.01],
-                                    "is_nonnegative": False
+                                    "prior_params":[df_obs['J_obs'].mean(), 0.01],
+                                    "is_nonnegative": True
                         },
                     'input_std':{"prior_dis": "normal",
-                                    "prior_params":[df_obs['J_obs'].std(ddof=1), 0.001],
-                                    "search_dis": "normal", "search_params":[0.01],
+                                    "prior_params":[df_obs['J_obs'].std(ddof=1), 0.01],
                                     "is_nonnegative": True
                         },
                     'input_uncertainty':{"prior_dis": "normal",
-                                            "prior_params":[df_obs['J_obs'].std(ddof=1), 0.001],
-                                            "search_dis": "normal", "search_params":[0.01],
+                                            "prior_params":[df_obs['J_obs'].std(ddof=1), 0.01],
                                             "is_nonnegative": True
                         },
+                    'obs_uncertainty': {"prior_dis": "normal",
+                                            "prior_params":[(df['Q_obs'] - df['Q_true']).std(ddof=1)*100, 0.001],
+                                            "is_nonnegative": True
+                        },
+
                     },
-    'not_to_estimate': {'obs_uncertainty': (df['Q_obs'] - df['Q_true']).std(ddof=1)*10}
+    'not_to_estimate': {}
 }
 
 
@@ -213,11 +213,10 @@ if plot_preliminary:
 
     # run PMCMC
     model = SSModel(
-        model_interface = model_interface,
-        num_parameter_samples = num_parameter_samples,
-        len_parameter_MCMC = len_parameter_MCMC,
-        learning_step = learning_step,
-        debug=False
+        model_interface=model_interface,
+        num_parameter_samples=num_parameter_samples,
+        len_parameter_MCMC=len_parameter_MCMC,
+        fast_convergence_phase_length=fast_convergence_phase_length
     )
     model.run_particle_Gibbs_AS_SAEM()
     #

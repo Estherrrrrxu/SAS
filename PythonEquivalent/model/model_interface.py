@@ -198,17 +198,14 @@ class ModelInterface:
         _default_theta_init = {
                 'to_estimate': {'k':{"prior_dis": "normal", 
                                      "prior_params":[1.2, 0.3], 
-                                     "search_dis": "normal", "search_params":[0.05],
                                      "is_nonnegative": True
                                     },
                                 'initial_state':{"prior_dis": "normal", 
                                                  "prior_params":[self.df[self.config['outflux']][0], 0.00005],
-                                                 "search_dis": "normal", "search_params":[0.00001],
                                                  "is_nonnegative": True
                                     },
                                 'input_uncertainty':{"prior_dis": "normal", 
                                                      "prior_params":[0.0,0.005],
-                                                     "search_dis": "normal", "search_params":[0.001],
                                                      "is_nonnegative": False
                                     },
                                 },
@@ -263,13 +260,11 @@ class ModelInterface:
         """Set prior and update distributions for parameters
 
         Set:
-            prior_model (dict): prior distribution for parameters
-            search_model (dict): update distribution for parameters
+            dist_model (dict): parameter distribution model
         """
         if not update:
             # save models
-            self.prior_model = {}
-            self.search_model = {}
+            self.dist_model = {}
 
         for key in self._theta_to_estimate:
             current_theta = self._theta_init['to_estimate'][key]
@@ -287,25 +282,20 @@ class ModelInterface:
                 # truncate or not
                 if is_nonnegative:
                     a = (0 - mean) / std
-                    self.prior_model[key] = ss.truncnorm(a=a, b=np.inf, loc=mean, scale=std)      
+                    self.dist_model[key] = ss.truncnorm(a=a, b=np.inf, loc=mean, scale=std)      
                 else:
                     
-                    self.prior_model[key] = ss.norm(loc=mean, scale=std)
+                    self.dist_model[key] = ss.norm(loc=mean, scale=std)
 
             elif current_theta['prior_dis'] == 'uniform': # first param: lower bound, second param: upper bound
                 # Note: uniform distribution is non-informative prior, so we don't update it
                 lower_bound = current_theta['prior_params'][0]
                 interval_length = current_theta['prior_params'][1] - current_theta['prior_params'][0]
-                self.prior_model[key] = ss.uniform(loc=lower_bound, scale=interval_length)
+                self.dist_model[key] = ss.uniform(loc=lower_bound, scale=interval_length)
 
             else:
                 raise ValueError("This prior distribution is not implemented yet")
             
-            # set parameter for search/update distributions
-            if current_theta['search_dis'] == 'normal':
-                self.search_model[key] = ss.norm(loc = 0, scale = current_theta['search_params'][0])
-            else:
-                raise ValueError("This search distribution is not implemented yet")
         return
     
 
@@ -325,7 +315,7 @@ class ModelInterface:
         if theta_new is None:
             theta_new = []
             for key in self._theta_to_estimate:
-                val = self.prior_model[key].rvs()
+                val = self.dist_model[key].rvs()
                 theta_new.append(val)
                 
         for i, key in enumerate(self._theta_to_estimate):
@@ -334,7 +324,7 @@ class ModelInterface:
         transition_param = [self._theta_init['to_estimate']['k']['current_value'], self.config['dt']]
 
         # observation uncertainty param is to estimate
-        obs_param = self._theta_init['not_to_estimate']['obs_uncertainty']
+        obs_param = self._theta_init['to_estimate']['obs_uncertainty']
 
         # input uncertainty param is to estimate
         input_param = self._theta_init['to_estimate']['input_uncertainty']['current_value']
@@ -356,7 +346,7 @@ class ModelInterface:
         """Update parameter distribution for SAEM
         """
         self._set_parameter_distribution(update=True)
-        return self.prior_model
+        return self.dist_model
 
     
     
