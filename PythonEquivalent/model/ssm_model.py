@@ -80,8 +80,8 @@ class SSModel:
         return theta_new
     
     
-    def run_particle_Gibbs_AS_SAEM(self) -> None:
-        """ Run particle Gibbs with Ancestor Sampling (AS) and Stochastic Approximation of the EM algorithm (SAEM)    
+    def run_particle_Gibbs_SAEM(self) -> None:
+        """ Run particle Gibbs using Stochastic Approximation of the EM algorithm (SAEM) for parameter estimation 
         """
         # initialize likelihood, theta storage space, and chains
         WW = np.zeros((self.D, self.N))
@@ -105,6 +105,8 @@ class SSModel:
         self.input_record[0,:] = best_model._get_R_traj(best_model.state.R, B)
         self.state_record[0,:] = best_model._get_X_traj(best_model.state.X, B)
         self.output_record[0,:] = best_model._get_Y_traj(best_model.state.Y, B)
+
+        # TODO: after update initial state, need to update the model interface
 
         for l in tqdm(range(self.L)):
             # for each theta

@@ -71,12 +71,12 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
     Returns:
         _type_: _description_
     """
-    state = chain.state
-    df=case.df
-    df_obs=case.df_obs
-    pre_ind = chain.pre_ind
-    post_ind = chain.post_ind
-    left,right = None,None
+    # state = chain.state
+    # df=case.df
+    # df_obs=case.df_obs
+    # pre_ind = chain.pre_ind
+    # post_ind = chain.post_ind
+    # left,right = None,None
     X = state.X
     A = state.A
     W = state.W

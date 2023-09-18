@@ -114,7 +114,7 @@ if plot_preliminary:
     chain.run_sequential_monte_carlo()
     plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
 
-    chain.run_particle_MCMC()
+    chain.run_particle_MCMC_AS()
     plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
 
     #%%
@@ -126,7 +126,7 @@ if plot_preliminary:
         len_parameter_MCMC=len_parameter_MCMC,
         fast_convergence_phase_length=fast_convergence_phase_length
     )
-    model.run_particle_Gibbs_AS_SAEM()
+    model.run_particle_Gibbs_SAEM()
     #
     # plot parameters
     plot_parameters_linear_reservoir(
