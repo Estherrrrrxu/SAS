@@ -71,12 +71,12 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
     Returns:
         _type_: _description_
     """
-    # state = chain.state
-    # df=case.df
-    # df_obs=case.df_obs
-    # pre_ind = chain.pre_ind
-    # post_ind = chain.post_ind
-    # left,right = None,None
+    state = chain.state
+    df=case.df
+    df_obs=case.df_obs
+    pre_ind = chain.pre_ind
+    post_ind = chain.post_ind
+    left,right = None,None
     X = state.X
     A = state.A
     W = state.W
@@ -85,7 +85,7 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
 
     J_obs = df['J_obs'].values
     Q_obs = df['Q_obs'].values
-    K = A.shape[1]-1
+    K = A.shape[1]
 
     if left is None:
         left = df_obs['index'].values[0]
@@ -103,10 +103,9 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
 
     for i in range(K):
         MLE[pre_ind[i]:post_ind[i]] = Y[B[i],pre_ind[i]:post_ind[i]]
-        # MLE[i] = Y[B[i+1],i]
+
     for i in range(K):
-        MLE_R[pre_ind[i]:post_ind[i]] = R[B[i],pre_ind[i]:post_ind[i]]
-        # MLE_R[i] = R[B[i+1],i]   
+        MLE_R[pre_ind[i]:post_ind[i]] = R[B[i],pre_ind[i]:post_ind[i]] 
 
 
     fig, ax = plot_base(df,df_obs)
@@ -115,7 +114,7 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
                label = "One Traj/MLE")
     ax[0].set_xlim([left,right])
 
-    ax[1].plot(df_obs['index'].values[:-1], MLE[:-1], "|", markersize=15,markeredgewidth=1.5,
+    ax[1].plot(df_obs['index'].values, MLE, "|", markersize=15,markeredgewidth=1.5,
                linestyle=(0, (3, 1)), color='C9', linewidth=2, 
                label = "One Traj/MLE")
     ax[1].set_xlim([left,right])

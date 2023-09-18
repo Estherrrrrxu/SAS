@@ -116,9 +116,9 @@ class Chain:
             
             # This p1 takes account for initial condition
             X[:,start_ind:end_ind] = xkp1
-        
 
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)  
+
         
 
         return 
