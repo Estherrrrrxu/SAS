@@ -10,11 +10,11 @@ from typing import Optional
 @dataclass
 class State:
     """ Class for keep track of state at each timestep"""
-    R: np.ndarray  # [T, N], input scenarios
+    R: np.ndarray  # [N, T], input scenarios
     W: np.ndarray  # [N], log weight at each observed timestep
-    X: np.ndarray  # [N, T+1], state at each timestep
-    A: np.ndarray  # [N, K+1], ancestor at each timestep
-    Y: np.ndarray  # [N, K], observation at each timestep
+    X: np.ndarray  # [N, T], state at each timestep
+    A: np.ndarray  # [N, K], ancestor at each timestep
+    Y: np.ndarray  # [N, T], observation at each timestep
     
 class Chain:
     def __init__(self,
@@ -29,7 +29,6 @@ class Chain:
         # TODO: think about this more
         self.model_interface = model_interface
         self.model_interface.update_model(theta_new=theta)
-        self.model_interface.input_model()
         self.R = self.model_interface.R
 
         # get dimension constants
@@ -42,38 +41,29 @@ class Chain:
         self.outflux = self.model_interface.outflux
 
         # initialize state
-        A = np.zeros((self.N, self.K + 1)).astype(int)
-        A[:,0] = np.arange(self.N)
-        self.state_init = State( 
-            R=self.R,
-            W=np.log(np.ones(self.N) / self.N),
-            X=np.ones((self.N, self.T+1)) * self.model_interface.theta.initial_state,
-            Y=np.zeros((self.N, self.T)),
-            A=A
-        )
+        self._update_state_init()
+
         t_k_map = np.arange(0,self.T+1)[self.observed_ind]
         # if there are no gap in data, do nothing
         post_ind = t_k_map + 1
         if self.K == self.T:
             pre_ind = t_k_map
         # if the first one is observed:
-        elif t_k_map[0] == 0:
-            pre_ind = t_k_map - 1
-            pre_ind[0] = 0
         else:
-            pre_ind = t_k_map + 1
-            pre_ind = np.insert(pre_ind, 0, 0)
-            pre_ind = pre_ind[:-1]
+            pre_ind = t_k_map - 1
+            pre_ind[0] = t_k_map[0]
+
         self.pre_ind = pre_ind
         self.post_ind = post_ind
 
+    #subject to change
     def _update_state_init(self) -> None:
-        A = np.zeros((self.N, self.K + 1)).astype(int)
+        A = np.zeros((self.N, self.K)).astype(int)
         A[:,0] = np.arange(self.N)
         self.state_init = State( 
             R=self.R,
-            W=np.log(np.ones(self.N) / self.N),
-            X=np.ones((self.N, self.T+1)) * self.model_interface.theta.initial_state,
+            W=np.ones(self.N) / self.N,
+            X=np.ones((self.N, self.T)),     
             Y=np.zeros((self.N, self.T)),
             A=A
         )
@@ -87,36 +77,50 @@ class Chain:
         A = self.state_init.A
         Y = self.state_init.Y
 
-        xk = X[A[:,0], 0:1]
+        # initialization at the first observation
+        ind_init = self.pre_ind[0]
+        X[:,ind_init] = X[:,ind_init] * self.model_interface.theta.initial_state
+        Y[:,ind_init] = self.model_interface.observation_model(Xk=X[:,ind_init])
+        W_init = np.log(self.model_interface.observation_model_likelihood(
+                                                        yhk=Y[:,ind_init],
+                                                        yk=self.outflux[ind_init]
+                                                        ))
+        W_init = np.exp(W_init - W_init.max())
+        W_init *= W
+        W = W_init/W_init.sum()
 
-        for k in range(self.K):
+        for k in range(1, self.K):
+            A[:,k] = _inverse_pmf(A[:,k-1], W, num = self.N)
+            
             start_ind = self.pre_ind[k]
             end_ind = self.post_ind[k]
 
+            Rt = self.model_interface.input_model(start_ind=start_ind, end_ind=end_ind)
+            
+            # the state at the last time step of the previous interval
+            xk = X[A[:,k], self.post_ind[k-1]-1]
+
             # TODO: may need more more work on this cuz currently only one flux
-            xkp1 = self.model_interface.transition_model(Xtm1=xk,
-                                                         Rt=R[A[:,k], start_ind:end_ind])
+            xkp1 = self.model_interface.transition_model(Xtm1=xk, Rt=Rt)    
+
             Y[:,start_ind:end_ind] = self.model_interface.observation_model(Xk=xkp1)
-            wkp1 = W + np.log(
-                #TODO: change it to only give one
-                self.model_interface.observation_model_likelihood(
+
+            w_temp = np.log(self.model_interface.observation_model_likelihood(
                                                         yhk=Y[:,end_ind-1],
                                                         yk=self.outflux[end_ind-1]
-                                                        )
-                            )
-            W = wkp1
+                                                        ))
+            
+            w_temp = np.exp(w_temp - w_temp.max())
+            W *= w_temp
+            W /= W.sum()
+            
             # This p1 takes account for initial condition
-            X[:,start_ind+1:end_ind+1] = xkp1
-            A[:,k+1] = _inverse_pmf(A[:,k],W, num = self.N)
-            # draw new state samples and associated weights based on last ancestor 
-            xk = X[A[:,k+1], end_ind]
-
+            X[:,start_ind:end_ind] = xkp1
+        
 
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)  
         
-        # # generate new set of R
-        # self.model_interface.input_model()
-        # self.R = self.model_interface.R    
+
         return 
     
     # TODO: make this part the same as the sequential monte carlo
@@ -125,7 +129,7 @@ class Chain:
         """Run particle MCMC
         """
         self._update_state_init()
-        R = self.state_init.R
+        U = self.state_init.U
         W = self.state_init.W
         X = self.state_init.X
         A = self.state_init.A
@@ -134,7 +138,8 @@ class Chain:
         # sample an ancestral path based on final weight
         B = self._find_traj(A, W)
         # reinitialize weight
-        W = np.log(np.ones(self.N)/self.N)
+        # W = np.log(np.ones(self.N)/self.N)
+        W = np.ones(self.N)/self.N
 
         xk = X[A[:,0], 0:1]
 
@@ -155,16 +160,21 @@ class Chain:
             xkp1_anchor = xkp1[:,-1]
             sd = (xkp1_anchor - x_prime).mean()
 
-            W_tilde = W + np.log(
-                self.model_interface.state_model(x_prime=x_prime, xkp1=xkp1_anchor, sd=abs(sd/4.)) 
-            )
+            # W_tilde = W + np.log(
+            #     self.model_interface.state_model(x_prime=x_prime, xkp1=xkp1_anchor, sd=abs(sd/4.)) 
+            # )
+            W_tilde = np.log(self.model_interface.state_as_model(x_prime=x_prime, xkp1=xkp1_anchor, sd=abs(sd)))
+            W_tilde = W_tilde - W_tilde.max()
+            W_tilde /= np.sum(W_tilde)
+            W_tilde = np.exp(W_tilde)
+            W_tilde /= W_tilde.sum()
             
             A[B[k+1],k+1] = _inverse_pmf(xkp1_anchor - x_prime,
                                          W_tilde, 
                                          num = 1)
             # chain mixing
             notB = np.arange(0,self.N)!=B[k+1]
-            A[:,k+1][notB] = _inverse_pmf(X[:,k],W, num = self.N-1)
+            A[:,k+1][notB] = _inverse_pmf(X[:,k], W, num = self.N-1)
             xkp1[notB] = xkp1[A[:,k+1][notB]]
             rr[notB] = rr[A[:,k+1][notB]]
             xkp1[~notB] = xkp1[A[B[k+1],k+1]]
@@ -176,16 +186,26 @@ class Chain:
             W[notB] = W[A[:,k+1][notB]]
             W[~notB] = W[A[B[k+1],k+1]]
             Y[:,start_ind:end_ind] = self.model_interface.observation_model(Xk=xkp1)
-            wkp1 = W + np.log(
-                self.model_interface.observation_model_likelihood(
+            # wkp1 = W + np.log(
+            #     self.model_interface.observation_model_likelihood(
+            #                                             yhk=Y[:,end_ind-1],
+            #                                             yk=self.outflux[end_ind-1]
+            #                                             )
+            #                 )
+            wkp1 = np.log(self.model_interface.observation_model_likelihood(
                                                         yhk=Y[:,end_ind-1],
                                                         yk=self.outflux[end_ind-1]
-                                                        )
-                            )
-            W = wkp1#/wkp1.sum()
+                                                        ))  
+            wkp1 = wkp1 - wkp1.max()
+            wkp1 /= np.sum(wkp1)
+            wkp1 = np.exp(wkp1)
+            W = wkp1/wkp1.sum()
+            print(W)
+             
+            # W = wkp1#/wkp1.sum()
             xk = xkp1[:,-1]
         
-        self.state = State(X=X, A=A, W=W, R=R, Y=Y)  
+        self.state = State(X=X, A=A, W=W, U=U, Y=Y)  
         # generate new set of R
         self.model_interface.input_model()
         self.R = self.model_interface.R           

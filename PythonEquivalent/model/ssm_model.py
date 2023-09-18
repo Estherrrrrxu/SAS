@@ -129,6 +129,7 @@ class SSModel:
                 self.theta_record[l+1,p] = theta_new[ind_best_param, p]   
                 
                 print('=============================================')
+                print('Weight matrix: ', WW[:,:])
                 print('Qh: ', Qh)
                 print('corresponding weights: ', np.max(WW[:,:],axis = 1))
                 print('best index: ', ind_best_param)

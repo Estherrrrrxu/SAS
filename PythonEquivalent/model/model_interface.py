@@ -5,13 +5,14 @@ import scipy.stats as ss
 import pandas as pd
 from typing import Optional, Any, List
 from functions.utils import normalize_over_interval
+from copy import deepcopy
 # %%
 # a class to store parameters
 @dataclass
 class Parameter:
-    input_model: np.ndarray
-    transition_model: np.ndarray
-    observation_model: np.ndarray
+    input_model: List[float]
+    transition_model: List[float]
+    observation_model: List[float]
     initial_state: np.ndarray
 # %%
 class ModelInterface:
@@ -67,7 +68,7 @@ class ModelInterface:
         # Set parameters to be estimated here
         self._parse_theta_init(theta_init=theta_init)
 
-        # initialize input uncertainties
+        # initialize input time series
         self.R = np.zeros((self.N, self.T))
 
         # initialize theta
@@ -196,21 +197,35 @@ class ModelInterface:
             theta_init (dict): initial values of theta
         """   
         _default_theta_init = {
-                'to_estimate': {'k':{"prior_dis": "normal", 
-                                     "prior_params":[1.2, 0.3], 
-                                     "is_nonnegative": True
-                                    },
-                                'initial_state':{"prior_dis": "normal", 
-                                                 "prior_params":[self.df[self.config['outflux']][0], 0.00005],
-                                                 "is_nonnegative": True
-                                    },
-                                'input_uncertainty':{"prior_dis": "normal", 
-                                                     "prior_params":[0.0,0.005],
-                                                     "is_nonnegative": False
-                                    },
+            'to_estimate': {'k':{"prior_dis": "normal", 
+                                    "prior_params":[1.,0.001], 
+                                    "is_nonnegative": True
                                 },
-                'not_to_estimate': {'obs_uncertainty':0.00005}
-            }
+                            'initial_state':{"prior_dis": "normal", 
+                                                "prior_params":[self.df[self.config['outflux']][0], 0.0001],
+                                                "is_nonnegative": True
+                                },
+                            'input_mean':{"prior_dis": "normal",
+                                            "prior_params":[self.df[self.config['influx']].mean(), 0.001],
+                                            "is_nonnegative": True 
+                                },
+                            'input_std':{"prior_dis": "normal",
+                                            "prior_params":[self.df[self.config['influx']].std(ddof=1), 0.001],
+                                            "is_nonnegative": True
+                                },
+                            'input_uncertainty':{"prior_dis": "normal",
+                                                    "prior_params":[self.df[self.config['influx']].std(ddof=1), 0.001],
+                                                    "is_nonnegative": True
+                                },
+                            'obs_uncertainty': {"prior_dis": "normal",
+                                                    "prior_params":[self.df[self.config['outflux']].std(ddof=1), 0.0001],
+                                                    "is_nonnegative": True
+                                },
+
+                            },
+            'not_to_estimate': {}
+        }
+
         self._theta_init = theta_init
         # set default theta
         if theta_init == None:
@@ -313,24 +328,26 @@ class ModelInterface:
             Parameter: update parameter object for later
         """
         if theta_new is None:
-            theta_new = []
-            for key in self._theta_to_estimate:
-                val = self.dist_model[key].rvs()
-                theta_new.append(val)
-                
+            theta_new = np.zeros(self._num_theta_to_estimate)
+            for i, key in enumerate(self._theta_to_estimate):
+                theta_new[i] = self.dist_model[key].rvs()
+                        
         for i, key in enumerate(self._theta_to_estimate):
             self._theta_init['to_estimate'][key]['current_value'] = theta_new[i]
         # transition model param [0] is k to estimate, and [1] is fixed dt
-        transition_param = [self._theta_init['to_estimate']['k']['current_value'], self.config['dt']]
+        transition_param = [self._theta_init['to_estimate']['k']['current_value'], 
+                            self.config['dt']]
 
         # observation uncertainty param is to estimate
-        obs_param = self._theta_init['to_estimate']['obs_uncertainty']
+        obs_param = self._theta_init['to_estimate']['obs_uncertainty']['current_value']
 
         # input uncertainty param is to estimate
-        input_param = self._theta_init['to_estimate']['input_uncertainty']['current_value']
+        input_param = [ self._theta_init['to_estimate']['input_mean']['current_value'],
+                        self._theta_init['to_estimate']['input_std']['current_value'],
+                        self._theta_init['to_estimate']['input_uncertainty']['current_value']]
 
         # initial state param is to estimate
-        init_state = self._theta_init['to_estimate']['initial_state']['current_value']
+        init_state = self.dist_model['initial_state'].rvs(self.N)
 
         self.theta = Parameter(
                             input_model=input_param,
@@ -357,12 +374,12 @@ class ModelInterface:
         """State estimaton model f_theta(Xt-1, Rt)
 
         Currently set up for linear reservoirmodel:
-            xt = (1 - k * delta_t) * x_{t-1} + k * delta_t * rt,
-                where rt = ut - U(0, theta_r)
+            Xt = (1 - k * delta_t) * X_{t-1} + k * delta_t * Rt,
+                where Rt = N(Ut, theta_r)
 
         Args:
             Xtm1 (np.ndarray): state X at t = k-1
-            Rt (np.ndarray, Optional): uncertainty R at t = k-1:k
+            Rt (np.ndarray, Optional): input signal at t = k-1:k
 
         Returns:
             np.ndarray: state X at t
@@ -374,10 +391,12 @@ class ModelInterface:
         
         # update from last observation
         num_iter = Rt.shape[1]
-        Xt = np.ones((self.N, num_iter+1)) * Xtm1.reshape(-1, 1)        
-        for i in range(1,num_iter+1):
+        Xt = np.ones((self.N, num_iter+1)) * Xtm1.reshape(-1, 1) 
+
+        for i in range(1, num_iter+1):
             Xt[:,i] = (1 -  theta_k * theta_dt) * Xt[:,i-1] + theta_dt * Rt[:,i-1]
-        return Xt[:,1:]
+
+        return Xt[:,1:] # return w/out initial state
     
 
     def observation_model(self, 
@@ -389,7 +408,7 @@ class ModelInterface:
             y_hat(k) = x(k)
 
         Current general model setting:
-            y(t) = y_hat(t) + N(0, theta_v),
+            y(t) = y_hat(t) - N(0, theta_v),
                             where y_hat(t) = x(t) 
 
         Args:
@@ -399,7 +418,7 @@ class ModelInterface:
         Returns:
             np.ndarray: y_hat at time k
         """
-        yhk = Xk
+        yhk = deepcopy(Xk)
         return yhk
     
     def observation_model_likelihood(self,
@@ -409,7 +428,7 @@ class ModelInterface:
         """get observation likelihood p(y|y_hat, sig_v)
 
         Args:
-            yhk (np.ndarray): observation y_hat at time k
+            yhk (np.ndarray): estimated y_hat at time k
             yk (np.ndarray): observation y at time k
 
         Returns:
@@ -420,28 +439,32 @@ class ModelInterface:
 
     
     def input_model(
-            self
+            self,
+            start_ind: int,
+            end_ind: int
         ) -> None:
         """Input model for linear reservoir
 
-        Rt' ~ Exp(Ut)
-        multiplier * Rk' = Uk + N(0, theta_r)
+        Ut' ~ N(mu, sig)
+        multiplier * Uk' = Uk + N(0, theta_r)
 
         Args:
             Ut (float): forcing at time t
 
         Returns:
-            np.ndarray: Rt
+            np.ndarray: Ut
         """
+        mu = self.theta.input_model[0]
+        sig = self.theta.input_model[1]
+        sig_r = self.theta.input_model[2]
         for n in range(self.N):
-            self.R[n,] = ss.expon(scale=self.influx).rvs()
-            normalized = normalize_over_interval(self.R[n,:], self.observed_ind, self.influx)
-            self.R[n,:] = normalized - ss.norm(0,self.theta.input_model).rvs(self.T)
-            self.R[n,:][self.R[n,:] < 0] = 0
-
-        return 
+            self.R[n, start_ind:end_ind] = ss.norm(loc=mu, scale=sig).rvs(end_ind-start_ind)
+            self.R[n, start_ind:end_ind][self.R[n, start_ind:end_ind] < 0] = 0    
+            self.R[n, start_ind:end_ind] = normalize_over_interval(self.R[n, start_ind:end_ind], start_ind, end_ind, self.influx)
+            self.R[n, start_ind:end_ind] += ss.norm(loc=0, scale=sig_r).rvs(end_ind-start_ind)
+        return self.R[:, start_ind:end_ind]
     
-    def state_model(
+    def state_as_model(
             self,
             x_prime: float,
             xkp1: np.ndarray,

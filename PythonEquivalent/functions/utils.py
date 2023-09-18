@@ -3,20 +3,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 # %%
-def _inverse_pmf(x: np.ndarray,ln_pmf: np.ndarray, num: int) -> np.ndarray:
+def _inverse_pmf(x: np.ndarray, pmf: np.ndarray, num: int) -> np.ndarray:
     """Sample x based on its ln(pmf) using discrete inverse sampling method
 
     Args:
         x (np.ndarray): The specific values of x
-        pmf (np.ndarray): The weight (ln(pmf)) associated with x
+        pmf (np.ndarray): The weight (pmf) associated with x
         num (int): The total number of samples to generate
 
     Returns:
         np.ndarray: index of x that are been sampled according to its ln(pmf)
     """
     ind = np.argsort(x) # sort x according to its magnitude
-    pmf = np.exp(ln_pmf) # convert ln(pmf) to pmf
-    pmf /= pmf.sum()
     pmf = pmf[ind] # sort pdf accordingly
     u = np.random.uniform(size = num)
     ind_sample = np.searchsorted(pmf.cumsum(), u)
@@ -94,20 +92,20 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
     if right is None:
         right = df_obs['index'].values[-1]
 
-    B = np.zeros(K+1).astype(int)
-    B[-1] = _inverse_pmf(W,A[:,-1], num = 1)
-    for i in reversed(range(1,K+1)):
-        B[i-1] =  A[:,i][B[i]]
+    B = np.zeros(K).astype(int)
+    B[-1] = _inverse_pmf(A[:,-1], W, num = 1)
+    for i in reversed(range(1,K)):
+        B[i-1] = A[:,i][B[i]]
 
-    T = len(X[0])-1
-    MLE = np.zeros(T+1)
+    T = len(X[0])
+    MLE = np.zeros(T)
     MLE_R = np.zeros(T)
 
     for i in range(K):
-        MLE[pre_ind[i]:post_ind[i]] = X[B[i+1],pre_ind[i]+1:post_ind[i]+1]
+        MLE[pre_ind[i]:post_ind[i]] = Y[B[i],pre_ind[i]:post_ind[i]]
         # MLE[i] = Y[B[i+1],i]
     for i in range(K):
-        MLE_R[pre_ind[i]:post_ind[i]] = R[B[i+1],pre_ind[i]:post_ind[i]]
+        MLE_R[pre_ind[i]:post_ind[i]] = R[B[i],pre_ind[i]:post_ind[i]]
         # MLE_R[i] = R[B[i+1],i]   
 
 
@@ -117,11 +115,12 @@ def plot_MLE(state, df, df_obs: pd.DataFrame, pre_ind, post_ind,
                label = "One Traj/MLE")
     ax[0].set_xlim([left,right])
 
-    ax[1].plot(df_obs['index'].values, MLE[:-1], "|", markersize=15,markeredgewidth=1.5,
+    ax[1].plot(df_obs['index'].values[:-1], MLE[:-1], "|", markersize=15,markeredgewidth=1.5,
                linestyle=(0, (3, 1)), color='C9', linewidth=2, 
                label = "One Traj/MLE")
     ax[1].set_xlim([left,right])
-    return MLE[:-1]
+    return MLE
+
 # %%
 def plot_scenarios(df, df_obs, model, start_ind, unified_color=False):
     fig, ax = plt.subplots(2, 1, figsize=(8,5))
@@ -200,7 +199,8 @@ def create_bulk_sample(original: pd.DataFrame, n: int) -> pd.DataFrame:
 # %%
 def normalize_over_interval(
         arr: np.ndarray, 
-        index_array: np.ndarray, 
+        start_index: int,
+        end_index: int,
         input: np.ndarray
     ):
     """Normalize the values of the array over interval before making observation
@@ -212,26 +212,17 @@ def normalize_over_interval(
     
     """
     normalized_arr = arr.copy()
-    post_ind = index_array + 1
-    pre_ind = np.concatenate(([0], post_ind[:-1]))
-    # Normalize each interval separately
-    for i in range(len(index_array)):
-        start_index = pre_ind[i]
-        end_index = post_ind[i]
-        # Extract the subarray between the specified indices
-        subarray = arr[start_index:end_index]
+    # Find the minimum and maximum values within the subarray
+    sum_val = sum(normalized_arr)
+    if sum_val == 0:
+        raise ValueError("Sum of subarray is 0")
+    multiplier = [x / sum_val for x in normalized_arr]
 
-        # Find the minimum and maximum values within the subarray
-        sum_val = sum(subarray)
-        if sum_val == 0:
-            raise ValueError("Sum of subarray is 0")
-        multiplier = [x / sum_val for x in subarray]
+    target_val = input[end_index-1]
+    normalized_subarray = [x * target_val * len(normalized_arr) for x in multiplier]
 
-        target_val = input[end_index-1]
-        normalized_subarray = [x * target_val * len(subarray) for x in multiplier]
-
-        # Replace the original subarray with the normalized values
-        normalized_arr[start_index:end_index] = normalized_subarray
+    # Replace the original subarray with the normalized values
+    normalized_arr[start_index:end_index] = normalized_subarray
 
     return normalized_arr
 # %%

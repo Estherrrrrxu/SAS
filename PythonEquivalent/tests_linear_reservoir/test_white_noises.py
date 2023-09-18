@@ -12,80 +12,13 @@ from model.ssm_model import SSModel
 from model.your_model import LinearReservoir
 
 from model.utils_chain import Chain
-from functions.utils import plot_MLE, plot_scenarios, normalize_over_interval
+from functions.utils import plot_MLE, plot_scenarios
 from functions.get_dataset import get_different_input_scenarios
 
 import matplotlib.pyplot as plt
 import scipy.stats as ss
 from typing import Optional, List
 import pandas as pd
-
-# %%
-class ModelInterfaceWN(ModelInterface):
-    def update_model(
-            self,
-            theta_new: Optional[List[float]] = None
-        ) -> None:       
-        if theta_new is None:
-            theta_new = []
-            for key in self._theta_to_estimate:
-                theta_new.append(self.dist_model[key].rvs())
-
-        for i, key in enumerate(self._theta_to_estimate):
-            self._theta_init['to_estimate'][key]['current_value'] = theta_new[i]
-        # transition model param [0] is k to estimate, and [1] is fixed dt
-        transition_param = [self._theta_init['to_estimate']['k']['current_value'], self.config['dt']]
-
-        # observation uncertainty param is to estimate
-        obs_param = self._theta_init['to_estimate']['obs_uncertainty']['current_value']
-
-        # input uncertainty param is to estimate
-        input_param = [self._theta_init['to_estimate']['input_mean']['current_value'], 
-                       self._theta_init['to_estimate']['input_std']['current_value'],
-                       self._theta_init['to_estimate']['input_uncertainty']['current_value']
-                       ]
-
-        # initial state param is to estimate
-        init_state = self._theta_init['to_estimate']['initial_state']['current_value']
-
-        self.theta = Parameter(
-                            input_model=input_param,
-                            transition_model=transition_param, 
-                            observation_model=obs_param,
-                            initial_state=init_state
-                            )
-        return 
-    
-    # def input_model(
-    #         self
-    #     ) -> None:
-    #     """Input model for linear reservoir
-
-    #     Rt' ~ N(Ut, sigma_ipt)
-    #     """
-    #     for n in range(self.N):
-    #         self.R[n,:] = ss.norm(loc=self.influx, scale=self.theta.input_model[2]).rvs()
-    #         self.R[n,:][self.R[n,:] < 0] = 0 
-    #     return 
-    
-
-    def input_model(
-            self
-        ) -> None:
-        """Input model for linear reservoir
-
-        Rt' ~ N(Ut, sigma_ipt)
-        """
-        for n in range(self.N):
-            self.R[n,:] = ss.norm(loc=self.theta.input_model[0], scale=self.theta.input_model[1]).rvs()
-            if self.R[n,:][self.R[n,:] >0].size == 0:
-                self.R[n,:][self.R[n,:] <= 0] = 10**(-8)
-            else:
-                self.R[n,:][self.R[n,:] <= 0] = min(10**(-8), min(self.R[n,:][self.R[n,:] > 0]))     
-            normalized = normalize_over_interval(self.R[n,:], self.observed_ind, self.influx)
-            self.R[n,:] = normalized + ss.norm(loc=0, scale=self.theta.input_model[2]).rvs(self.T)
-            self.R[n,:][self.R[n,:] < 0] = 0
-        return 
 
 
 # %%
@@ -134,9 +67,9 @@ def plot_parameters_linear_reservoir(
     fig.show()
 
 # %%
-num_input_scenarios = 15
-num_parameter_samples = 20
-len_parameter_MCMC = 35
+num_input_scenarios = 5
+num_parameter_samples = 10
+len_parameter_MCMC = 15
 plot_preliminary = True
 fast_convergence_phase_length = 5
 start_ind = 0
@@ -158,43 +91,18 @@ case_name = case.case_name
 config = {'observed_made_each_step':obs_made}
 
 
-theta_init = {
-    'to_estimate': {'k':{"prior_dis": "normal", 
-                            "prior_params":[1.,0.01], 
-                            "is_nonnegative": True
-                        },
-                    'initial_state':{"prior_dis": "normal", 
-                                        "prior_params":[df_obs['Q_obs'][0], 0.01],
-                                        "is_nonnegative": False
-                        },
-                    'input_mean':{"prior_dis": "normal",
-                                    "prior_params":[df_obs['J_obs'].mean(), 0.01],
-                                    "is_nonnegative": True
-                        },
-                    'input_std':{"prior_dis": "normal",
-                                    "prior_params":[df_obs['J_obs'].std(ddof=1), 0.01],
-                                    "is_nonnegative": True
-                        },
-                    'input_uncertainty':{"prior_dis": "normal",
-                                            "prior_params":[df_obs['J_obs'].std(ddof=1), 0.01],
-                                            "is_nonnegative": True
-                        },
-                    'obs_uncertainty': {"prior_dis": "normal",
-                                            "prior_params":[(df['Q_obs'] - df['Q_true']).std(ddof=1)*100, 0.001],
-                                            "is_nonnegative": True
-                        },
+# %%
+print("The input mean: ", df_obs['J_obs'].mean())
+print("The input std: ", df_obs['J_obs'].std())
+print("The output std: ", df_obs['Q_obs'].std())
+print("Initial state: ", df_obs['Q_true'].iloc[0]) 
 
-                    },
-    'not_to_estimate': {}
-}
-
-
-
+# %%
 # initialize model interface settings
-model_interface = ModelInterfaceWN(
+model_interface = ModelInterface(
     df = df_obs,
     customized_model = LinearReservoir,
-    theta_init = theta_init,
+    theta_init = None,
     num_input_scenarios = num_input_scenarios,
     config = config
 )
