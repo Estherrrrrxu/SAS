@@ -64,7 +64,7 @@ class Chain:
             R=self.R,
             W=np.ones(self.N) / self.N,
             X=np.ones((self.N, self.T)),     
-            Y=np.zeros((self.N, self.T)),
+            Y=np.ones((self.N, self.T)),
             A=A
         )
 
@@ -86,8 +86,8 @@ class Chain:
                                                         yk=self.outflux[ind_init]
                                                         ))
         W_init = np.exp(W_init - W_init.max())
-        W_init *= W
         W = W_init/W_init.sum()
+
 
         for k in range(1, self.K):
             A[:,k] = _inverse_pmf(A[:,k-1], W, num = self.N)
@@ -98,12 +98,12 @@ class Chain:
             Rt = self.model_interface.input_model(start_ind=start_ind, end_ind=end_ind)
             
             # the state at the last time step of the previous interval
-            xk = X[A[:,k], self.post_ind[k-1]-1]
+            xkm1 = X[A[:,k], self.post_ind[k-1]-1]
 
             # TODO: may need more more work on this cuz currently only one flux
-            xkp1 = self.model_interface.transition_model(Xtm1=xk, Rt=Rt)    
+            xk = self.model_interface.transition_model(Xtm1=xkm1, Rt=Rt)    
 
-            Y[:,start_ind:end_ind] = self.model_interface.observation_model(Xk=xkp1)
+            Y[:,start_ind:end_ind] = self.model_interface.observation_model(Xk=xk)
 
             w_temp = np.log(self.model_interface.observation_model_likelihood(
                                                         yhk=Y[:,end_ind-1],
@@ -111,11 +111,11 @@ class Chain:
                                                         ))
             
             w_temp = np.exp(w_temp - w_temp.max())
-            W *= w_temp
-            W /= W.sum()
+            W = w_temp/w_temp.sum()
 
             # This p1 takes account for initial condition
-            X[:,start_ind:end_ind] = xkp1
+            X[:,start_ind:end_ind] = xk
+            R[:,start_ind:end_ind] = Rt
 
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)  
 
@@ -133,6 +133,7 @@ class Chain:
         X = self.state.X
         A = self.state.A
         Y = self.state.Y
+
         
         # sample an ancestral reference trajectory based on final weight
         B = self._find_traj(A, W)
@@ -140,7 +141,7 @@ class Chain:
 
         ind_init = self.pre_ind[0]
         # resample states that are not reference trajectory
-        X[notB, ind_init] = X[notB, ind_init] * self.model_interface.theta.initial_state[notB] 
+        X[notB, ind_init] = self.model_interface.theta.initial_state[notB] 
         # TODO: check if this initial state is generated according to new distribution
         Y[:,ind_init] = self.model_interface.observation_model(Xk=X[:,ind_init])
         W_init = np.log(self.model_interface.observation_model_likelihood(
@@ -148,8 +149,8 @@ class Chain:
                                                         yk=self.outflux[ind_init]
                                                         ))
         W_init = np.exp(W_init - W_init.max())
-        W_init *= W
         W = W_init/W_init.sum()
+
 
         for k in range(1, self.K):
 
@@ -170,22 +171,22 @@ class Chain:
             W_tilde = sum(
                 [np.log(self.model_interface.state_as_model(x_prime=x_prime[i],
                                                             xkp1=xk[:,i], 
-                                                            sd=abs(sd))) for i in range(len(x_prime))]
+                                                            sd=abs(sd)/4.)) for i in range(len(x_prime))]
                 )
             
             W_tilde = np.exp(W_tilde - W_tilde.max())
             W_tilde /= W_tilde.sum()
-            print("============= W tilde =============")
-            print(W_tilde)
 
             # resample ancestor
             A[B[k-1],k] = _inverse_pmf(offset, W_tilde, num = 1)
+            # A[B[k-1],k] = np.argmax(W_tilde)
             notB = np.arange(0,self.N) != B[k-1]
 
-            A[:,k][notB] = _inverse_pmf(X[:,k], W, num = self.N-1)
+            A[:,k][notB] = _inverse_pmf(X[:, start_ind_k-1], W, num = self.N-1)
 
             xk[notB] = xk[A[:,k][notB]]
             Rk[notB] = Rk[A[:,k][notB]]
+            Rk = Rk[A[:,k]]
             xk[~notB] = xk[A[B[k-1],k]]
             Rk[~notB] = R[:,k][A[B[k-1],k]]
 
@@ -204,7 +205,6 @@ class Chain:
                                                         ))  
             wkp1 = np.exp(wkp1 - wkp1.max())
             W = wkp1/wkp1.sum()
-            print(W)
              
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)       
         return
@@ -237,9 +237,9 @@ class Chain:
         Returns:
             np.ndarray: Trajectory of X that is sampled at final timestep
         """
-        traj_X = np.ones(self.T) * self.model_interface.theta.initial_state
+        traj_X = np.ones(self.T)
         for i in range(self.K):
-            traj_X[self.pre_ind[i]+1:self.post_ind[i]+1] = X[B[i],self.pre_ind[i]+1:self.post_ind[i]+1]
+            traj_X[self.pre_ind[i]:self.post_ind[i]] = X[B[i],self.pre_ind[i]:self.post_ind[i]]
         return traj_X
     
     def _get_Y_traj(self, Y:  np.ndarray, B: np.ndarray) -> np.ndarray:
@@ -255,8 +255,7 @@ class Chain:
         traj_Y = np.zeros(self.T)
 
         for i in range(self.K):
-            traj_Y[self.pre_ind[i]:self.post_ind[i]] = Y[B[i+1],self.pre_ind[i]:self.post_ind[i]]
-
+            traj_Y[self.pre_ind[i]:self.post_ind[i]] = Y[B[i],self.pre_ind[i]:self.post_ind[i]]
         return traj_Y        
     
     def _get_R_traj(self, R: np.ndarray, B: np.ndarray) -> np.ndarray:
@@ -272,9 +271,8 @@ class Chain:
 
         traj_R = np.zeros(self.T)
         
-        for i in range(self.K-1):
-            traj_R[self.pre_ind[i]:self.post_ind[i]] = R[B[i+1],self.pre_ind[i]:self.post_ind[i]]
-        traj_R[self.pre_ind[-1]:] = R[B[-1],self.pre_ind[-1]:]
+        for i in range(self.K):
+            traj_R[self.pre_ind[i]:self.post_ind[i]] = R[B[i],self.pre_ind[i]:self.post_ind[i]]
         return traj_R
 
 # %%

@@ -59,7 +59,7 @@ class SSModel:
             )
 
         self.state_record = np.zeros(
-            (self.L+1, self.T+1)
+            (self.L+1, self.T)
             )
 
         self.output_record = np.zeros(
@@ -121,25 +121,14 @@ class SSModel:
                 for d in range(self.D):
                     # initialize a chain using this theta
                     chains[d].model_interface.update_model(theta_new[d,:])
-                    chains[d].run_particle_MCMC()   
+                    chains[d].run_particle_MCMC_AS()   
                     WW[d,:] = chains[d].state.W
 
                 # find optimal parameters
-                # Qh = self.learning_step[l+1] * (np.max(WW[:,:],axis = 1) + np.log(self.dist_model[key].pdf(theta_new[:,p]))) + (1 - self.learning_step[l+1]) * Qh
                 Qh = self.learning_step[l+1] * np.max(WW[:,:],axis = 1) + (1 - self.learning_step[l+1]) * Qh
+                Qh = np.nan_to_num(Qh, nan=0)
                 ind_best_param = np.argmax(Qh)
                 self.theta_record[l+1,p] = theta_new[ind_best_param, p]   
-                
-                print('=============================================')
-                print('Weight matrix: ', WW[:,:])
-                print('Qh: ', Qh)
-                print('corresponding weights: ', np.max(WW[:,:],axis = 1))
-                print('best index: ', ind_best_param)
-                print('theta_new: ', theta_new[ind_best_param, :])
-                print('=============================================')
-                
-                
-                
                 
                 best_model = chains[ind_best_param]  
 
@@ -148,7 +137,10 @@ class SSModel:
                 self.input_record[l+1,:] = best_model._get_R_traj(best_model.state.R, B)
                 self.state_record[l+1,:] = best_model._get_X_traj(best_model.state.X, B)
                 self.output_record[l+1,:] = best_model._get_Y_traj(best_model.state.Y, B)
-        self.dist_model = best_model.model_interface.update_parameter_distribution()
+                plt.plot(self.output_record[l+1,:], label='output')
+                for d in range(self.D):
+                    chains[d].model_interface.update_parameter_distribution(best_model.model_interface._theta_init)
+                # self.dist_model = best_model.model_interface.update_parameter_distribution()
 
 
     def _update_theta_at_p(

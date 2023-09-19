@@ -286,7 +286,6 @@ class ModelInterface:
             is_nonnegative = self.param_constraints[key]
             # set parameters for prior distribution: [first param: mean, second param: std]
             if current_theta['prior_dis'] == 'normal':
-
                 # update or not
                 if not update:
                     mean = current_theta['prior_params'][0]
@@ -294,6 +293,7 @@ class ModelInterface:
                 else:
                     mean = current_theta['current_value']
                 std = current_theta['prior_params'][1]
+
                 # truncate or not
                 if is_nonnegative:
                     a = (0 - mean) / std
@@ -347,8 +347,9 @@ class ModelInterface:
                         self._theta_init['to_estimate']['input_uncertainty']['current_value']]
 
         # initial state param is to estimate
-        init_state = self.dist_model['initial_state'].rvs(self.N)
 
+
+        init_state = self.dist_model['initial_state'].rvs(self.N)
         self.theta = Parameter(
                             input_model=input_param,
                             transition_model=transition_param, 
@@ -358,10 +359,12 @@ class ModelInterface:
         return 
     
     def update_parameter_distribution(
-            self
+            self,
+            theta
         ) -> dict[str, Any]:
         """Update parameter distribution for SAEM
         """
+        self._theta_init['to_estimate'] = theta['to_estimate']
         self._set_parameter_distribution(update=True)
         return self.dist_model
 
@@ -454,14 +457,15 @@ class ModelInterface:
         Returns:
             np.ndarray: Ut
         """
-        mu = self.theta.input_model[0]
-        sig = self.theta.input_model[1]
+        # mu = self.theta.input_model[0]
+        # sig = self.theta.input_model[1]
         sig_r = self.theta.input_model[2]
         for n in range(self.N):
-            self.R[n, start_ind:end_ind] = ss.norm(loc=mu, scale=sig).rvs(end_ind-start_ind)
-            self.R[n, start_ind:end_ind][self.R[n, start_ind:end_ind] < 0] = 0    
-            self.R[n, start_ind:end_ind] = normalize_over_interval(self.R[n, start_ind:end_ind], start_ind, end_ind, self.influx)
-            self.R[n, start_ind:end_ind] += ss.norm(loc=0, scale=sig_r).rvs(end_ind-start_ind)
+            self.R[n, start_ind: end_ind] = ss.norm(self.influx[start_ind:end_ind], scale=sig_r).rvs()
+            # self.R[n, start_ind:end_ind] = ss.norm(loc=mu, scale=sig).rvs(end_ind-start_ind)
+            # self.R[n, start_ind:end_ind][self.R[n, start_ind:end_ind] < 0] = 0    
+            # self.R[n, start_ind:end_ind] = normalize_over_interval(self.R[n, start_ind:end_ind], start_ind, end_ind, self.influx)
+            # self.R[n, start_ind:end_ind] += ss.norm(loc=0, scale=sig_r).rvs(end_ind-start_ind)
         return self.R[:, start_ind:end_ind]
     
     def state_as_model(

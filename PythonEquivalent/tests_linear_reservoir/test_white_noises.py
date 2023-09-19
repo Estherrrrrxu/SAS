@@ -67,7 +67,7 @@ def plot_parameters_linear_reservoir(
     fig.show()
 
 # %%
-num_input_scenarios = 5
+num_input_scenarios = 15
 num_parameter_samples = 10
 len_parameter_MCMC = 15
 plot_preliminary = True
@@ -77,7 +77,7 @@ unified_color = True
 perfects = []
 
 df = pd.read_csv(f"../Data/WhiteNoise/stn_5_30.csv", index_col= 0)
-interval = [0,100]
+interval = [0,18]
 
 perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q = get_different_input_scenarios(df, interval, plot=False)
 
@@ -113,9 +113,11 @@ if plot_preliminary:
     )
     chain.run_sequential_monte_carlo()
     plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
+    plt.plot(chain.state.X.T, ".")
 
     chain.run_particle_MCMC_AS()
     plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
+    plt.plot(chain.state.X.T, ".")
 
     #%%
 
