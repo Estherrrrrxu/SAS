@@ -67,7 +67,7 @@ def plot_parameters_linear_reservoir(
     fig.show()
 
 # %%
-num_input_scenarios = 15
+num_input_scenarios = 5
 num_parameter_samples = 10
 len_parameter_MCMC = 15
 plot_preliminary = True
