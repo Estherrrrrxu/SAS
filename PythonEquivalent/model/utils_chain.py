@@ -163,16 +163,14 @@ class Chain:
             xk = self.model_interface.transition_model(Xtm1=xkm1,
                                                          Rt=Rk)
             
-            # referenc  e traj in this trajectory
-            x_prime = X[B[k], start_ind_k: end_ind_k]
+            # reference traj in this trajectory
+            x_prime = X[B[k], end_ind_k-1]
             offset = xk - x_prime
             sd = offset.mean(axis=0)
 
-            W_tilde = sum(
-                [np.log(self.model_interface.state_as_model(x_prime=x_prime[i],
-                                                            xkp1=xk[:,i], 
-                                                            sd=abs(sd)/4.)) for i in range(len(x_prime))]
-                )
+            W_tilde = np.log(self.model_interface.state_as_model(x_prime=x_prime,
+                                                            xkp1=xk[:,-1], 
+                                                            sd=abs(sd)/4.)) 
             
             W_tilde = np.exp(W_tilde - W_tilde.max())
             W_tilde /= W_tilde.sum()

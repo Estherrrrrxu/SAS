@@ -13,13 +13,12 @@ import scipy.stats as ss
 from typing import List, Optional
 from copy import deepcopy
 import os
+
+
 # %%
 def linear_reservoir_transition_model(
-        qt: float,
-        k: float,
-        delta_t: float,
-        jt: float
-    ) -> float:
+    qt: float, k: float, delta_t: float, jt: float
+) -> float:
     """Give four inputs about the watershed at timestep t, return the calculated discharge at t+1
     Args:
         qt (float): discharge at timestep t
@@ -33,12 +32,9 @@ def linear_reservoir_transition_model(
     qtp1 = (1 - k * delta_t) * qt + delta_t * jt
     return qtp1
 
-def generate_inflow_white_noise(
-    mean: float,
-    std: float,
-    length: int
-    ) -> List[float]:
-    """ Generate white noise as inflow with given mean and std
+
+def generate_inflow_white_noise(mean: float, std: float, length: int) -> List[float]:
+    """Generate white noise as inflow with given mean and std
         Note that all inflow values are positive
     Args:
         mean (float): mean of the white noise
@@ -49,16 +45,14 @@ def generate_inflow_white_noise(
     """
     # chop precipitation data
     J = np.random.normal(mean, std, length)
-    J[J<0] = 0
+    J[J < 0] = 0
     return J
 
-def generate_inflow_exp_decay(
-    theta: float,
-    length: int
-    ) -> List[float]:
-    """ Generate inflow with exponential decay
-        theta: decay rate
-        length: length of the time series
+
+def generate_inflow_exp_decay(theta: float, length: int) -> List[float]:
+    """Generate inflow with exponential decay
+    theta: decay rate
+    length: length of the time series
     """
     # chop precipitation data
     J = np.random.exponential(theta, length)
@@ -67,42 +61,40 @@ def generate_inflow_exp_decay(
 
 # make function
 def generate_outflow(
-    J: List[float],
-    delta_t: float, 
-    k: float, 
-    Q_init:float
-    ) -> List[float]:
+    J: List[float], delta_t: float, k: float, Q_init: float
+) -> List[float]:
     """Use transition model to generate outflow given input precipitation
     Args:
         J (List[float]): input precipitation time series
         delta_t (float): time interval for precip
         k (float): linear reservoir factor
         length (int): length of the time series
-        Q_init (float): intial discharge, default = 0.  
+        Q_init (float): intial discharge, default = 0.
     Returns:
-        List[float]: discharge time series    
+        List[float]: discharge time series
     """
     # calculate discharge using transition model
     length = len(J)
-    Q = np.zeros(length+1)
+    Q = np.zeros(length + 1)
     Q[0] = Q_init
     for i in range(length):
-        Q[i+1] = linear_reservoir_transition_model(Q[i], k, delta_t, J[i])
+        Q[i + 1] = linear_reservoir_transition_model(Q[i], k, delta_t, J[i])
     return Q[1:]
+
 
 # %%
 def generate_w_diff_noise_level(
-        root: str,
-        stn_ipts: List[float],
-        stn_ratios: List[float],
-        params_ipt: Optional[List[float]]=None,
-        input_precip: List[float]=None,
-        type_ipt: str="WhiteNoise",
-        length: int=100,
-        Q_init: float=0.,
-        k: float=1.,
-        delta_t: float=1./24/60*15
-    ) -> None:
+    root: str,
+    stn_ipts: List[float],
+    stn_ratios: List[float],
+    params_ipt: Optional[List[float]] = None,
+    input_precip: List[float] = None,
+    type_ipt: str = "WhiteNoise",
+    length: int = 100,
+    Q_init: float = 0.0,
+    k: float = 1.0,
+    delta_t: float = 1.0 / 24 / 60 * 15,
+) -> None:
     """Generate dataset with different noise level
     Args:
         root (str): root directory to save the dataset
@@ -125,44 +117,46 @@ def generate_w_diff_noise_level(
         J = input_precip
     else:
         raise ValueError("Check input type and required parameters")
-    
+
     # generate outflow
     Q = generate_outflow(J, delta_t, k, Q_init)
     e = J * delta_t
     sig_e = np.std(e, ddof=1)
     phi = 1 - k * delta_t
-    sig_q = np.sqrt(sig_e ** 2/(1 - phi ** 2))
+    sig_q = np.sqrt(sig_e**2 / (1 - phi**2))
 
     J_true = deepcopy(J)
     Q_true = deepcopy(Q)
-    
+
     for stn_ipt in stn_ipts:
         for ratio in stn_ratios:
             J = deepcopy(J_true)
             Q = deepcopy(Q_true)
             stn_obs = stn_ipt * ratio
             # add noise according to signal to noise ratio
-            noise_j = sig_e/delta_t/stn_ipt
-            noise_q = sig_q/stn_obs
+            noise_j = sig_e / delta_t / stn_ipt
+            noise_q = sig_q / stn_obs
 
-            a = (0 - Q)/noise_q
+            a = (0 - Q) / noise_q
             Q = ss.truncnorm.rvs(a, np.inf, loc=Q, scale=noise_q)
-            a = (0 - J)/noise_j
+            a = (0 - J) / noise_j
             J = ss.truncnorm.rvs(a, np.inf, loc=J, scale=noise_j)
 
-            df = pd.DataFrame({'J_true': J_true,'J_obs': J, 'Q_true': Q_true, 'Q_obs': Q})
+            df = pd.DataFrame(
+                {"J_true": J_true, "J_obs": J, "Q_true": Q_true, "Q_obs": Q}
+            )
 
             plt.figure()
-            plt.subplot(2,1,1)
-            plt.plot(df['J_true'], label="Truth")
-            plt.plot(df['J_obs'], "*", label="Obs")
+            plt.subplot(2, 1, 1)
+            plt.plot(df["J_true"], label="Truth")
+            plt.plot(df["J_obs"], "*", label="Obs")
             plt.legend(frameon=False)
-            plt.title('Input')
+            plt.title("Input")
 
-            plt.subplot(2,1,2)
-            plt.plot(df['Q_true'], label="Truth")
-            plt.plot(df['Q_obs'], "*", label="Obs")
-            plt.title('Output')
+            plt.subplot(2, 1, 2)
+            plt.plot(df["Q_true"], label="Truth")
+            plt.plot(df["Q_obs"], "*", label="Obs")
+            plt.title("Output")
             plt.legend(frameon=False)
             plt.tight_layout()
             if not os.path.exists(root + f"{type_ipt}/"):
@@ -177,26 +171,56 @@ def generate_w_diff_noise_level(
 if __name__ == "__main__":
     root = "/Users/esthersida/Documents/Code/particle/SAS/PythonEquivalent/Data/"
     # universal constants
-    length = 1000
-    delta_t = 1./24/60*15
-    k = 1.
+    length = 50
+    delta_t = 1.0 / 24 / 60 * 15
+    k = 1.0
     phi = 1 - k * delta_t
     # for input and output stn ratio are consistent
     stn_ipts = [1, 2, 3, 4, 5]
     stn_ratios = [0.5, 1, 2, 3, 4, 5, 6]
     # white noise
     params_ips = [0.5, 0.02]
-    generate_w_diff_noise_level(root, stn_ipts, stn_ratios, params_ips, type_ipt="WhiteNoise", length=length, k=k, delta_t=delta_t, Q_init=0.5)
+    generate_w_diff_noise_level(
+        root,
+        stn_ipts,
+        stn_ratios,
+        params_ips,
+        type_ipt="WhiteNoise",
+        length=length,
+        k=k,
+        delta_t=delta_t,
+        Q_init=0.5,
+    )
 
     # exponential decay
     params_ips = 0.5
-    generate_w_diff_noise_level(root, stn_ipts, stn_ratios, params_ips, type_ipt="ExpDecay", length=length, k=k, delta_t=delta_t, Q_init=0.5)
+    generate_w_diff_noise_level(
+        root,
+        stn_ipts,
+        stn_ratios,
+        params_ips,
+        type_ipt="ExpDecay",
+        length=length,
+        k=k,
+        delta_t=delta_t,
+        Q_init=0.5,
+    )
 
     # real precipitation
     precip = pd.read_csv(root + "precip.csv")
-    input_precip = precip['45'].to_numpy()
-    input_precip = input_precip[900:900+length]
+    input_precip = precip["45"].to_numpy()
+    input_precip = input_precip[900 : 900 + length]
 
-    generate_w_diff_noise_level(root, stn_ipts, stn_ratios, input_precip=input_precip, type_ipt="RealPrecip", length=length, k=k, delta_t=delta_t, Q_init=0.01)
+    generate_w_diff_noise_level(
+        root,
+        stn_ipts,
+        stn_ratios,
+        input_precip=input_precip,
+        type_ipt="RealPrecip",
+        length=length,
+        k=k,
+        delta_t=delta_t,
+        Q_init=0.01,
+    )
 
 # %%

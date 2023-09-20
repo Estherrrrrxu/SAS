@@ -141,8 +141,8 @@ class SSModel:
                 # plt.plot(best_model.state.Y.T, 'k')
                 # plt.plot(self.output_record[l+1,:])
                 # plt.show()
-                for d in range(self.D):
-                    chains[d].model_interface.update_parameter_distribution(best_model.model_interface._theta_init)
+            for d in range(self.D):
+                chains[d].model_interface.update_parameter_distribution(best_model.model_interface._theta_init)
 
 
 

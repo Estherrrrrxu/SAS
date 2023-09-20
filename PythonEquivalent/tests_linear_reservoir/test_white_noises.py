@@ -71,13 +71,14 @@ num_input_scenarios = 5
 num_parameter_samples = 10
 len_parameter_MCMC = 15
 plot_preliminary = True
-fast_convergence_phase_length = 5
+fast_convergence_phase_length = 15
 start_ind = 0
 unified_color = True
 perfects = []
 
-df = pd.read_csv(f"../Data/WhiteNoise/stn_5_30.csv", index_col= 0)
-interval = [0,18]
+# df = pd.read_csv(f"../Data/WhiteNoise/stn_5_30.csv", index_col= 0)
+df = pd.read_csv(f"../Data/RealPrecip/stn_5_30.csv", index_col= 0)
+interval = [0,20]
 
 perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q = get_different_input_scenarios(df, interval, plot=False)
 
@@ -118,6 +119,7 @@ if plot_preliminary:
     chain.run_particle_MCMC_AS()
     plot_MLE(chain.state,df,df_obs,chain.pre_ind,chain.post_ind)
     plt.plot(chain.state.X.T, ".")
+
 
     #%%
 

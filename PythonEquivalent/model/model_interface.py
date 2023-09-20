@@ -198,7 +198,7 @@ class ModelInterface:
         """   
         _default_theta_init = {
             'to_estimate': {'k':{"prior_dis": "normal", 
-                                    "prior_params":[1.,0.001], 
+                                    "prior_params":[1.,0.0001], 
                                     "is_nonnegative": True
                                 },
                             'initial_state':{"prior_dis": "normal", 
@@ -214,11 +214,11 @@ class ModelInterface:
                                             "is_nonnegative": True
                                 },
                             'input_uncertainty':{"prior_dis": "normal",
-                                                    "prior_params":[self.df[self.config['influx']].std(ddof=1), 0.001],
+                                                    "prior_params":[self.df[self.config['influx']].std(ddof=1)/5., 0.0005],
                                                     "is_nonnegative": True
                                 },
                             'obs_uncertainty': {"prior_dis": "normal",
-                                                    "prior_params":[self.df[self.config['outflux']].std(ddof=1), 0.0001],
+                                                    "prior_params":[self.df[self.config['outflux']].std(ddof=1), 0.000005],
                                                     "is_nonnegative": True
                                 },
 
