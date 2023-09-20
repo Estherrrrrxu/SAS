@@ -2,6 +2,7 @@
 import os
 current_path = os.getcwd()
 if current_path[-16:] != "Linear_reservoir":
+
     os.chdir("Linear_reservoir")
     print("Current working directory changed to 'Linear_reservoir'.")   
 import sys
@@ -79,7 +80,7 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
         model_interface = model_interface,
         num_parameter_samples = 10,
         len_parameter_MCMC = 15,
-        learning_step = 0.6,
+        learning_step = 0.75,
     )
     model.run_particle_Gibbs_AS_SAEM()
     # 
@@ -117,17 +118,17 @@ def run_given_case(case: Cases, unified_color: Optional[bool] = False) -> None:
 if __name__ == "__main__":
     print("Running perfect case...")
     run_given_case(perfect, unified_color=True)
-    print("Running instant gap 2 days case...")
-    run_given_case(instant_gaps_2_d, unified_color=True)
-    print("Running instant gap 5 days case...")
-    run_given_case(instant_gaps_5_d, unified_color=True)
-    print("Running weekly bulk case...")
-    run_given_case(weekly_bulk, unified_color=True)
-    print("Running biweekly bulk case...")
-    run_given_case(biweekly_bulk, unified_color=True)
-    print("Running weekly bulk true Q case...")
-    run_given_case(weekly_bulk_true_q, unified_color=True)
-    print("Done!")
+    # print("Running instant gap 2 days case...")
+    # run_given_case(instant_gaps_2_d, unified_color=True)
+    # print("Running instant gap 5 days case...")
+    # run_given_case(instant_gaps_5_d, unified_color=True)
+    # print("Running weekly bulk case...")
+    # run_given_case(weekly_bulk, unified_color=True)
+    # print("Running biweekly bulk case...")
+    # run_given_case(biweekly_bulk, unified_color=True)
+    # print("Running weekly bulk true Q case...")
+    # run_given_case(weekly_bulk_true_q, unified_color=True)
+    # print("Done!")
 
 
 # %%
