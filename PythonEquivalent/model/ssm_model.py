@@ -84,7 +84,9 @@ class SSModel:
         """ Run particle Gibbs using Stochastic Approximation of the EM algorithm (SAEM) for parameter estimation 
         """
         # initialize likelihood, theta storage space, and chains
-        WW = np.zeros((self.D, self.N))
+        WW = np.zeros(self.D)
+        BB = np.zeros((self.D, self.K)).astype(int)
+
         theta_new = np.zeros((self.D, self._num_theta_to_estimate)) 
         chains = [Chain(model_interface=self.models_for_each_chain[d]) for d in range(self.D)]
 
@@ -93,15 +95,27 @@ class SSModel:
             theta_new[d,:] = self._sample_theta_init()   
             chains[d].model_interface.update_theta(theta_new[d,:])      
             chains[d].run_sequential_monte_carlo()
-            WW[d,:] = chains[d].state.W
-
+            model_W = chains[d].state.W
+            B = chains[d]._find_traj(chains[d].state.A, model_W, max=True)
+            traj_X = chains[d]._get_X_traj(chains[d].state.X, B)
+            BB[d,:] = B
+            state_W = chains[d].model_interface.transition_model_probability(traj_X)
+            WW[d] = state_W + np.log(model_W.max())
+ 
         # find optimal parameters
-        Qh = self.learning_step[0] * np.max(WW[:,:],axis = 1)
-        ind_best_param = np.argmax(Qh)
+        ind_best_param = np.argmax(WW)
         self.theta_record[0,:] = theta_new[ind_best_param, :]
+        
+        best_theta = {}
+        for p, key in enumerate(self._theta_to_estimate):
+            best_theta[key] = self.theta_record[0,p]
+
+        for d in range(self.D):
+            chains[d].model_interface._set_parameter_distribution(update=True, theta_new=best_theta)
+
 
         best_model = chains[ind_best_param]
-        B = best_model._find_traj(best_model.state.A, best_model.state.W)
+        B = BB[ind_best_param,:]
         self.input_record[0,:] = best_model._get_R_traj(best_model.state.R, B)
         self.state_record[0,:] = best_model._get_X_traj(best_model.state.X, B)
         self.output_record[0,:] = best_model._get_Y_traj(best_model.state.Y, B)
@@ -121,18 +135,21 @@ class SSModel:
                     # initialize a chain using this theta
                     chains[d].model_interface.update_theta(theta_new[d,:])
                     chains[d].run_particle_MCMC_AS()   
-                    WW[d,:] = chains[d].state.W
+                    model_W = chains[d].state.W
+                    B = chains[d]._find_traj(chains[d].state.A, model_W, max=True)
+                    traj_X = chains[d]._get_X_traj(chains[d].state.X, B)
+                    BB[d,:] = B
+                    state_W = chains[d].model_interface.transition_model_probability(traj_X)
+                    WW[d] = state_W + np.log(model_W.max())
 
-                # find optimal parameters
-                Qh = self.learning_step[l+1] * np.max(WW[:,:],axis = 1) + (1 - self.learning_step[l+1]) * Qh
-                Qh = np.nan_to_num(Qh, nan=0)
-                ind_best_param = np.argmax(Qh)
+
+                # find optimal trajectory of each chain
+                ind_best_param = np.argmax(WW)  
                 self.theta_record[l+1,p] = theta_new[ind_best_param, p]   
                 
                 best_model = chains[ind_best_param]  
 
-
-                B = best_model._find_traj(best_model.state.A, best_model.state.W)
+                B = BB[ind_best_param,:]
                 self.input_record[l+1,:] = best_model._get_R_traj(best_model.state.R, B)
                 self.state_record[l+1,:] = best_model._get_X_traj(best_model.state.X, B)
                 self.output_record[l+1,:] = best_model._get_Y_traj(best_model.state.Y, B)
@@ -140,13 +157,12 @@ class SSModel:
                 # plt.plot(best_model.state.Y.T, 'k')
                 # plt.plot(self.output_record[l+1,:])
                 # plt.show()
-            theta_new = {}
+            best_theta = {}
             for p, key in enumerate(self._theta_to_estimate):
-                theta_new[key] = self.theta_record[l+1,p]
+                best_theta[key] = self.theta_record[l+1,p]
 
             for d in range(self.D):
-                chains[d].model_interface._set_parameter_distribution(update=True, theta_new=theta_new)
-
+                chains[d].model_interface._set_parameter_distribution(update=True, theta_new=best_theta)
 
 
     def _update_theta_at_p(
@@ -170,7 +186,6 @@ class SSModel:
         # add random noise to the p-th theta
         temp = self.dist_model[key].rvs(self.D)
         theta_temp[:,p] = temp
-        return theta_temp
-                
+        return theta_temp 
  
 # %%

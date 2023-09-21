@@ -456,16 +456,16 @@ class ModelInterface:
 
         # set all params
         prob = np.ones((self.N, self.T - 1))
-        Ut = self.influx[:, 1:]
-        Xtm1 = X_1toT[:, :-1]
-        Xt = X_1toT[:, 1:]
+        Ut = self.influx[1:]
+        Xtm1 = X_1toT[:-1]
+        Xt = X_1toT[1:]
 
         # calculate prob
         prob = ss.norm(
             (1 - theta_k * theta_dt) * Xtm1 + theta_dt * Ut, theta_dt * theta_k
-        ).pdf(Xt)
+        ).logpdf(Xt) * np.log(theta_dt)
 
-        return prob
+        return prob.sum()
 
     def observation_model(self, Xk: np.ndarray) -> np.ndarray:
         """Observation probability g_theta
@@ -502,7 +502,7 @@ class ModelInterface:
 
         theta = self.theta.observation_model
 
-        return ss.norm(yhk, theta).pdf(yk)
+        return ss.norm(yhk, theta).logpdf(yk)
     
     def initial_state_model(self, num: int) -> np.ndarray:
         """Initial state model
@@ -527,7 +527,7 @@ class ModelInterface:
             np.ndarray: probability of estimated state around ref trajectory
         """
 
-        return ss.norm(0, std).pdf(offset)
+        return ss.norm(0, std).logpdf(offset)
 
 
 # %%

@@ -75,11 +75,9 @@ class Chain:
         ind_init = self.pre_ind[0]
         X[:, ind_init] = X[:, ind_init] * self.model_interface.initial_state_model(num=self.N)
         Y[:, ind_init] = self.model_interface.observation_model(Xk=X[:, ind_init])
-        W_init = np.log(
-            self.model_interface.observation_model_probability(
+        W_init = self.model_interface.observation_model_probability(
                 yhk=Y[:, ind_init], yk=self.outflux[ind_init]
             )
-        )
         W_init = np.exp(W_init - W_init.max())
         W = W_init / W_init.sum()
 
@@ -98,11 +96,9 @@ class Chain:
             xk = self.model_interface.transition_model(Xtm1=xkm1, Rt=Rt)
             yk = self.model_interface.observation_model(Xk=xk)
 
-            w_temp = np.log(
-                self.model_interface.observation_model_probability(
+            w_temp = self.model_interface.observation_model_probability(
                     yhk=yk[:, -1], yk=self.outflux[end_ind_k - 1]
                 )
-            )
 
             w_temp = np.exp(w_temp - w_temp.max())
             W = w_temp / w_temp.sum()
@@ -137,11 +133,9 @@ class Chain:
         X[nB, ind_init] = self.model_interface.initial_state_model(num=self.N - 1)
         Y[:, ind_init] = self.model_interface.observation_model(Xk=X[:, ind_init])
 
-        W_init = np.log(
-            self.model_interface.observation_model_probability(
+        W_init = self.model_interface.observation_model_probability(
                 yhk=Y[:, ind_init], yk=self.outflux[ind_init]
             )
-        )
         W_init = np.exp(W_init - W_init.max())
         W = W_init / W_init.sum()
 
@@ -162,10 +156,7 @@ class Chain:
             offset = xk[:, -1] - x_prime
             sd = offset.mean()
 
-            W_tilde = np.log(
-                self.model_interface.state_as_probability(offset=offset, std=abs(sd)/4.0)
-            )
-
+            W_tilde = self.model_interface.state_as_probability(offset=offset, std=abs(sd)/4.0)
             W_tilde = np.exp(W_tilde - W_tilde.max())
             W_tilde /= W_tilde.sum()
 
@@ -186,11 +177,9 @@ class Chain:
 
             # update weight
             yk = self.model_interface.observation_model(Xk=xk)
-            wkp1 = np.log(
-                self.model_interface.observation_model_probability(
+            wkp1 = self.model_interface.observation_model_probability(
                     yhk=yk[:,-1], yk=self.outflux[end_ind_k - 1]
                 )
-            )
             wkp1 = np.exp(wkp1 - wkp1.max())
             W = wkp1 / wkp1.sum()
 
@@ -202,7 +191,7 @@ class Chain:
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)
         return
 
-    def _find_traj(self, A: np.ndarray, W: np.ndarray) -> np.ndarray:
+    def _find_traj(self, A: np.ndarray, W: np.ndarray, max: Optional[bool] = False) -> np.ndarray:
         """Find particle trajectory based on final weight
 
         Args:
@@ -214,7 +203,11 @@ class Chain:
         """
 
         B = np.zeros(self.K).astype(int)
-        B[-1] = _inverse_pmf(A[:, -1], W, num=1)
+        if max:
+            B[-1] = np.argmax(W)
+        else:
+            B[-1] = _inverse_pmf(A[:, -1], W, num=1)
+            
         for i in reversed(range(1, self.K)):
             B[i - 1] = A[:, i][B[i]]
 

@@ -63,7 +63,7 @@ def plot_parameters_linear_reservoir(
     fig.show()
 
 # %%
-num_input_scenarios = 15
+num_input_scenarios = 5
 num_parameter_samples = 10
 len_parameter_MCMC = 15
 plot_preliminary = True
@@ -72,7 +72,7 @@ start_ind = 0
 unified_color = True
 perfects = []
 
-df = pd.read_csv(f"../Data/WhiteNoise/stn_5_30.csv", index_col= 0)
+df = pd.read_csv(f"../Data/WhiteNoise/stn_5_5.csv", index_col= 0)
 # df = pd.read_csv(f"../Data/RealPrecip/stn_5_30.csv", index_col= 0)
 interval = [0,20]
 
@@ -95,11 +95,42 @@ print("The output std: ", df_obs['Q_obs'].std())
 print("Initial state: ", df_obs['Q_true'].iloc[0]) 
 
 # %%
+theta_init = {
+    "to_estimate": {
+        "k": {
+            "prior_dis": "normal",
+            "prior_params": [1.0, 0.0001],
+            "is_nonnegative": True,
+        },
+        "initial_state": {
+            "prior_dis": "normal",
+            "prior_params": [df_obs['Q_obs'][0], 0.0001],
+            "is_nonnegative": True,
+        },
+        "input_uncertainty": {
+            "prior_dis": "normal",
+            "prior_params": [df_obs['J_obs'].std(ddof=1)/5.0,
+                0.0005,
+            ],
+            "is_nonnegative": True,
+        },
+        "obs_uncertainty": {
+            "prior_dis": "normal",
+            "prior_params": [df_obs['Q_obs'].std(ddof=1)/5.,
+                0.000005,
+            ],
+            "is_nonnegative": True,
+        },
+    },
+    "not_to_estimate": {},
+}
+
+# %%
 # initialize model interface settings
 model_interface = ModelInterface(
     df = df_obs,
     customized_model = LinearReservoir,
-    theta_init = None,
+    theta_init = theta_init,
     num_input_scenarios = num_input_scenarios,
     config = config
 )
