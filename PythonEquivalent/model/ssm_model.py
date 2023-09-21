@@ -91,7 +91,7 @@ class SSModel:
         # draw D theta candidates for each chain, and run sMC
         for d in range(self.D):
             theta_new[d,:] = self._sample_theta()   
-            chains[d].model_interface.update_model(theta_new[d,:])      
+            chains[d].model_interface.update_theta(theta_new[d,:])      
             chains[d].run_sequential_monte_carlo()
             WW[d,:] = chains[d].state.W
 
@@ -120,7 +120,7 @@ class SSModel:
                 # update chains
                 for d in range(self.D):
                     # initialize a chain using this theta
-                    chains[d].model_interface.update_model(theta_new[d,:])
+                    chains[d].model_interface.update_theta(theta_new[d,:])
                     chains[d].run_particle_MCMC_AS()   
                     WW[d,:] = chains[d].state.W
 

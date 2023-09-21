@@ -4,7 +4,6 @@ from dataclasses import dataclass
 import scipy.stats as ss
 import pandas as pd
 from typing import Optional, Any, List
-from copy import deepcopy
 
 
 # %%
@@ -59,7 +58,6 @@ class ModelInterface:
             config (dict): configurations of the model
             N (int): number of input scenarios
             T (int): length of the dataframe
-            R (np.ndarray): input time series
 
         """
         self.df = df
@@ -74,11 +72,8 @@ class ModelInterface:
         # Set parameters to be estimated here
         self._parse_theta_init(theta_init=theta_init)
 
-        # initialize input time series
-        self.R = np.zeros((self.N, self.T))
-
         # initialize theta
-        self.update_model()
+        self.update_theta()
 
     def _parse_config(self) -> None:
         """Parse config and set default values
@@ -440,17 +435,17 @@ class ModelInterface:
             Xt[:, i] = (1 - theta_k * theta_dt) * Xt[:, i - 1] + theta_dt * Rt[:, i - 1]
 
         return Xt[:, 1:]  # return w/out initial state
-    
+
     def transition_model_probability(self, X_1toT: np.ndarray) -> np.ndarray:
         """State estimaton model f_theta(Xt-1, Rt)
 
         Currently set up for linear reservoirmodel:
             p(Xt|Xtm1) = N((1 - k * delta_t) * Xtm1 + delta_t * Ut, delta_t * theta_r),
                 where Rt = N(Ut, theta_r) from input model
-        
+
         Args:
             X_1toT (np.ndarray): state X at t = 1:T
-        
+
         Returns:
             np.ndarray: p(X_{1:T}|theta)
         """
@@ -460,16 +455,17 @@ class ModelInterface:
         theta_dt = theta[1]
 
         # set all params
-        prob = np.ones((self.N, self.T-1))
+        prob = np.ones((self.N, self.T - 1))
         Ut = self.influx[:, 1:]
         Xtm1 = X_1toT[:, :-1]
         Xt = X_1toT[:, 1:]
 
         # calculate prob
-        prob = ss.norm((1 - theta_k * theta_dt) * Xtm1 + theta_dt * Ut, theta_dt * theta_k).pdf(Xt)
+        prob = ss.norm(
+            (1 - theta_k * theta_dt) * Xtm1 + theta_dt * Ut, theta_dt * theta_k
+        ).pdf(Xt)
 
         return prob
-    
 
     def observation_model(self, Xk: np.ndarray) -> np.ndarray:
         """Observation probability g_theta
@@ -507,20 +503,31 @@ class ModelInterface:
         theta = self.theta.observation_model
 
         return ss.norm(yhk, theta).pdf(yk)
+    
+    def initial_state_model(self, num: int) -> np.ndarray:
+        """Initial state model
 
-    def state_as_probability(self, x_prime: float, xkp1: np.ndarray, std: float):
+        Args:
+            num (int): number of initial states to generate
+
+        Returns:
+            np.ndarray: initial state
+        """
+
+        return self.dist_model["initial_state"].rvs(num)
+
+    def state_as_probability(self, offset: np.ndarray, std: float):
         """State model probability p(xk'|xk)
 
         Args:
-            x_prime (float): state of ref trajectory at time k
-            xk (np.ndarray): estimated state at time k
+            offset (np.ndarray): offset of state model (xk - xk')
             sd (float): standard deviation of state model, set to be adaptive for now
 
         Returns:
             np.ndarray: probability of estimated state around ref trajectory
         """
 
-        return ss.norm(x_prime, std).pdf(xkp1)
+        return ss.norm(0, std).pdf(offset)
 
 
 # %%

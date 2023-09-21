@@ -14,14 +14,27 @@ def _inverse_pmf(x: np.ndarray, pmf: np.ndarray, num: int) -> np.ndarray:
     Returns:
         np.ndarray: index of x that are been sampled according to its ln(pmf)
     """
-    ind = np.argsort(x) # sort x according to its magnitude
-    pmf = pmf[ind] # sort pdf accordingly
-    u = np.random.uniform(size = num)
-    ind_sample = np.searchsorted(pmf.cumsum(), u)
-    # cannot exceed the maximum index
-    ind_sample[ind_sample == len(pmf)] -= 1
+    # Sort x and pmf together based on x
+    sorted_indices = np.argsort(x)
+    x_sorted = x[sorted_indices]
+    pmf_sorted = pmf[sorted_indices]
+
+    # Compute the cumulative sum of the sorted PMF
+    cumulative_pmf = pmf_sorted.cumsum()
+
+    # Generate uniform random values
+    u = np.random.uniform(size=num)
+
+    # Use searchsorted to find the indices
+    ind_sample = np.searchsorted(cumulative_pmf, u)
+
+    # Ensure the indices do not exceed the maximum index
+    ind_sample[ind_sample == len(cumulative_pmf)] -= 1
+
+    # Map the sampled indices back to the original order
+    original_indices = sorted_indices[ind_sample]
  
-    return ind[ind_sample]
+    return original_indices
 
 
 # use df['index'] to make the actual plot

@@ -76,9 +76,9 @@ start_ind = 0
 unified_color = True
 perfects = []
 
-# df = pd.read_csv(f"../Data/WhiteNoise/stn_5_30.csv", index_col= 0)
-df = pd.read_csv(f"../Data/RealPrecip/stn_5_30.csv", index_col= 0)
-interval = [0,20]
+df = pd.read_csv(f"../Data/WhiteNoise/stn_5_30.csv", index_col= 0)
+# df = pd.read_csv(f"../Data/RealPrecip/stn_5_30.csv", index_col= 0)
+interval = [0,30]
 
 perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q = get_different_input_scenarios(df, interval, plot=False)
 
