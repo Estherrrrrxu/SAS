@@ -68,8 +68,8 @@ class SSModel:
 
 
 
-    def _sample_theta(self) -> np.ndarray:
-        """Sample theta from given distribution
+    def _sample_theta_init(self) -> np.ndarray:
+        """Sample theta from given initial prior distribution
 
         Returns:
             np.ndarray: sampled new theta candidates
@@ -90,7 +90,7 @@ class SSModel:
 
         # draw D theta candidates for each chain, and run sMC
         for d in range(self.D):
-            theta_new[d,:] = self._sample_theta()   
+            theta_new[d,:] = self._sample_theta_init()   
             chains[d].model_interface.update_theta(theta_new[d,:])      
             chains[d].run_sequential_monte_carlo()
             WW[d,:] = chains[d].state.W
@@ -106,8 +106,7 @@ class SSModel:
         self.state_record[0,:] = best_model._get_X_traj(best_model.state.X, B)
         self.output_record[0,:] = best_model._get_Y_traj(best_model.state.Y, B)
 
-        # TODO: after update initial state, need to update the model interface
-
+        # for each MCMC iteration
         for l in tqdm(range(self.L)):
             # for each theta
             for p, key in enumerate(self._theta_to_estimate):
@@ -141,6 +140,10 @@ class SSModel:
                 # plt.plot(best_model.state.Y.T, 'k')
                 # plt.plot(self.output_record[l+1,:])
                 # plt.show()
+            theta_new = {}
+            for p, key in enumerate(self._theta_to_estimate):
+                theta_new[key] = self.theta_record[l+1,p]
+
             for d in range(self.D):
                 chains[d].model_interface._set_parameter_distribution(update=True, theta_new=theta_new)
 

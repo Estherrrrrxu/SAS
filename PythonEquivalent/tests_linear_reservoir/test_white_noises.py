@@ -28,7 +28,6 @@ def plot_parameters_linear_reservoir(
         S0: List[float],
         theta_u: List[float],
         u_mean: List[float],
-        u_std: List[float],
         S0_true: float,
         case_name: str
     ) -> None:
@@ -37,14 +36,12 @@ def plot_parameters_linear_reservoir(
     ax[1].plot(S0)
     ax[2].plot(theta_u)
     ax[3].plot(u_mean)
-    ax[4].plot(u_std)
 
 
     ax[0].plot([0,len_parameter_MCMC],[1,1],'r:',label="true value")
     ax[1].plot([0,len_parameter_MCMC],[S0_true, S0_true],'r:',label="true approximation")
     ax[2].plot([0,len_parameter_MCMC],[0.00005,0.00005],'r:',label="true value")
     ax[3].plot([0,len_parameter_MCMC],[-0.01,-0.01],'r:',label="true value")
-    ax[4].plot([0,len_parameter_MCMC],[0.02,0.02],'r:',label="true value")
 
     ax[0].set_ylabel(r"$k$")
     ax[0].set_xticks([])
@@ -55,19 +52,18 @@ def plot_parameters_linear_reservoir(
     ax[3].set_ylabel(r"$\mu_u$")
     ax[3].set_xticks([])
     ax[4].set_ylabel(r"$\sigma_u$")
-    ax[4].set_xlabel("MCMC iteration")
+
     
     ax[0].legend(frameon=False)
     ax[1].legend(frameon=False)
     ax[2].legend(frameon=False)
     ax[3].legend(frameon=False)
-    ax[4].legend(frameon=False)
 
     fig.suptitle(f"Parameter estimation for {case_name}")
     fig.show()
 
 # %%
-num_input_scenarios = 5
+num_input_scenarios = 15
 num_parameter_samples = 10
 len_parameter_MCMC = 15
 plot_preliminary = True
@@ -78,7 +74,7 @@ perfects = []
 
 df = pd.read_csv(f"../Data/WhiteNoise/stn_5_30.csv", index_col= 0)
 # df = pd.read_csv(f"../Data/RealPrecip/stn_5_30.csv", index_col= 0)
-interval = [0,30]
+interval = [0,20]
 
 perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q = get_different_input_scenarios(df, interval, plot=False)
 
@@ -131,15 +127,14 @@ if plot_preliminary:
         fast_convergence_phase_length=fast_convergence_phase_length
     )
     model.run_particle_Gibbs_SAEM()
-    #
+    # %%
     # plot parameters
     plot_parameters_linear_reservoir(
         len_parameter_MCMC,
         model.theta_record[:,0],
         model.theta_record[:,1],
         model.theta_record[:,2],
-        model.theta_record[:,3],
-        model.theta_record[:,4],
+        model.theta_record[:,3],       
         df_obs['Q_obs'].iloc[0],
         case_name
     )

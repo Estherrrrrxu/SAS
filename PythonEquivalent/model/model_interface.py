@@ -278,7 +278,7 @@ class ModelInterface:
         return
 
     def _set_parameter_distribution(
-        self, update: Optional[bool] = False, theta_new: Optional[float] = None
+        self, update: Optional[bool] = False, theta_new: Optional[dict] = None
     ) -> None:
         """Set parameter distribution model and update the model object
 
@@ -305,7 +305,7 @@ class ModelInterface:
                     mean = current_theta["prior_params"][0]
 
                 else:
-                    mean = theta_new
+                    mean = theta_new[key]
                 std = current_theta["prior_params"][1]
 
                 # truncate or not
