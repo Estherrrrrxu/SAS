@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+
 # %%
 def _inverse_pmf(x: np.ndarray, pmf: np.ndarray, num: int) -> np.ndarray:
     """Sample x based on its ln(pmf) using discrete inverse sampling method

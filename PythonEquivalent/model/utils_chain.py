@@ -7,6 +7,7 @@ from functions.utils import _inverse_pmf
 from typing import Optional
 
 
+
 # %%
 @dataclass
 class State:
@@ -17,7 +18,6 @@ class State:
     X: np.ndarray  # [N, T], state at each timestep
     A: np.ndarray  # [N, K], ancestor at each timestep
     Y: np.ndarray  # [N, T], observation at each timestep
-
 
 class Chain:
     def __init__(
@@ -112,7 +112,7 @@ class Chain:
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)
 
         return
-
+    
     def run_particle_MCMC_AS(self) -> None:
         """Run particle MCMC with Ancestor Sampling (AS)"""
 

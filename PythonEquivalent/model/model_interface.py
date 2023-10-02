@@ -5,7 +5,6 @@ import scipy.stats as ss
 import pandas as pd
 from typing import Optional, Any, List
 
-
 # %%
 # a class to store parameters
 @dataclass

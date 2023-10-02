@@ -132,6 +132,7 @@ def generate_w_diff_noise_level(
         for ratio in stn_ratios:
             J = deepcopy(J_true)
             Q = deepcopy(Q_true)
+
             stn_obs = stn_ipt * ratio
             # add noise according to signal to noise ratio
             noise_j = sig_e / delta_t / stn_ipt
@@ -171,12 +172,12 @@ def generate_w_diff_noise_level(
 if __name__ == "__main__":
     root = "/Users/esthersida/Documents/Code/particle/SAS/PythonEquivalent/Data/"
     # universal constants
-    length = 50
+    length = 20
     delta_t = 1.0 / 24 / 60 * 15
     k = 1.0
     phi = 1 - k * delta_t
     # for input and output stn ratio are consistent
-    stn_ipts = [1, 2, 3, 4, 5]
+    stn_ipts = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
     stn_ratios = [0.5, 1, 2, 3, 4, 5, 6]
     # white noise
     params_ips = [0.5, 0.02]
