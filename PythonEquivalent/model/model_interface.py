@@ -397,6 +397,7 @@ class ModelInterface:
         """
 
         sig_r = self.theta.input_model
+        theta_dt = self.theta.transition_model[1]
         R = np.zeros((self.N, end_ind - start_ind))
         U = self.influx[start_ind:end_ind]
 
@@ -439,8 +440,9 @@ class ModelInterface:
         """State estimaton model f_theta(Xt-1, Rt)
 
         Currently set up for linear reservoirmodel:
-            p(Xt|Xtm1) = N((1 - k * delta_t) * Xtm1 + delta_t * Ut, delta_t * theta_r),
+            p(Xt|Xtm1) = (1 - k * delta_t) * Xtm1 + delta_t * Rt,
                 where Rt = N(Ut, theta_r) from input model
+            p(Xt|Xtm1) = N((1 - k * delta_t) * Xtm1 + delta_t * Ut, delta_t * theta_r)    
 
         Args:
             X_1toT (np.ndarray): state X at t = 1:T
@@ -452,17 +454,18 @@ class ModelInterface:
         theta = self.theta.transition_model
         theta_k = theta[0]
         theta_dt = theta[1]
+        theta_r = self.theta.input_model
 
         # set all params
         prob = np.ones((self.N, self.T - 1))
-        Ut = self.influx[1:]
+        Ut = self.influx[1:].to_numpy()
         Xtm1 = X_1toT[:-1]
         Xt = X_1toT[1:]
 
         # calculate prob
         prob = ss.norm(
-            (1 - theta_k * theta_dt) * Xtm1 + theta_dt * Ut, theta_dt * theta_k
-        ).logpdf(Xt) * np.log(theta_dt)
+            (1 - theta_k * theta_dt) * Xtm1 + theta_dt * Ut, theta_r * (theta_dt)
+        ).logpdf(Xt) 
 
         return prob.sum()
 

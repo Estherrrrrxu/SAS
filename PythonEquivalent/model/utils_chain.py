@@ -152,28 +152,30 @@ class Chain:
             xk = self.model_interface.transition_model(Xtm1=xkm1, Rt=Rk)
 
             # reference traj in this trajectory
-            x_prime = X[B[k], end_ind_k - 1]
+            Bk = B[k]
+            x_prime = X[Bk, end_ind_k - 1]
             offset = xk[:, -1] - x_prime
             sd = offset.mean()
 
-            W_tilde = self.model_interface.state_as_probability(offset=offset, std=abs(sd)/4.0)
+            W_tilde = self.model_interface.state_as_probability(offset=offset, std=abs(sd)/3.0)
             W_tilde = np.exp(W_tilde - W_tilde.max())
             W_tilde /= W_tilde.sum()
 
             # resample to get particle indices that propagate from k-1 to k
-            nB = np.arange(self.N) != B[k-1]
+            Bkm1 = B[k - 1]
+            nB = np.arange(self.N) != Bkm1
             A[nB, k] = _inverse_pmf(xkm1, W, num=self.N - 1)
-            A[B[k - 1], k] = _inverse_pmf(offset, W_tilde, num=1)
+            A[Bkm1, k] = _inverse_pmf(offset, W_tilde, num=1)
             # or get MAP
             # A[B[k-1],k] = np.argmax(W_tilde)
 
             # now only retain xk that are propogated from k-1 to k
-            nBk = np.arange(self.N) != B[k]
+            nBk = np.arange(self.N) != Bk
             xk[nBk] = xk[A[nB, k]]
-            xk[B[k]] = X[B[k], start_ind_k:end_ind_k] # reference trajectory does not change
+            xk[Bk] = X[Bk, start_ind_k:end_ind_k] # reference trajectory does not change
 
             Rk = Rk[A[:, k]]
-            Rk[B[k]] = R[B[k], start_ind_k:end_ind_k] # scenario does not change for future yet
+            Rk[Bk] = R[Bk, start_ind_k:end_ind_k] # scenario does not change for future yet
 
             # update weight
             yk = self.model_interface.observation_model(Xk=xk)

@@ -11,8 +11,7 @@ class SSModel:
         self,
         model_interface: ModelInterface,
         num_parameter_samples: Optional[int] = 15,
-        len_parameter_MCMC: Optional[int] = 20,
-        fast_convergence_phase_length: Optional[int] = None
+        len_parameter_MCMC: Optional[int] = 20
     ) -> None:      
         """Initialize the SSM model taking essential inputs
 
@@ -26,15 +25,6 @@ class SSModel:
         # set up input metrics
         self.D = num_parameter_samples
         self.L = len_parameter_MCMC
-        self.fast_convergence_phase_length = fast_convergence_phase_length
-        if self.fast_convergence_phase_length is None:
-            self.fast_convergence_phase_length = self.L
-        
-        self.learning_step = np.ones(self.L+1)
-        if self.fast_convergence_phase_length < self.L:
-            for i in range(self.fast_convergence_phase_length+1, self.L+1):
-                self.learning_step[i] = 1. / (i - self.fast_convergence_phase_length)
-
         
         # get info from model_interface
         self._num_theta_to_estimate = model_interface._num_theta_to_estimate
@@ -93,13 +83,15 @@ class SSModel:
         # draw D theta candidates for each chain, and run sMC
         for d in range(self.D):
             theta_new[d,:] = self._sample_theta_init()   
-            chains[d].model_interface.update_theta(theta_new[d,:])      
+            chains[d].model_interface.update_theta(theta_new[d,:])  
             chains[d].run_sequential_monte_carlo()
-            model_W = chains[d].state.W
-            B = chains[d]._find_traj(chains[d].state.A, model_W, max=True)
-            traj_X = chains[d]._get_X_traj(chains[d].state.X, B)
+            chain_d = chains[d]
+
+            model_W = chain_d.state.W
+            B = chain_d._find_traj(chain_d.state.A, model_W, max=True)
+            traj_X = chains[d]._get_X_traj(chain_d.state.X, B)
             BB[d,:] = B
-            state_W = chains[d].model_interface.transition_model_probability(traj_X)
+            state_W = chain_d.model_interface.transition_model_probability(traj_X)
             WW[d] = state_W + np.log(model_W.max())
  
         # find optimal parameters
@@ -153,10 +145,7 @@ class SSModel:
                 self.input_record[l+1,:] = best_model._get_R_traj(best_model.state.R, B)
                 self.state_record[l+1,:] = best_model._get_X_traj(best_model.state.X, B)
                 self.output_record[l+1,:] = best_model._get_Y_traj(best_model.state.Y, B)
-                # plt.figure()
-                # plt.plot(best_model.state.Y.T, 'k')
-                # plt.plot(self.output_record[l+1,:])
-                # plt.show()
+
             best_theta = {}
             for p, key in enumerate(self._theta_to_estimate):
                 best_theta[key] = self.theta_record[l+1,p]
