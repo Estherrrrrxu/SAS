@@ -54,13 +54,13 @@ class Chain:
             pre_ind = t_k_map
         # other wise, fill in the gap
         else:
-            pre_ind = t_k_map - 1
-            pre_ind[0] = t_k_map[0]
+            pre_ind = post_ind[:-1]
+            pre_ind = np.insert(pre_ind, 0, t_k_map[0])
 
         self.pre_ind = pre_ind
         self.post_ind = post_ind
 
-    def run_sequential_monte_carlo(self) -> None:
+    def run_particle_filter_SIR(self) -> None:
         """Run sequential Monte Carlo"""
 
         # initialize variables
@@ -113,7 +113,7 @@ class Chain:
 
         return
     
-    def run_particle_MCMC_AS(self) -> None:
+    def run_particle_filter_AS(self) -> None:
         """Run particle MCMC with Ancestor Sampling (AS)"""
 
         # inherit states from previous run
@@ -124,7 +124,8 @@ class Chain:
         Y = self.state.Y
 
         # sample an ancestral reference trajectory based on final weight
-        B = self._find_traj(A, W)
+        # TODO: add MAP option
+        B = self._find_traj(A, W, max=True)
         nB = np.arange(self.N) != B[0]
 
 
@@ -158,16 +159,21 @@ class Chain:
             sd = offset.mean()
 
             W_tilde = self.model_interface.state_as_probability(offset=offset, std=abs(sd)/3.0)
-            W_tilde = np.exp(W_tilde - W_tilde.max())
+            W_tilde = W * np.exp(W_tilde - W_tilde.max())
             W_tilde /= W_tilde.sum()
 
             # resample to get particle indices that propagate from k-1 to k
             Bkm1 = B[k - 1]
             nB = np.arange(self.N) != Bkm1
-            A[nB, k] = _inverse_pmf(xkm1, W, num=self.N - 1)
-            A[Bkm1, k] = _inverse_pmf(offset, W_tilde, num=1)
+            # TODO: add option to sample from W_tilde
+            # A[Bkm1, k] = _inverse_pmf(offset, W_tilde, num=1)
             # or get MAP
+            A[Bkm1, k] = np.argmax(W_tilde)
             # A[B[k-1],k] = np.argmax(W_tilde)
+            
+            A[nB, k] = _inverse_pmf(xkm1, W, num=self.N - 1)
+
+
 
             # now only retain xk that are propogated from k-1 to k
             nBk = np.arange(self.N) != Bk

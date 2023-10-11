@@ -172,7 +172,7 @@ def generate_w_diff_noise_level(
 if __name__ == "__main__":
     root = "/Users/esthersida/Documents/Code/particle/SAS/PythonEquivalent/Data/"
     # universal constants
-    length = 20
+    length = 100
     delta_t = 1.0 / 24 / 60 * 15
     k = 1.0
     phi = 1 - k * delta_t

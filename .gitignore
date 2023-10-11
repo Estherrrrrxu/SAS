@@ -424,3 +424,34 @@ PythonEquivalent/Results/TestLR/WhiteNoise/5_N_30_D_30_L_10/obs_uncertainty.csv
 PythonEquivalent/Results/TestLR/WhiteNoise/5_N_30_D_30_L_10/output_scenarios.csv
 PythonEquivalent/Results/TestLR/WhiteNoise/5_N_30_D_30_L_10/posterior.pdf
 PythonEquivalent/Results/TestLR/WhiteNoise/5_N_30_D_30_L_10/scenarios.pdf
+PythonEquivalent/Results/TestLR/WhiteNoise/1.5_N_5_D_30_L_10/prior_1.5.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/1_N_5_D_30_L_10/prior_1.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/2.5_N_5_D_30_L_10/prior_2.5.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/2_N_5_D_30_L_10/prior_2.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/3.5_N_5_D_30_L_10/prior_3.5.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/3_N_5_D_30_L_10/prior_3.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/4.5_N_5_D_30_L_10/prior_4.5.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/4_N_5_D_30_L_10/prior_4.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_5_D_30_L_10/df_ipt.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_5_D_30_L_10/initial_state.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_5_D_30_L_10/input_scenarios.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_5_D_30_L_10/input_uncertainty.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_5_D_30_L_10/k.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_5_D_30_L_10/obs_uncertainty.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_5_D_30_L_10/output_scenarios.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_5_D_30_L_10/posterior.pdf
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_5_D_30_L_10/prior_5.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_5_D_30_L_10/scenarios.pdf
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/df.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/initial_state.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/input_scenarios.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/input_uncertainty.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/k.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/KL_divergence.pdf
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/obs_uncertainty.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/output_scenarios.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/posterior.pdf
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/prior_parameters_5.csv
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/scenarios_line.pdf
+PythonEquivalent/Results/TestLR/WhiteNoise/5_N_10_D_15_L_20/Almost perfect data/scenarios.pdf
+PythonEquivalent/tests_linear_reservoir/__pycache__/test_utils.cpython-310.pyc

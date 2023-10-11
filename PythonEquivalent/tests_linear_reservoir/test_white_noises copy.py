@@ -21,7 +21,7 @@ from typing import Optional, List
 import pandas as pd
 
 # %%
-class ModelInterfaceWN(ModelInterface):
+class ModelInterface(ModelInterface):
     def update_model(
             self,
             theta_new: Optional[List[float]] = None

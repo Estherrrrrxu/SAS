@@ -400,6 +400,7 @@ class ModelInterface:
         theta_dt = self.theta.transition_model[1]
         R = np.zeros((self.N, end_ind - start_ind))
         U = self.influx[start_ind:end_ind]
+        
 
         for n in range(self.N):
             R[n] = ss.norm(U, scale=sig_r).rvs()
