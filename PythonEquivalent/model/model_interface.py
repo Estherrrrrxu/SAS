@@ -87,6 +87,8 @@ class ModelInterface:
             "influx": "J_obs",
             "outflux": "Q_obs",
             "observed_made_each_step": True,
+            "use_MAP_ref_traj": False,
+            "use_MAP_AS_weight": False
         }
 
         if self.config is None:

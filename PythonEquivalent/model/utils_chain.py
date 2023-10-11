@@ -124,8 +124,10 @@ class Chain:
         Y = self.state.Y
 
         # sample an ancestral reference trajectory based on final weight
-        # TODO: add MAP option
-        B = self._find_traj(A, W, max=True)
+        if self.model_interface.config['use_MAP_ref_traj']:
+            B = self._find_traj(A, W, max=True)
+        else:
+            B = self._find_traj(A, W, max=False)
         nB = np.arange(self.N) != B[0]
 
 
@@ -165,11 +167,11 @@ class Chain:
             # resample to get particle indices that propagate from k-1 to k
             Bkm1 = B[k - 1]
             nB = np.arange(self.N) != Bkm1
-            # TODO: add option to sample from W_tilde
-            # A[Bkm1, k] = _inverse_pmf(offset, W_tilde, num=1)
-            # or get MAP
-            A[Bkm1, k] = np.argmax(W_tilde)
-            # A[B[k-1],k] = np.argmax(W_tilde)
+
+            if self.model_interface.config['use_MAP_AS_weight']:
+                A[Bkm1, k] = np.argmax(W_tilde)
+            else:
+                A[Bkm1, k] = _inverse_pmf(offset, W_tilde, num=1)
             
             A[nB, k] = _inverse_pmf(xkm1, W, num=self.N - 1)
 
