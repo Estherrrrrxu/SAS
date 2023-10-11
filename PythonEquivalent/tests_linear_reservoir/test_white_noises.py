@@ -23,6 +23,7 @@ test_case = "WhiteNoise"
 # stn_input = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 stn_input = [5]
 interval = [0, 20]
+model_interface_class = ModelInterface
 
 for stn_i in stn_input:
     stn_o = stn_i * 3
@@ -65,7 +66,7 @@ for stn_i in stn_input:
     run_parameter = [num_input_scenarios, num_parameter_samples, len_parameter_MCMC]
 
     # run model
-    run_with_given_settings(df_obs, config, run_parameter, path_str, prior_record, plot_preliminary=False)
+    run_with_given_settings(df_obs, config, run_parameter, path_str, prior_record, plot_preliminary=False, model_interface_class=model_interface_class)
 
 
     # case_names = ["Almost perfect data", 'Instant measurement w/ gaps of 2 days', 'Instant measurement w/ gaps of 5 days', 'Weekly bulk', 'Biweekly bulk']
