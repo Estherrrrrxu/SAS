@@ -43,18 +43,18 @@ def plot_base(df_obs):
     fig, ax = plt.subplots(2, 1, figsize=(8, 5))
     ax[0].bar(df_obs["index"], df_obs["J_true"], width=1, color="k", label="Truth")
     ax[0].plot(
-        df_obs["index"],
-        df_obs["J_obs"],
+        df_obs["index"][df_obs["is_obs"] == True],
+        df_obs["J_obs"][df_obs["is_obs"] == True],
         "+",
         color="C3",
         markersize=7,
         label="Observation",
     )
-    ax[0].set_ylabel("Precipitation [mm]")
-    ax[0].set_ylim([max(df_obs["J_true"]) + 0.02, 0])
+    ax[0].set_ylabel("")
+    ax[0].set_ylim([max(df_obs["J_true"])*1.05, max(df_obs["J_true"])*0.75])
     ax[0].legend(frameon=False, ncol=2)
     ax[0].set_xticks([])
-    ax[0].set_title("Preciptation")
+    ax[0].set_title("Input")
 
     ax[1].plot(df_obs["index"], df_obs["Q_true"], "k.-", label="Truth")
     ax[1].plot(
@@ -65,16 +65,16 @@ def plot_base(df_obs):
         markersize=7,
         label="Observation",
     )
-    ax[1].set_ylabel("Discharge [mm]")
+    ax[1].set_ylabel("")
     ax[1].set_xlabel("Time [day]")
     ax[1].legend(frameon=False)
-    ax[1].set_title("Discharge")
+    ax[1].set_title("Output")
     return fig, ax
 
 
-def plot_bulk(original, weekly_bulk):
-    fig, ax = plot_base(original, weekly_bulk)
-    temp = weekly_bulk[weekly_bulk["is_obs"]]
+def plot_bulk(weekly_bulk):
+    fig, ax = plot_base(weekly_bulk)
+    temp = weekly_bulk[weekly_bulk["is_obs"] == True]
     ax[0].plot(
         temp["index"],
         temp["J_obs"],
@@ -84,8 +84,16 @@ def plot_bulk(original, weekly_bulk):
         linestyle="",
         label="Observed Time Stamp",
     )
+    ax[0].plot(
+        weekly_bulk["index"],
+        weekly_bulk["J_obs"],
+        "+",
+        color="C3",
+        markersize=7,
+    )
     ax[0].legend(frameon=False, ncol=3)
-    ax[0].set_ylim([max(original["J_true"]) + 0.02, 0])
+    ax[0].set_ylim([max(weekly_bulk["J_true"]) * 1.05, max(weekly_bulk["J_true"]) * 0.75])
+
     ax[1].plot(
         temp["index"],
         temp["Q_obs"],
@@ -121,7 +129,7 @@ def plot_MAP(
         np.ndarray: MAP trajectory
     """
 
-    #
+    # %%
     # state = chain.state
     # df = case.df_obs
     # pre_ind = chain.pre_ind
@@ -135,9 +143,9 @@ def plot_MAP(
     K = A.shape[1]
 
     if left is None:
-        left = df["index"].values[0]
+        left = df["index"][df["is_obs"]==True].values[0]
     if right is None:
-        right = df["index"].values[-1]
+        right = df["index"][df["is_obs"]==True].values[-1]
 
     B = np.zeros(K).astype(int)
     B[-1] = _inverse_pmf(A[:, -1], W, num=1)
@@ -178,6 +186,7 @@ def plot_MAP(
         label="One Traj/MLE",
     )
     ax[1].set_xlim([left, right])
+    ax[1].set_ylim([min(df["Q_true"])*0.85, max(df["Q_true"]) * 1.05])
 
     return fig, ax
 

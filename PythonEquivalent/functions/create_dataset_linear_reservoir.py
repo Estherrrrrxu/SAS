@@ -160,11 +160,18 @@ def generate_w_diff_noise_level(
             plt.title("Output")
             plt.legend(frameon=False)
             plt.tight_layout()
-            if not os.path.exists(root + f"{type_ipt}/"):
-                os.mkdir(root + f"{type_ipt}/")
 
-            plt.savefig(root + f"{type_ipt}/stn_{stn_ipt}_{stn_obs}_T_{length}_k_{int(k)}.pdf")
-            df.to_csv(root + f"{type_ipt}/stn_{stn_ipt}_{stn_obs}_T_{length}_k_{int(k)}.csv")
+            if root[-1] == "/":
+                root = root[:-1]
+
+            if not os.path.exists(root):
+                os.mkdir(root)
+
+            if not os.path.exists(root + f"/{type_ipt}/"):
+                os.mkdir(root + f"/{type_ipt}/")
+
+            plt.savefig(f"{root}/{type_ipt}/stn_{stn_ipt}_{stn_obs}_T_{length}_k_{int(k)}.pdf")
+            df.to_csv(f"{root}/{type_ipt}/stn_{stn_ipt}_{stn_obs}_T_{length}_k_{int(k)}.csv")
     return
 
 
@@ -180,10 +187,11 @@ if __name__ == "__main__":
     # stn_ipts = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
     # stn_ratios = [0.5, 1, 2, 3, 4, 5, 6]
     stn_ipts = [5.]
-    stn_ratios = [1.]
+    stn_ratios = [5.]
     
     # white noise
     params_ips = [5., 0.2]
+    np.random.seed(1014)
     generate_w_diff_noise_level(
         data_root,
         stn_ipts,

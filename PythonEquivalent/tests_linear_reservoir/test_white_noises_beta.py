@@ -13,6 +13,7 @@ from functions.get_dataset import get_different_input_scenarios
 from tests_linear_reservoir.test_utils import *
 import pandas as pd
 from model.model_interface import ModelInterface
+from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
 
 # %%
 # model run settings
@@ -24,28 +25,30 @@ test_case = "WhiteNoise"
 stn_input = [5.]
 interval = [0, 30]
 length = 100
-k = 100
-model_interface_class = ModelInterface
+k_model = 100
+model_interface_class = ModelInterfaceBulk
 data_root = "/Users/esthersida/pMESAS"
 
 for stn_i in stn_input:
     stn_o = stn_i * 5.
-    df = pd.read_csv(f"{data_root}/Data/{test_case}/stn_{stn_i}_{stn_o}_T_{length}_k_{k}.csv", index_col=0)
+    df = pd.read_csv(f"{data_root}/Data/{test_case}/stn_{stn_i}_{stn_o}_T_{length}_k_{k_model}.csv", index_col=0)
+
     (
         perfect,
         instant_gaps_2_d,
         instant_gaps_5_d,
+        semiweekly_bulk,
         weekly_bulk,
         biweekly_bulk,
         weekly_bulk_true_q,
     ) = get_different_input_scenarios(df, interval, plot=False)
 
-    case = perfect
+    case = semiweekly_bulk
     df_obs = case.df_obs
     obs_made = case.obs_made
     case_name = case.case_name
 
-    k_prior = [k, 3]
+    k_prior = [k_model, 3]
     initial_state_prior = [df_obs["Q_obs"][0], 0.01]
     sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
     input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
@@ -53,10 +56,11 @@ for stn_i in stn_input:
     obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
 
 
-    config = {"observed_made_each_step": obs_made, "outflux": "Q_true", "use_MAP_AS_weight": True, "use_MAP_ref_traj": False}
+    config = {"observed_made_each_step": obs_made, "outflux": "Q_true", "use_MAP_AS_weight": False, "use_MAP_ref_traj": False}
 
     # Save prior parameters
-    path_str = f"../Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}/{case_name}"
+    path_str = f"{data_root}/Results/TestLR/{test_case}/k_{k_model}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}/{case_name}"
+    
     if not os.path.exists(path_str):
         os.makedirs(path_str)
 
@@ -69,16 +73,10 @@ for stn_i in stn_input:
     run_parameter = [num_input_scenarios, num_parameter_samples, len_parameter_MCMC]
 
     # run model
-    run_with_given_settings(df_obs, config, run_parameter, path_str, prior_record, plot_preliminary=False, model_interface_class=model_interface_class)
+    run_with_given_settings(df_obs, config, run_parameter, path_str, prior_record, plot_preliminary=True, model_interface_class=model_interface_class)
 
 
-    # case_names = ["Almost perfect data", 'Instant measurement w/ gaps of 2 days', 'Instant measurement w/ gaps of 5 days', 'Weekly bulk', 'Biweekly bulk']
-    # case_name = case_names[0]
-
-
-
-    path_str = f"../Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}/{case_name}"
-
+    # %%
     k = np.loadtxt(f"{path_str}/k.csv")
     initial_state = np.loadtxt(f"{path_str}/initial_state.csv")
     input_uncertainty = np.loadtxt(f"{path_str}/input_uncertainty.csv")
@@ -96,18 +94,17 @@ for stn_i in stn_input:
         }
     )
 
-    k_true = 1.0
-    initial_state_true = 0.5001100239495894
-    input_uncertainty_true = 0.02 / stn_i
+    initial_state_true = 0.05001100239495894
+    input_uncertainty_true = 0.2 / stn_i
     obs_uncertainty_true = 0.0
     dt = 1.0 / 24 / 60 * 15
 
     sig_e = dt * 0.02 / stn_i
-    phi = 1 - k_true * dt
+    phi = 1 - k_model * dt
     sig_q = np.sqrt(sig_e**2 / (1 - phi**2))
 
     true_params = [
-        k_true,
+        k_model,
         initial_state_true,
         input_uncertainty_true,
         obs_uncertainty_true,

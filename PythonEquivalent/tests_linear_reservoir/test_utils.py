@@ -370,15 +370,16 @@ def plot_scenarios(
     sig_q: float,
     line_mode: Optional[bool] = False,
 ):
-    #%%
+
     
     fig, ax = plt.subplots(2, 1, figsize=(8, 8))
-
+    real_start = truth_df["index"][truth_df["is_obs"]].iloc[1]
+    img_start = truth_df["index"][truth_df["is_obs"]].iloc[0]
     # uncertainty bounds
     ax[0].fill_between(
-        truth_df["index"][1:],
-        truth_df["J_true"][1:] - 1.96 * 0.02 / stn_i,
-        truth_df["J_true"][1:] + 1.96 * 0.02 / stn_i,
+        truth_df["index"][real_start:],
+        truth_df["J_true"][real_start:] - 1.96 * 0.2 / stn_i,
+        truth_df["J_true"][real_start:] + 1.96 * 0.2 / stn_i,
         color="grey",
         alpha=0.3,
         label=r"95% theoretical uncertainty bounds",
@@ -388,8 +389,8 @@ def plot_scenarios(
     if line_mode:
         alpha = 5./estimation["input"][start_ind:,].shape[0]
         ax[0].plot(
-            truth_df["index"][1:],
-            estimation["input"][start_ind:, 1:].T,
+            truth_df["index"][real_start:],
+            estimation["input"][start_ind:, real_start:].T,
             color="C9",
             linewidth=1.5,
             zorder=0,
@@ -401,6 +402,7 @@ def plot_scenarios(
             estimation["input"][start_ind:,],
             orient="v",
             ax=ax[0],
+            order=truth_df["index"]-img_start,
             color="C9",
             linewidth=1.5,
             fliersize=1.5,
@@ -410,8 +412,8 @@ def plot_scenarios(
             whis=(2.5, 97.5),
         )
         ax[0].plot(
-            truth_df["index"][1:],
-            estimation["input"][start_ind:,1:].mean(axis=0),
+            truth_df["index"][real_start:],
+            estimation["input"][start_ind:,real_start:].mean(axis=0),
             color="C9",
             linewidth=3,
             zorder=0,
@@ -420,7 +422,7 @@ def plot_scenarios(
 
     # truth trajectory
     ax[0].plot(
-        truth_df["index"][1:], truth_df["J_true"][1:], color="k", label="Truth", linewidth=0.8
+        truth_df["index"][real_start:], truth_df["J_true"][real_start:], color="k", label="Truth", linewidth=0.8
     )
     # observations
     ax[0].scatter(
@@ -433,8 +435,8 @@ def plot_scenarios(
         label="Observations",
     )
 
-    ax[0].set_ylim([max(truth_df["J_true"]) * 1.065, min(truth_df["J_true"]) * 0.925])
-    # ax[0].set_xlim([0, len(truth_df["index"])])
+    ax[0].set_ylim([min(truth_df["J_true"]) * 0.925, max(truth_df["J_true"]) * 1.065])
+    ax[0].set_xlim([real_start, len(truth_df["index"])])
     ax[0].set_ylabel("Input signal", fontsize=16)
     ax[0].set_xticks([])
 
@@ -442,9 +444,9 @@ def plot_scenarios(
     # uncertainty bounds
 
     ax[1].fill_between(
-        truth_df["index"][1:],
-        truth_df["Q_true"][1:] - 1.96 * sig_q,
-        truth_df["Q_true"][1:] + 1.96 * sig_q,
+        truth_df["index"][real_start:],
+        truth_df["Q_true"][real_start:] - 1.96 * sig_q,
+        truth_df["Q_true"][real_start:] + 1.96 * sig_q,
         color="grey",
         alpha=0.3,
         label=r"95% theoretical uncertainty",
@@ -452,8 +454,8 @@ def plot_scenarios(
     # scenarios
     if line_mode:
         ax[1].plot(
-            truth_df["index"][1:],
-            estimation["output"][start_ind:, 1:].T,
+            truth_df["index"][real_start:],
+            estimation["output"][start_ind:, real_start:].T,
             color="C9",
             linewidth=1.5,
             zorder=0,
@@ -461,8 +463,8 @@ def plot_scenarios(
         )
     else:
         sns.boxplot(
-            estimation["output"][start_ind:,1:],
-            order=truth_df["index"]-1,
+            estimation["output"][start_ind:,real_start:],
+            order=truth_df["index"]-real_start,
             orient="v",
             ax=ax[1],
             color="C9",
@@ -474,8 +476,8 @@ def plot_scenarios(
             whis=(2.5, 97.5),
         )
         ax[1].plot(
-            truth_df["index"][1:],
-            estimation["output"][start_ind:, 1:].mean(axis=0),
+            truth_df["index"][real_start:],
+            estimation["output"][start_ind:, real_start:].mean(axis=0),
             color="C9",
             linewidth=3,
             zorder=0,
@@ -484,7 +486,7 @@ def plot_scenarios(
 
     # truth trajectory
     ax[1].plot(
-        truth_df["index"][1:], truth_df["Q_true"][1:], color="k", label="Truth", linewidth=0.8
+        truth_df["index"][real_start:], truth_df["Q_true"][real_start:], color="k", label="Truth", linewidth=0.8
     )
     # observations
     ax[1].scatter(
@@ -498,8 +500,8 @@ def plot_scenarios(
     )
     cyan_line, = ax[1].plot([], [], 'c-', label='Scenarios')
 
-    ax[1].set_ylim([min(truth_df["Q_true"]) * 0.9972, max(truth_df["Q_true"]) * 1.0028])
-    # ax[1].set_xlim([0, len(truth_df["index"])])
+    ax[1].set_ylim([min(truth_df["Q_true"]) * 0.925, max(truth_df["Q_true"]) * 1.065])
+    ax[1].set_xlim([real_start, len(truth_df["index"])])
     ax[1].set_ylabel("Output signal", fontsize=16)
     ax[1].set_xlabel("Timestep", fontsize=16)
     if line_mode:

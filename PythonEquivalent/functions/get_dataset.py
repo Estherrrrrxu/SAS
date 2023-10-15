@@ -35,15 +35,16 @@ def get_different_input_scenarios(
     instant_gaps_5_d["is_obs"][::5] = True
 
     if plot:
-        plot_base(original, original)
-        plot_base(original, instant_gaps_2_d)
-        plot_base(original, instant_gaps_5_d)
+        plot_base(original)
+        plot_base(instant_gaps_2_d)
+        plot_base(instant_gaps_5_d)
 
     #
     # For bulk observed data
+    semiweekly_bulk = create_bulk_sample(original, 3)
     weekly_bulk = create_bulk_sample(original, 7)
     biweekly_bulk = create_bulk_sample(original, 14)
-
+    
     weekly_bulk_true_q = weekly_bulk.copy()
     ind = weekly_bulk_true_q['is_obs']
     weekly_bulk_true_q["Q_obs"][ind==False] = np.nan
@@ -51,9 +52,10 @@ def get_different_input_scenarios(
     weekly_bulk_true_q = weekly_bulk_true_q.fillna(method='bfill')
 
     if plot:
-        plot_bulk(original, weekly_bulk)
-        plot_bulk(original, biweekly_bulk)
-        plot_bulk(original, weekly_bulk_true_q)
+        plot_bulk(semiweekly_bulk)
+        plot_bulk(weekly_bulk)
+        plot_bulk(biweekly_bulk)
+        plot_bulk(weekly_bulk_true_q)
 
     
     perfect = Cases( 
@@ -73,6 +75,12 @@ def get_different_input_scenarios(
         obs_made=5, 
         case_name="Instant measurement w/ gaps of 5 days"
         )
+    
+    semiweekly_bulk = Cases(
+        df_obs=semiweekly_bulk, 
+        obs_made=semiweekly_bulk["is_obs"].values, 
+        case_name="Semiweekly bulk"
+        )
 
     weekly_bulk = Cases(
         df_obs=weekly_bulk, 
@@ -89,9 +97,9 @@ def get_different_input_scenarios(
     weekly_bulk_true_q = Cases(
         df_obs=weekly_bulk_true_q, 
         obs_made=weekly_bulk_true_q["is_obs"].values, 
-        case_name="Weekly bulk w/ true Q"
+        case_name="Weekly bulk true Q"
         )
 
-    return perfect, instant_gaps_2_d, instant_gaps_5_d, weekly_bulk, biweekly_bulk, weekly_bulk_true_q
+    return perfect, instant_gaps_2_d, instant_gaps_5_d, semiweekly_bulk, weekly_bulk, biweekly_bulk, weekly_bulk_true_q
 
 # %%
