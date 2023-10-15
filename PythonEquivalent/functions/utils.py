@@ -225,30 +225,22 @@ def create_bulk_sample(original: pd.DataFrame, n: int) -> pd.DataFrame:
 
 # %%
 def normalize_over_interval(
-    arr: np.ndarray, start_index: int, end_index: int, input: np.ndarray
+    arr: np.ndarray, input: float
 ):
     """Normalize the values of the array over interval before making observation
 
     Args:
         arr (np.ndarray): Generated array
-        index_array (np.ndarray): Array of observed indices
-        input (np.ndarray): Input array that generated array should be similar to
+        input (float): Input array that generated array should be similar to
 
     """
-    normalized_arr = arr.copy()
-    # Find the minimum and maximum values within the subarray
-    sum_val = sum(normalized_arr)
+    # sum all array values
+    sum_val = sum(arr)
     if sum_val == 0:
         raise ValueError("Sum of subarray is 0")
-    multiplier = [x / sum_val for x in normalized_arr]
+    multiplier = input / sum_val * len(arr)
 
-    target_val = input[end_index - 1]
-    normalized_subarray = [x * target_val * len(normalized_arr) for x in multiplier]
-
-    # Replace the original subarray with the normalized values
-    normalized_arr[start_index:end_index] = normalized_subarray
-
-    return normalized_arr
+    return arr * multiplier
 
 
 # %%

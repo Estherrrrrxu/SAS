@@ -12,13 +12,13 @@ sys.path.append("../")
 from functions.get_dataset import get_different_input_scenarios
 from tests_linear_reservoir.test_utils import *
 import pandas as pd
-from model.model_interface import ModelInterface
+from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
 
 # %%
 # model run settings
-num_input_scenarios = 10
-num_parameter_samples = 15
-len_parameter_MCMC = 20
+num_input_scenarios = 25
+num_parameter_samples = 5
+len_parameter_MCMC = 100
 test_case = "WhiteNoise"
 # stn_input = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 stn_input = [5]
@@ -37,7 +37,7 @@ for stn_i in stn_input:
         weekly_bulk_true_q,
     ) = get_different_input_scenarios(df, interval, plot=False)
 
-    case = perfect
+    case = weekly_bulk
     df_obs = case.df_obs
     obs_made = case.obs_made
     case_name = case.case_name
@@ -45,12 +45,12 @@ for stn_i in stn_input:
     k_prior = [1.0, 0.3]
     initial_state_prior = [df_obs["Q_obs"][0], 0.01]
     sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
-    input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
+    input_uncertainty_prior = [sig_ipt_hat*6., sig_ipt_hat*6. / 3.0]
     sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
     obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
 
 
-    config = {"observed_made_each_step": obs_made, "outflux": "Q_true", "use_MAP_AS_weight": True, "use_MAP_ref_traj": False}
+    config = {"observed_made_each_step": 1, "outflux": "Q_true", "use_MAP_AS_weight": True, "use_MAP_ref_traj": True}
 
     # Save prior parameters
     path_str = f"../Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}/{case_name}"
@@ -64,10 +64,10 @@ for stn_i in stn_input:
     prior_record.to_csv(f"{path_str}/prior_parameters_{stn_i}.csv")
 
     run_parameter = [num_input_scenarios, num_parameter_samples, len_parameter_MCMC]
-
+    # %%
     # run model
     run_with_given_settings(df_obs, config, run_parameter, path_str, prior_record, plot_preliminary=False, model_interface_class=model_interface_class)
-
+    #%%
 
     # case_names = ["Almost perfect data", 'Instant measurement w/ gaps of 2 days', 'Instant measurement w/ gaps of 5 days', 'Weekly bulk', 'Biweekly bulk']
     # case_name = case_names[0]
@@ -83,7 +83,7 @@ for stn_i in stn_input:
     input_scenarios = np.loadtxt(f"{path_str}/input_scenarios.csv")
     output_scenarios = np.loadtxt(f"{path_str}/output_scenarios.csv")
 
-    threshold = 5
+    threshold = 20
     plot_df = pd.DataFrame(
         {
             "k": k,

@@ -182,7 +182,7 @@ class Chain:
             xk[nBk] = xk[A[nB, k]]
             xk[Bk] = X[Bk, start_ind_k:end_ind_k] # reference trajectory does not change
 
-            Rk = Rk[A[:, k]]
+            Rk[nBk] = Rk[A[nB, k]]
             Rk[Bk] = R[Bk, start_ind_k:end_ind_k] # scenario does not change for future yet
 
             # update weight

@@ -370,6 +370,7 @@ def plot_scenarios(
     sig_q: float,
     line_mode: Optional[bool] = False,
 ):
+    #%%
     
     fig, ax = plt.subplots(2, 1, figsize=(8, 8))
 

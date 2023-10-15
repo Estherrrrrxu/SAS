@@ -7,179 +7,164 @@ if current_path[-22:] != 'tests_linear_reservoir':
 import sys
 sys.path.append('../') 
 
-from model.model_interface import ModelInterface, Parameter
-from model.ssm_model import SSModel
-from model.your_model import LinearReservoir
-
-from model.utils_chain import Chain
-from functions.utils import plot_MLE, plot_scenarios, normalize_over_interval
-from functions.get_dataset import get_different_input_scenarios
-
-import matplotlib.pyplot as plt
+from model.model_interface import ModelInterface
+from functions.utils import normalize_over_interval
 import scipy.stats as ss
-from typing import Optional, List
-import pandas as pd
+import numpy as np
 
 # %%
-class ModelInterface(ModelInterface):
-    def update_model(
-            self,
-            theta_new: Optional[List[float]] = None
-        ) -> None:       
-        if theta_new is None:
-            theta_new = []
-            for key in self._theta_to_estimate:
-                theta_new.append(self.prior_model[key].rvs())
+class ModelInterfaceBulk(ModelInterface):
+    def get_bulk_obs_std(self) -> float:
+        """Get bulk observation uncertainty
 
-        for i, key in enumerate(self._theta_to_estimate):
-            self._theta_init['to_estimate'][key]['current_value'] = theta_new[i]
-        # transition model param [0] is k to estimate, and [1] is fixed dt
-        transition_param = [self._theta_init['to_estimate']['k']['current_value'], self.config['dt']]
-
-        # observation uncertainty param is to estimate
-        obs_param = self._theta_init['not_to_estimate']['obs_uncertainty']
-
-        # input uncertainty param is to estimate
-        input_param = [self._theta_init['to_estimate']['input_mean']['current_value'], 
-                       self._theta_init['to_estimate']['input_std']['current_value'],
-                       self._theta_init['to_estimate']['input_uncertainty']['current_value']
-                       ]
-
-        # initial state param is to estimate
-        init_state = self._theta_init['to_estimate']['initial_state']['current_value']
-
-        self.theta = Parameter(
-                            input_model=input_param,
-                            transition_model=transition_param, 
-                            observation_model=obs_param,
-                            initial_state=init_state
-                            )
-        return 
-    
-    # def input_model(
-    #         self
-    #     ) -> None:
-    #     """Input model for linear reservoir
-
-    #     Rt' ~ N(Ut, sigma_ipt)
-    #     """
-    #     for n in range(self.N):
-    #         self.R[n,:] = ss.norm(loc=self.influx, scale=self.theta.input_model[2]).rvs()
-    #         self.R[n,:][self.R[n,:] < 0] = 0 
-    #     return 
-    
-
-    def input_model(
-            self
-        ) -> None:
-        """Input model for linear reservoir
-
-        Rt' ~ N(Ut, sigma_ipt)
+        Returns:
+            float: bulk observation uncertainty
         """
-        for n in range(self.N):
-            self.R[n,:] = ss.norm(loc=self.theta.input_model[0], scale=self.theta.input_model[1]).rvs()
-            if self.R[n,:][self.R[n,:] >0].size == 0:
-                self.R[n,:][self.R[n,:] <= 0] = 10**(-8)
-            else:
-                self.R[n,:][self.R[n,:] <= 0] = min(10**(-8), min(self.R[n,:][self.R[n,:] > 0]))     
-            normalized = normalize_over_interval(self.R[n,:], self.observed_ind, self.influx)
-            self.R[n,:] = normalized + ss.norm(loc=0, scale=self.theta.input_model[2]).rvs(self.T)
-            self.R[n,:][self.R[n,:] < 0] = 0
-        return 
-
-
-# %%
-
-
-# %%
-class ModelInterfaceWN(ModelInterface):
-    def update_model(
-            self,
-            theta_new: Optional[List[float]] = None
-        ) -> None:       
-        if theta_new is None:
-            theta_new = []
-            for key in self._theta_to_estimate:
-                theta_new.append(self.dist_model[key].rvs())
-
-        for i, key in enumerate(self._theta_to_estimate):
-            self._theta_init['to_estimate'][key]['current_value'] = theta_new[i]
-        # transition model param [0] is k to estimate, and [1] is fixed dt
-        transition_param = [self._theta_init['to_estimate']['k']['current_value'], self.config['dt']]
-
-        # observation uncertainty param is to estimate
-        obs_param = self._theta_init['to_estimate']['obs_uncertainty']['current_value']
-
-        # input uncertainty param is to estimate
-        input_param = [self._theta_init['to_estimate']['input_mean']['current_value'], 
-                       self._theta_init['to_estimate']['input_std']['current_value'],
-                       self._theta_init['to_estimate']['input_uncertainty']['current_value']
-                       ]
-
-        # initial state param is to estimate
-        init_state = self._theta_init['to_estimate']['initial_state']['current_value']
-
-        self.theta = Parameter(
-                            input_model=input_param,
-                            transition_model=transition_param, 
-                            observation_model=obs_param,
-                            initial_state=init_state
-                            )
-        return 
+        obs_interval = self.observed_ind[-1] - self.observed_ind[-2]
+        input_std = self.influx[self.observed_ind].std(ddof=1)
+        adjusted_std = np.sqrt(obs_interval) * input_std
+        # adjusted_std = input_std
+        return adjusted_std
     
-    # def input_model(
-    #         self
-    #     ) -> None:
-    #     """Input model for linear reservoir
-
-    #     Rt' ~ N(Ut, sigma_ipt)
-    #     """
-    #     for n in range(self.N):
-    #         self.R[n,:] = ss.norm(loc=self.influx, scale=self.theta.input_model[2]).rvs()
-    #         self.R[n,:][self.R[n,:] < 0] = 0 
-    #     return 
-    
-
-    def input_model(
-            self
-        ) -> None:
+    def input_model(self, start_ind: int, end_ind: int) -> None:
         """Input model for linear reservoir
 
-        Rt' ~ N(Ut, sigma_ipt)
-        """
-        for n in range(self.N):
-            self.R[n,:] = ss.norm(loc=self.theta.input_model[0], scale=self.theta.input_model[1]).rvs()
-            if self.R[n,:][self.R[n,:] >0].size == 0:
-                self.R[n,:][self.R[n,:] <= 0] = 10**(-8)
-            else:
-                self.R[n,:][self.R[n,:] <= 0] = min(10**(-8), min(self.R[n,:][self.R[n,:] > 0]))     
-            normalized = normalize_over_interval(self.R[n,:], self.observed_ind, self.influx)
-            self.R[n,:] = normalized + ss.norm(loc=0, scale=self.theta.input_model[2]).rvs(self.T)
-            self.R[n,:][self.R[n,:] < 0] = 0
-        return 
-    
-    def input_model(
-            self
-        ) -> None:
-        """Input model for linear reservoir
 
-        Rt' ~ Exp(Ut)
-        multiplier * Rk' = Uk + N(0, theta_r)
+        Ut: influx at time t
+        R't = N(Ut, Ut_std)
 
         Args:
-            Ut (float): forcing at time t
+            start_ind (int): start index of the input time series
+            end_ind (int): end index of the input time series
 
         Returns:
             np.ndarray: Rt
         """
+        sig_u = self.get_bulk_obs_std()
+        
+        R_prime = np.zeros((self.N, end_ind - start_ind))
+        U = self.influx[start_ind:end_ind].values
+        sig_r = self.theta.input_model/5.
+
         for n in range(self.N):
-            self.R[n,] = ss.expon(scale=self.influx).rvs()
-            normalized = normalize_over_interval(self.R[n,:], self.observed_ind, self.influx)
-            self.R[n,:] = normalized - ss.norm(0,self.theta.input_model).rvs(self.T)
-            self.R[n,:][self.R[n,:] < 0] = 0
+            R_prime[n,:] = ss.norm(U, scale=sig_u).rvs()
+            if R_prime[n,:][R_prime[n,:] >0].size == 0:
+                R_prime[n,:][R_prime[n,:] <= 0] = 10**(-8)
+            else:
+                R_prime[n,:][R_prime[n,:] <= 0] = min(10**(-8), min(R_prime[n,:][R_prime[n,:] > 0]))
+            R_prime[n,:] = normalize_over_interval(R_prime[n,:], U[0] + ss.norm(0, sig_r).rvs())
 
-        return 
+        return R_prime
+    
+    def transition_model_probability(self, X_1toT: np.ndarray) -> np.ndarray:
+        """State estimaton model f_theta(Xt-1, Rt)
+
+        Currently set up for linear reservoirmodel:
+            p(Xt|Xtm1) = (1 - k * delta_t) * Xtm1 + delta_t * Rt,
+                where Rt = N(Ut, theta_r) from input model
+            p(Xt|Xtm1) = N((1 - k * delta_t) * Xtm1 + delta_t * Ut, delta_t * theta_r)    
+
+        Args:
+            X_1toT (np.ndarray): state X at t = 1:T
+
+        Returns:
+            np.ndarray: p(X_{1:T}|theta)
+        """
+        # Get parameters
+        theta = self.theta.transition_model
+        theta_k = theta[0]
+        theta_dt = theta[1]
+        theta_r = self.theta.input_model
+
+        # set all params
+        prob = np.ones((self.N, self.T - 1))
+        Ut = self.influx[1:].to_numpy()
+        Xtm1 = X_1toT[:-1]
+        Xt = X_1toT[1:]
+
+        # calculate prob
+        prob = ss.norm(
+            (1 - theta_k * theta_dt) * Xtm1 + theta_dt * Ut, theta_r * (theta_dt)
+        ).logpdf(Xt) 
+
+        return prob.sum()
+    
+ 
+class ModelInterfaceDeci(ModelInterface):
+    def get_bulk_obs_std(self) -> float:
+        """Get bulk observation uncertainty
+
+        Returns:
+            float: bulk observation uncertainty
+        """
+        obs_interval = self.observed_ind[-1] - self.observed_ind[-2]
+        input_std = self.influx[self.observed_ind].std(ddof=1)
+        # adjusted_std = np.sqrt(obs_interval) * input_std
+        adjusted_std = input_std
+        return adjusted_std
+    
+    def input_model(self, start_ind: int, end_ind: int) -> None:
+        """Input model for linear reservoir
 
 
-# %%
+        Ut: influx at time t
+        R't = N(Ut, Ut_std)
+
+        Args:
+            start_ind (int): start index of the input time series
+            end_ind (int): end index of the input time series
+
+        Returns:
+            np.ndarray: Rt
+        """
+        sig_u = self.get_bulk_obs_std()
+        
+        R_prime = np.zeros((self.N, end_ind - start_ind))
+        U = self.influx[start_ind:end_ind].values
+        sig_r = self.theta.input_model/5.
+
+        for n in range(self.N):
+            R_prime[n,:] = ss.norm(U, scale=sig_u).rvs()
+            if R_prime[n,:][R_prime[n,:] >0].size == 0:
+                R_prime[n,:][R_prime[n,:] <= 0] = 10**(-8)
+            else:
+                R_prime[n,:][R_prime[n,:] <= 0] = min(10**(-8), min(R_prime[n,:][R_prime[n,:] > 0]))
+            R_prime[n,:] = normalize_over_interval(R_prime[n,:], U[0] + ss.norm(0, sig_r).rvs())
+
+        return R_prime
+    
+    def transition_model_probability(self, X_1toT: np.ndarray) -> np.ndarray:
+        """State estimaton model f_theta(Xt-1, Rt)
+
+        Currently set up for linear reservoirmodel:
+            p(Xt|Xtm1) = (1 - k * delta_t) * Xtm1 + delta_t * Rt,
+                where Rt = N(Ut, theta_r) from input model
+            p(Xt|Xtm1) = N((1 - k * delta_t) * Xtm1 + delta_t * Ut, delta_t * theta_r)    
+
+        Args:
+            X_1toT (np.ndarray): state X at t = 1:T
+
+        Returns:
+            np.ndarray: p(X_{1:T}|theta)
+        """
+        # Get parameters
+        theta = self.theta.transition_model
+        theta_k = theta[0]
+        theta_dt = theta[1]
+        theta_r = self.theta.input_model
+
+        # set all params
+        prob = np.ones((self.N, self.T - 1))
+        Ut = self.influx[1:].to_numpy()
+        Xtm1 = X_1toT[:-1]
+        Xt = X_1toT[1:]
+
+        # calculate prob
+        prob = ss.norm(
+            (1 - theta_k * theta_dt) * Xtm1 + theta_dt * Ut, theta_r * (theta_dt)
+        ).logpdf(Xt) 
+
+        return prob[-1]
+    
+
 

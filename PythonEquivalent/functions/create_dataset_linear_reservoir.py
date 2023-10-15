@@ -163,26 +163,29 @@ def generate_w_diff_noise_level(
             if not os.path.exists(root + f"{type_ipt}/"):
                 os.mkdir(root + f"{type_ipt}/")
 
-            plt.savefig(root + f"{type_ipt}/stn_{stn_ipt}_{stn_obs}.pdf")
-            df.to_csv(root + f"{type_ipt}/stn_{stn_ipt}_{stn_obs}.csv")
+            plt.savefig(root + f"{type_ipt}/stn_{stn_ipt}_{stn_obs}_T_{length}_k_{int(k)}.pdf")
+            df.to_csv(root + f"{type_ipt}/stn_{stn_ipt}_{stn_obs}_T_{length}_k_{int(k)}.csv")
     return
 
 
 # %%
 if __name__ == "__main__":
-    root = "/Users/esthersida/Documents/Code/particle/SAS/PythonEquivalent/Data/"
+    data_root = "/Users/esthersida/pMESAS/Data/"
     # universal constants
     length = 100
     delta_t = 1.0 / 24 / 60 * 15
-    k = 1.0
+    k = 100.
     phi = 1 - k * delta_t
     # for input and output stn ratio are consistent
-    stn_ipts = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
-    stn_ratios = [0.5, 1, 2, 3, 4, 5, 6]
+    # stn_ipts = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+    # stn_ratios = [0.5, 1, 2, 3, 4, 5, 6]
+    stn_ipts = [5.]
+    stn_ratios = [1.]
+    
     # white noise
-    params_ips = [0.5, 0.02]
+    params_ips = [5., 0.2]
     generate_w_diff_noise_level(
-        root,
+        data_root,
         stn_ipts,
         stn_ratios,
         params_ips,
@@ -190,38 +193,38 @@ if __name__ == "__main__":
         length=length,
         k=k,
         delta_t=delta_t,
-        Q_init=0.5,
+        Q_init=5./k,
     )
 
-    # exponential decay
-    params_ips = 0.5
-    generate_w_diff_noise_level(
-        root,
-        stn_ipts,
-        stn_ratios,
-        params_ips,
-        type_ipt="ExpDecay",
-        length=length,
-        k=k,
-        delta_t=delta_t,
-        Q_init=0.5,
-    )
+    # # exponential decay
+    # params_ips = 0.5
+    # generate_w_diff_noise_level(
+    #     root,
+    #     stn_ipts,
+    #     stn_ratios,
+    #     params_ips,
+    #     type_ipt="ExpDecay",
+    #     length=length,
+    #     k=k,
+    #     delta_t=delta_t,
+    #     Q_init=0.5,
+    # )
 
-    # real precipitation
-    precip = pd.read_csv(root + "precip.csv")
-    input_precip = precip["45"].to_numpy()
-    input_precip = input_precip[900 : 900 + length]
+    # # real precipitation
+    # precip = pd.read_csv(root + "precip.csv")
+    # input_precip = precip["45"].to_numpy()
+    # input_precip = input_precip[900 : 900 + length]
 
-    generate_w_diff_noise_level(
-        root,
-        stn_ipts,
-        stn_ratios,
-        input_precip=input_precip,
-        type_ipt="RealPrecip",
-        length=length,
-        k=k,
-        delta_t=delta_t,
-        Q_init=0.01,
-    )
+    # generate_w_diff_noise_level(
+    #     root,
+    #     stn_ipts,
+    #     stn_ratios,
+    #     input_precip=input_precip,
+    #     type_ipt="RealPrecip",
+    #     length=length,
+    #     k=k,
+    #     delta_t=delta_t,
+    #     Q_init=0.01,
+    # )
 
 # %%
