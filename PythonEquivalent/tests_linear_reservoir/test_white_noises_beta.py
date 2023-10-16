@@ -13,7 +13,7 @@ from functions.get_dataset import get_different_input_scenarios
 from tests_linear_reservoir.test_utils import *
 import pandas as pd
 from model.model_interface import ModelInterface
-from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
+from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk, ModelInterfaceDeci
 
 # %%
 # model run settings
@@ -26,7 +26,7 @@ stn_input = [5.]
 interval = [0, 30]
 length = 100
 k_model = 100
-model_interface_class = ModelInterfaceBulk
+model_interface_class = ModelInterfaceDeci
 data_root = "/Users/esthersida/pMESAS"
 
 for stn_i in stn_input:
@@ -43,7 +43,7 @@ for stn_i in stn_input:
         weekly_bulk_true_q,
     ) = get_different_input_scenarios(df, interval, plot=False)
 
-    case = semiweekly_bulk
+    case = instant_gaps_2_d
     df_obs = case.df_obs
     obs_made = case.obs_made
     case_name = case.case_name
@@ -56,7 +56,7 @@ for stn_i in stn_input:
     obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
 
 
-    config = {"observed_made_each_step": obs_made, "outflux": "Q_true", "use_MAP_AS_weight": False, "use_MAP_ref_traj": False}
+    config = {"observed_made_each_step": obs_made, "outflux": "Q_true", "use_MAP_AS_weight": True, "use_MAP_ref_traj": True}
 
     # Save prior parameters
     path_str = f"{data_root}/Results/TestLR/{test_case}/k_{k_model}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}/{case_name}"
@@ -84,7 +84,7 @@ for stn_i in stn_input:
     input_scenarios = np.loadtxt(f"{path_str}/input_scenarios.csv")
     output_scenarios = np.loadtxt(f"{path_str}/output_scenarios.csv")
 
-    threshold = 5
+    threshold = 10
     plot_df = pd.DataFrame(
         {
             "k": k,
@@ -99,7 +99,7 @@ for stn_i in stn_input:
     obs_uncertainty_true = 0.0
     dt = 1.0 / 24 / 60 * 15
 
-    sig_e = dt * 0.02 / stn_i
+    sig_e = dt * 0.2 / stn_i
     phi = 1 - k_model * dt
     sig_q = np.sqrt(sig_e**2 / (1 - phi**2))
 
