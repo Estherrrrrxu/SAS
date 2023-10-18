@@ -86,14 +86,13 @@ def generate_outflow(
 def generate_w_diff_noise_level(
     root: str,
     stn_ipts: List[float],
-    stn_ratios: List[float],
     params_ipt: Optional[List[float]] = None,
     input_precip: List[float] = None,
     type_ipt: str = "WhiteNoise",
     length: int = 100,
     Q_init: float = 0.0,
     k: float = 1.0,
-    delta_t: float = 1.0 / 24 / 60 * 15,
+    delta_t: float = 1.0,
 ) -> None:
     """Generate dataset with different noise level
     Args:
@@ -120,8 +119,8 @@ def generate_w_diff_noise_level(
 
     # generate outflow
     Q = generate_outflow(J, delta_t, k, Q_init)
-    e = J * delta_t
-    sig_e = np.std(e, ddof=1)
+
+    sig_e = np.std(J * delta_t, ddof=1)
     phi = 1 - k * delta_t
     sig_q = np.sqrt(sig_e**2 / (1 - phi**2))
 
@@ -129,49 +128,51 @@ def generate_w_diff_noise_level(
     Q_true = deepcopy(Q)
 
     for stn_ipt in stn_ipts:
-        for ratio in stn_ratios:
-            J = deepcopy(J_true)
-            Q = deepcopy(Q_true)
 
-            stn_obs = stn_ipt * ratio
-            # add noise according to signal to noise ratio
-            noise_j = sig_e / delta_t / stn_ipt
-            noise_q = sig_q / stn_obs
+        J = deepcopy(J_true)
+        Q = deepcopy(Q_true)
 
-            a = (0 - Q) / noise_q
-            Q = ss.truncnorm.rvs(a, np.inf, loc=Q, scale=noise_q)
-            a = (0 - J) / noise_j
-            J = ss.truncnorm.rvs(a, np.inf, loc=J, scale=noise_j)
+        # add noise according to signal to noise ratio
+        noise_j = sig_e / stn_ipt
+        noise_q = noise_j
 
-            df = pd.DataFrame(
-                {"J_true": J_true, "J_obs": J, "Q_true": Q_true, "Q_obs": Q}
-            )
+        a = (0 - J) / noise_j
+        J = ss.truncnorm.rvs(a, np.inf, loc=J, scale=noise_j)
 
-            plt.figure()
-            plt.subplot(2, 1, 1)
-            plt.plot(df["J_true"], label="Truth")
-            plt.plot(df["J_obs"], "*", label="Obs")
-            plt.legend(frameon=False)
-            plt.title("Input")
+        a = (0 - Q) / noise_q
+        Q = ss.truncnorm.rvs(a, np.inf, loc=Q, scale=noise_q)
 
-            plt.subplot(2, 1, 2)
-            plt.plot(df["Q_true"], label="Truth")
-            plt.plot(df["Q_obs"], "*", label="Obs")
-            plt.title("Output")
-            plt.legend(frameon=False)
-            plt.tight_layout()
+        df = pd.DataFrame({"J_true": J_true, "J_obs": J, "Q_true": Q_true, "Q_obs": Q})
 
-            if root[-1] == "/":
-                root = root[:-1]
+        plt.figure()
+        plt.subplot(2, 1, 1)
+        plt.plot(df["J_true"], label="Truth")
+        plt.plot(df["J_obs"], "*", label="Obs")
+        plt.legend(frameon=False)
+        plt.title("Input")
 
-            if not os.path.exists(root):
-                os.mkdir(root)
+        plt.subplot(2, 1, 2)
+        plt.plot(df["Q_true"], label="Truth")
+        plt.plot(df["Q_obs"], "*", label="Obs")
+        plt.title(f"Output")
+        plt.legend(frameon=False)
+        plt.tight_layout()
+        
+        if sum(df["Q_obs"]<=0.):
+            raise ValueError(f"Negative discharge at {k} and {stn_ipt}")
 
-            if not os.path.exists(root + f"/{type_ipt}/"):
-                os.mkdir(root + f"/{type_ipt}/")
+        if root[-1] == "/":
+            root = root[:-1]
 
-            plt.savefig(f"{root}/{type_ipt}/stn_{stn_ipt}_{stn_obs}_T_{length}_k_{int(k)}.pdf")
-            df.to_csv(f"{root}/{type_ipt}/stn_{stn_ipt}_{stn_obs}_T_{length}_k_{int(k)}.csv")
+        if not os.path.exists(root):
+            os.mkdir(root)
+
+        if not os.path.exists(root + f"/{type_ipt}/"):
+            os.mkdir(root + f"/{type_ipt}/")
+
+        df.to_csv(
+            f"{root}/{type_ipt}/stn_{int(stn_ipt)}_T_{length}_k_{k}_mean_{params_ips[0]}_std_{params_ips[1]}.csv"
+        )
     return
 
 
@@ -179,30 +180,28 @@ def generate_w_diff_noise_level(
 if __name__ == "__main__":
     data_root = "/Users/esthersida/pMESAS/Data/"
     # universal constants
-    length = 100
-    delta_t = 1.0 / 24 / 60 * 15
-    k = 100.
-    phi = 1 - k * delta_t
-    # for input and output stn ratio are consistent
-    # stn_ipts = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
-    # stn_ratios = [0.5, 1, 2, 3, 4, 5, 6]
-    stn_ipts = [5.]
-    stn_ratios = [5.]
+    length = 3000
+
+    delta_t = 1.
     
-    # white noise
-    params_ips = [5., 0.2]
-    np.random.seed(1014)
-    generate_w_diff_noise_level(
-        data_root,
-        stn_ipts,
-        stn_ratios,
-        params_ips,
-        type_ipt="WhiteNoise",
-        length=length,
-        k=k,
-        delta_t=delta_t,
-        Q_init=5./k,
-    )
+    stn_ipts = [1, 3, 5]
+    
+    
+    for k in [1., 0.1, 0.01, 0.001]:
+        for std in [0.1, 0.2, 0.5, 1.]:
+            params_ips = [5., std]
+            np.random.seed(1014)
+            generate_w_diff_noise_level(
+                data_root,
+                stn_ipts,
+                params_ips,
+                type_ipt="WhiteNoise",
+                length=length,
+                k=k,
+                delta_t=delta_t,
+                Q_init=params_ips[0] / k,
+            )
+
 
     # # exponential decay
     # params_ips = 0.5

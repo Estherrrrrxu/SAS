@@ -83,12 +83,13 @@ class ModelInterface:
         """
 
         _default_config = {
-            "dt": 1.0 / 24 / 60 * 15,
+            "dt": 1.0,
             "influx": "J_obs",
             "outflux": "Q_obs",
             "observed_made_each_step": True,
             "use_MAP_ref_traj": False,
-            "use_MAP_AS_weight": False
+            "use_MAP_AS_weight": False,
+            "use_MAP_MCMC": False
         }
 
         if self.config is None:
@@ -302,11 +303,11 @@ class ModelInterface:
             if current_theta["prior_dis"] == "normal":
                 # update or not
                 if not update:
-                    mean = current_theta["prior_params"][0]
+                    mean, std = current_theta["prior_params"]
 
                 else:
-                    mean = theta_new[key]
-                std = current_theta["prior_params"][1]
+                    mean, std = theta_new[key]   
+                    # std *= 2.           
 
                 # truncate or not
                 if is_nonnegative:
@@ -450,24 +451,25 @@ class ModelInterface:
         Returns:
             np.ndarray: p(X_{1:T}|theta)
         """
-        # Get parameters
-        theta = self.theta.transition_model
-        theta_k = theta[0]
-        theta_dt = theta[1]
-        theta_r = self.theta.input_model
+        # # Get parameters
+        # theta = self.theta.transition_model
+        # theta_k = theta[0]
+        # theta_dt = theta[1]
+        # theta_r = self.theta.input_model
 
-        # set all params
-        prob = np.ones((self.N, self.T - 1))
-        Ut = self.influx[1:].to_numpy()
-        Xtm1 = X_1toT[:-1]
-        Xt = X_1toT[1:]
+        # # set all params
+        # prob = np.ones((self.N, self.T - 1))
+        # Ut = self.influx[1:].to_numpy()
+        # Xtm1 = X_1toT[:-1]
+        # Xt = X_1toT[1:]
 
-        # calculate prob
-        prob = ss.norm(
-            (1 - theta_k * theta_dt) * Xtm1 + theta_dt * Ut, theta_r * (theta_dt)
-        ).logpdf(Xt) 
+        # # calculate prob
+        # prob = ss.norm(
+        #     (1 - theta_k * theta_dt) * Xtm1 + theta_dt * Ut, theta_r * (theta_dt)
+        # ).logpdf(Xt) 
 
-        return prob.sum()
+        # return prob.sum()
+        return 1.
 
     def observation_model(self, Xk: np.ndarray) -> np.ndarray:
         """Observation probability g_theta

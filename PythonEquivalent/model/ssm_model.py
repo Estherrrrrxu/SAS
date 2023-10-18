@@ -5,6 +5,7 @@ from model.model_interface import ModelInterface
 from model.utils_chain import Chain
 import numpy as np
 import multiprocessing as mp
+from functions.utils import _inverse_pmf
 
 # %%
 def worker_function_sMC(chain_d, theta_new):   
@@ -57,6 +58,7 @@ class SSModel:
         self.T = model_interface.T
         self.N = model_interface.N
         self.K = model_interface.K
+        self.is_MAP_MCMC = model_interface.config["use_MAP_MCMC"]
 
         # pass model structure for each chain
         self.models_for_each_chain = [model_interface for d in range(self.D)]
@@ -119,23 +121,44 @@ class SSModel:
             state_W = chain_d.model_interface.transition_model_probability(traj_X)
             WW[d] = state_W + np.log(model_W.max())
  
-        # find optimal parameters
-        ind_best_param = np.argmax(WW)
-        self.theta_record[0,:] = theta_new[ind_best_param, :]
         
-        # best_theta = {}
-        # for p, key in enumerate(self._theta_to_estimate):
-        #     best_theta[key] = self.theta_record[0,p]
+        # find optimal parameters
+        W_theta = np.exp((WW - WW.max())/WW.max())
+        W_theta = W_theta / W_theta.sum()
 
-        # for d in range(self.D):
-        #     chains[d].model_interface._set_parameter_distribution(update=True, theta_new=best_theta)
+        save_std = np.zeros(self._num_theta_to_estimate)
+        for p, key in enumerate(self._theta_to_estimate):
+            theta_dist_mean = (theta_new[:,p]*W_theta).sum()
+            theta_dist_std = np.sqrt(sum((theta_new[:,p] - theta_dist_mean)**2 * W_theta)/(self.D-1.))
+            save_std[p] = theta_dist_std
 
+            # find optimal trajectory of each chain
+            self.theta_record[0,p] = theta_dist_mean
+
+
+        if self.is_MAP_MCMC:
+            ind_best_param = np.argmax(W_theta)
+        else:
+
+            ind_best_param = _inverse_pmf(theta_new[:,-1], W_theta, num=1)[0]
 
         best_model = chains[ind_best_param]
         B = BB[ind_best_param,:]
         self.input_record[0,:] = best_model._get_R_traj(best_model.state.R, B)
         self.state_record[0,:] = best_model._get_X_traj(best_model.state.X, B)
         self.output_record[0,:] = best_model._get_Y_traj(best_model.state.Y, B)
+
+
+        best_theta = {}
+        for p, key in enumerate(self._theta_to_estimate):
+            best_theta[key] = [self.theta_record[0,p], save_std[p]]
+
+        for d in range(self.D):
+            chains[d].model_interface._set_parameter_distribution(update=True, theta_new=best_theta)
+
+
+
+        
 
         # for each MCMC iteration
         for l in tqdm(range(self.L)):
@@ -158,25 +181,37 @@ class SSModel:
                     BB[d,:] = B
                     state_W = chains[d].model_interface.transition_model_probability(traj_X)
                     WW[d] = state_W + np.log(model_W.max())
+                
+                W_theta = np.exp((WW - WW.max())/WW.max())
+                W_theta = W_theta / W_theta.sum()
+
+                theta_dist_mean = (theta_new[:,p]*W_theta).sum()
+                theta_dist_std = np.sqrt(sum((theta_new[:,p] - theta_dist_mean)**2 * W_theta)/(self.D-1.))
+                save_std[p] = theta_dist_std
 
 
                 # find optimal trajectory of each chain
-                ind_best_param = np.argmax(WW)  
-                self.theta_record[l+1,p] = theta_new[ind_best_param, p]   
+                self.theta_record[l+1,p] = theta_dist_mean 
+
+            if self.is_MAP_MCMC:
+                ind_best_param = np.argmax(W_theta)
+            else:
+                ind_best_param = _inverse_pmf(theta_new[:,p],W_theta, num=1)[0]
+
+            best_model = chains[ind_best_param]  
+
+            B = BB[ind_best_param,:]
+            self.input_record[l+1,:] = best_model._get_R_traj(best_model.state.R, B)
+            self.state_record[l+1,:] = best_model._get_X_traj(best_model.state.X, B)
+            self.output_record[l+1,:] = best_model._get_Y_traj(best_model.state.Y, B)
+
+            best_theta = {}
+            for p, key in enumerate(self._theta_to_estimate):
+                best_theta[key] = [self.theta_record[l+1,p], save_std[p]]
+
+            for d in range(self.D):
+                chains[d].model_interface._set_parameter_distribution(update=True, theta_new=best_theta)
                 
-                best_model = chains[ind_best_param]  
-
-                B = BB[ind_best_param,:]
-                self.input_record[l+1,:] = best_model._get_R_traj(best_model.state.R, B)
-                self.state_record[l+1,:] = best_model._get_X_traj(best_model.state.X, B)
-                self.output_record[l+1,:] = best_model._get_Y_traj(best_model.state.Y, B)
-
-            # best_theta = {}
-            # for p, key in enumerate(self._theta_to_estimate):
-            #     best_theta[key] = self.theta_record[l+1,p]
-
-            # for d in range(self.D):
-            #     chains[d].model_interface._set_parameter_distribution(update=True, theta_new=best_theta)
 
     def run_particle_Gibbs_parallel(self) -> None:
         # initialize likelihood, theta storage space, and chains

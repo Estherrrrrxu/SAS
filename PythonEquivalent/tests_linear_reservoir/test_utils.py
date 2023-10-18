@@ -7,15 +7,24 @@ from model.utils_chain import Chain
 from functions.utils import plot_MAP
 import numpy as np
 import pandas as pd
-from typing import Optional, List
+from typing import Optional, List, Any
 
 from numba import vectorize
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.stats as ss
 
+
 # %%
-def run_with_given_settings(df_obs: pd.DataFrame, config: dict, run_parameter: List[int], path_str: str, prior_record: pd.DataFrame, plot_preliminary: Optional[bool] = True, model_interface_class: Optional[ModelInterface]=ModelInterface) -> None:
+def run_with_given_settings(
+    df_obs: pd.DataFrame,
+    config: dict,
+    run_parameter: List[int],
+    path_str: str,
+    prior_record: pd.DataFrame,
+    plot_preliminary: Optional[bool] = True,
+    model_interface_class: Optional[ModelInterface] = ModelInterface,
+) -> None:
     """model_run_routine
 
     Args:
@@ -98,16 +107,17 @@ def run_with_given_settings(df_obs: pd.DataFrame, config: dict, run_parameter: L
     output_scenarios = model.output_record
     df = model_interface.df
 
-    np.savetxt(f"{path_str}/k.csv",k)
-    np.savetxt(f"{path_str}/initial_state.csv",initial_state)
-    np.savetxt(f"{path_str}/input_uncertainty.csv",input_uncertainty)
-    np.savetxt(f"{path_str}/obs_uncertainty.csv",obs_uncertainty)
-    np.savetxt(f"{path_str}/input_scenarios.csv",input_scenarios)
-    np.savetxt(f"{path_str}/output_scenarios.csv",output_scenarios)
+    np.savetxt(f"{path_str}/k.csv", k)
+    np.savetxt(f"{path_str}/initial_state.csv", initial_state)
+    np.savetxt(f"{path_str}/input_uncertainty.csv", input_uncertainty)
+    np.savetxt(f"{path_str}/obs_uncertainty.csv", obs_uncertainty)
+    np.savetxt(f"{path_str}/input_scenarios.csv", input_scenarios)
+    np.savetxt(f"{path_str}/output_scenarios.csv", output_scenarios)
     df.to_csv(f"{path_str}/df.csv")
 
     print(f"Results saved to {path_str}.")
     return None
+
 
 # %%
 # %%
@@ -370,8 +380,6 @@ def plot_scenarios(
     sig_q: float,
     line_mode: Optional[bool] = False,
 ):
-
-    
     fig, ax = plt.subplots(2, 1, figsize=(8, 8))
     real_start = truth_df["index"][truth_df["is_obs"]].iloc[1]
     real_end = truth_df["index"][truth_df["is_obs"]].iloc[-1] + 1
@@ -388,7 +396,7 @@ def plot_scenarios(
 
     # scenarios
     if line_mode:
-        alpha = 5./estimation["input"][start_ind:,].shape[0]
+        alpha = 5.0 / estimation["input"][start_ind:,].shape[0]
         ax[0].plot(
             truth_df["index"][real_start:real_end],
             estimation["input"][start_ind:, real_start:real_end].T,
@@ -400,10 +408,10 @@ def plot_scenarios(
 
     else:
         sns.boxplot(
-            estimation["input"][start_ind:,],
+            estimation["input"][start_ind:, :real_end],
             orient="v",
             ax=ax[0],
-            order=truth_df["index"]-img_start,
+            order=truth_df["index"] - img_start,
             color="C9",
             linewidth=1.5,
             fliersize=1.5,
@@ -414,21 +422,25 @@ def plot_scenarios(
         )
         ax[0].plot(
             truth_df["index"][real_start:real_end],
-            estimation["input"][start_ind:,real_start:real_end].mean(axis=0),
+            estimation["input"][start_ind:, real_start:real_end].mean(axis=0),
             color="C9",
             linewidth=3,
             zorder=0,
-            label=f"Ensemble mean"
+            label=f"Ensemble mean",
         )
 
     # truth trajectory
     ax[0].plot(
-        truth_df["index"][real_start:real_end], truth_df["J_true"][real_start:real_end], color="k", label="Truth", linewidth=0.8
+        truth_df["index"][real_start:real_end],
+        truth_df["J_true"][real_start:real_end],
+        color="k",
+        label="Truth",
+        linewidth=0.8,
     )
     # observations
     ax[0].scatter(
-        truth_df["index"][truth_df["is_obs"]][1:],
-        truth_df["J_obs"][truth_df["is_obs"]][1:],
+        truth_df["index"][truth_df["is_obs"]][1:real_end],
+        truth_df["J_obs"][truth_df["is_obs"]][1:real_end],
         marker="+",
         c="k",
         s=100,
@@ -437,7 +449,7 @@ def plot_scenarios(
     )
 
     ax[0].set_ylim([min(truth_df["J_true"]) * 0.925, max(truth_df["J_true"]) * 1.065])
-    ax[0].set_xlim([real_start-0.2, real_end+0.2])
+    ax[0].set_xlim([real_start - 0.2, real_end + 0.2])
     ax[0].set_ylabel("Input signal", fontsize=16)
     ax[0].set_xticks([])
 
@@ -464,8 +476,8 @@ def plot_scenarios(
         )
     else:
         sns.boxplot(
-            estimation["output"][start_ind:,real_start:real_end],
-            order=truth_df["index"]-real_start,
+            estimation["output"][start_ind:, real_start:real_end],
+            order=truth_df["index"] - real_start,
             orient="v",
             ax=ax[1],
             color="C9",
@@ -482,33 +494,41 @@ def plot_scenarios(
             color="C9",
             linewidth=3,
             zorder=0,
-            label=f"Ensemble mean"
+            label=f"Ensemble mean",
         )
 
     # truth trajectory
     ax[1].plot(
-        truth_df["index"][real_start:real_end], truth_df["Q_true"][real_start:real_end], color="k", label="Truth", linewidth=0.8
+        truth_df["index"][real_start:real_end],
+        truth_df["Q_true"][real_start:real_end],
+        color="k",
+        label="Truth",
+        linewidth=0.8,
     )
     # observations
     ax[1].scatter(
-        truth_df["index"][truth_df["is_obs"]][1:],
-        truth_df["Q_true"][truth_df["is_obs"]][1:],
+        truth_df["index"][truth_df["is_obs"]][1:real_end],
+        truth_df["Q_true"][truth_df["is_obs"]][1:real_end],
         marker="+",
         c="k",
         s=100,
         linewidth=2,
         label="Observations",
     )
-    cyan_line, = ax[1].plot([], [], 'c-', label='Scenarios')
+    (cyan_line,) = ax[1].plot([], [], "c-", label="Scenarios")
 
     ax[1].set_ylim([min(truth_df["Q_true"]) * 0.925, max(truth_df["Q_true"]) * 1.065])
-    ax[1].set_xlim([real_start-0.2, real_end+0.2])
+    ax[1].set_xlim([real_start - 0.2, real_end + 0.2])
     ax[1].set_ylabel("Output signal", fontsize=16)
     ax[1].set_xlabel("Timestep", fontsize=16)
     if line_mode:
-        ax[1].legend(frameon=False, ncol = 5, loc="upper center", bbox_to_anchor=(0.5, 1.1))
+        ax[1].legend(
+            frameon=False, ncol=5, loc="upper center", bbox_to_anchor=(0.5, 1.1)
+        )
     else:
-        ax[1].legend(frameon=False, ncol = 4, loc="upper center", bbox_to_anchor=(0.5, 1.1))
+        ax[1].legend(
+            frameon=False, ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.1)
+        )
 
     fig.tight_layout()
     return fig

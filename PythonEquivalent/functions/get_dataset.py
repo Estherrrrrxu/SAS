@@ -15,91 +15,142 @@ class Cases:
 def get_different_input_scenarios(
         df: pd.DataFrame,
         interval: List[int],
-        plot: Optional[bool] = False
+        plot: Optional[bool] = False,
+        observation_mode: Optional[str] = "perfect",
 ) -> None:
 
     # %%
     # For instantaneously observed data
+    
     # observation made at each time step
     st, et = interval[0], interval[1]
     original = df[st:et]
     original['index'] = range(len(original))
     original['is_obs'] = True
-    # observation made at each 2 time steps
-    instant_gaps_2_d = original.copy()
-    instant_gaps_2_d["is_obs"] = False
-    instant_gaps_2_d["is_obs"][::2] = True
-    # observation made at each 5 time steps
-    instant_gaps_5_d = original.copy()
-    instant_gaps_5_d["is_obs"] = False
-    instant_gaps_5_d["is_obs"][::5] = True
 
-    if plot:
-        plot_base(original)
-        plot_base(instant_gaps_2_d)
-        plot_base(instant_gaps_5_d)
+    if observation_mode == "perfect":
 
-    #
-    # For bulk observed data
-    semiweekly_bulk = create_bulk_sample(original, 3)
-    weekly_bulk = create_bulk_sample(original, 7)
-    biweekly_bulk = create_bulk_sample(original, 14)
-    
-    weekly_bulk_true_q = weekly_bulk.copy()
-    ind = weekly_bulk_true_q['is_obs']
-    weekly_bulk_true_q["Q_obs"][ind==False] = np.nan
-    weekly_bulk_true_q["Q_obs"][ind==True] = weekly_bulk_true_q["Q_true"][ind==True]
-    weekly_bulk_true_q = weekly_bulk_true_q.fillna(method='bfill')
+        if plot:
+            plot_base(original)
 
-    if plot:
-        plot_bulk(semiweekly_bulk)
-        plot_bulk(weekly_bulk)
-        plot_bulk(biweekly_bulk)
-        plot_bulk(weekly_bulk_true_q)
-
-    
-    perfect = Cases( 
+        perfect = Cases( 
         df_obs=original, 
         obs_made=1, 
         case_name="Almost perfect data"
         )
 
-    instant_gaps_2_d = Cases(
-        df_obs=instant_gaps_2_d, 
-        obs_made=2, 
-        case_name="Instant measurement w/ gaps of 2 days"
-        )
+        return perfect
+    elif observation_mode == "deci_2d":
 
-    instant_gaps_5_d = Cases(
-        df_obs=instant_gaps_5_d, 
-        obs_made=5, 
-        case_name="Instant measurement w/ gaps of 5 days"
-        )
-    
-    semiweekly_bulk = Cases(
-        df_obs=semiweekly_bulk, 
-        obs_made=semiweekly_bulk["is_obs"].values, 
-        case_name="Semiweekly bulk"
-        )
+        # observation made at every 2 time steps
+        deci_2d = original.copy()
+        deci_2d["is_obs"] = False
+        deci_2d["is_obs"][::2] = True
+        
+        if plot:
+            plot_base(deci_2d)
+        
+        deci_2d = Cases(
+            df_obs=deci_2d, 
+            obs_made=2, 
+            case_name="Decimated every 2d"
+            )
 
-    weekly_bulk = Cases(
-        df_obs=weekly_bulk, 
-        obs_made=weekly_bulk["is_obs"].values, 
-        case_name="Weekly bulk"
-        )
+        return deci_2d
     
-    biweekly_bulk = Cases(
-        df_obs=biweekly_bulk, 
-        obs_made=biweekly_bulk["is_obs"].values, 
-        case_name="Biweekly bulk"
-        )
-    
-    weekly_bulk_true_q = Cases(
-        df_obs=weekly_bulk_true_q, 
-        obs_made=weekly_bulk_true_q["is_obs"].values, 
-        case_name="Weekly bulk true Q"
-        )
+    elif observation_mode == "deci_4d":
 
-    return perfect, instant_gaps_2_d, instant_gaps_5_d, semiweekly_bulk, weekly_bulk, biweekly_bulk, weekly_bulk_true_q
+        # observation made at every 5 time steps
+        deci_4d = original.copy()
+        deci_4d["is_obs"] = False
+        deci_4d["is_obs"][::4] = True
+
+        if plot:
+            plot_base(deci_4d)
+        
+        deci_4d = Cases(
+            df_obs=deci_4d, 
+            obs_made=4, 
+            case_name="Decimated every 4d"
+            )
+        
+        return deci_4d
+    
+    elif observation_mode == "deci_7d":
+
+        # observation made at every 7 time steps
+        deci_7d = original.copy()
+        deci_7d["is_obs"] = False
+        deci_7d["is_obs"][::7] = True
+
+        if plot:
+            plot_base(deci_7d)
+
+        deci_7d = Cases(
+            df_obs=deci_7d, 
+            obs_made=7, 
+            case_name="Decimated every 7d"
+            )
+        
+        return deci_7d
+    
+    elif observation_mode == "bulk_2d":
+
+        bulk_2d = create_bulk_sample(original, 2)
+
+        if plot:
+            plot_bulk(bulk_2d)
+
+        bulk_2d = Cases(
+            df_obs=bulk_2d, 
+            obs_made=2, 
+            case_name="Bulk every 2d"
+            )
+        
+        return bulk_2d
+    
+    elif observation_mode == "bulk_4d":
+
+        bulk_4d = create_bulk_sample(original, 4)
+
+        if plot:
+            plot_bulk(bulk_4d)
+        
+        bulk_4d = Cases(
+            df_obs=bulk_4d, 
+            obs_made=4, 
+            case_name="Bulk every 4d"
+            )
+        
+        return bulk_4d
+    
+    elif observation_mode == "bulk_7d":
+
+        bulk_7d = create_bulk_sample(original, 7)
+
+        if plot:
+            plot_bulk(bulk_7d)
+
+        bulk_7d = Cases(
+            df_obs=bulk_7d, 
+            obs_made=7, 
+            case_name="Bulk every 7d"
+            )
+        
+        return bulk_7d
+    
+    else:
+        raise ValueError("Invalid observation mode")
+
+
+
+
+
+
+
+
+
+    
+
 
 # %%

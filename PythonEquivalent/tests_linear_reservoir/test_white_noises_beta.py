@@ -17,33 +17,24 @@ from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk, Mo
 
 # %%
 # model run settings
-num_input_scenarios = 5
+num_input_scenarios = 10
 num_parameter_samples = 10
-len_parameter_MCMC = 15
+len_parameter_MCMC = 10
 test_case = "WhiteNoise"
 # stn_input = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
-stn_input = [5.]
+stn_input = [5]
 interval = [0, 30]
-length = 100
+length = 3000
 k_model = 100
 model_interface_class = ModelInterfaceDeci
 data_root = "/Users/esthersida/pMESAS"
+obs_mode = "deci_2d"
 
 for stn_i in stn_input:
-    stn_o = stn_i * 5.
-    df = pd.read_csv(f"{data_root}/Data/{test_case}/stn_{stn_i}_{stn_o}_T_{length}_k_{k_model}.csv", index_col=0)
+    df = pd.read_csv(f"{data_root}/Data/{test_case}/stn_{stn_i}_T_{length}_k_{k_model}.csv", index_col=0)
 
-    (
-        perfect,
-        instant_gaps_2_d,
-        instant_gaps_5_d,
-        semiweekly_bulk,
-        weekly_bulk,
-        biweekly_bulk,
-        weekly_bulk_true_q,
-    ) = get_different_input_scenarios(df, interval, plot=False)
+    case = get_different_input_scenarios(df, interval, plot=False, observation_mode=obs_mode)
 
-    case = instant_gaps_2_d
     df_obs = case.df_obs
     obs_made = case.obs_made
     case_name = case.case_name
@@ -53,10 +44,10 @@ for stn_i in stn_input:
     sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
     input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
     sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
-    obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
+    obs_uncertainty_prior = [sig_obs_hat/10., sig_obs_hat/10. / 3.0]
 
 
-    config = {"observed_made_each_step": obs_made, "outflux": "Q_true", "use_MAP_AS_weight": True, "use_MAP_ref_traj": True}
+    config = {"observed_made_each_step": obs_made, "outflux": "Q_true", "use_MAP_AS_weight": False, "use_MAP_ref_traj": False}
 
     # Save prior parameters
     path_str = f"{data_root}/Results/TestLR/{test_case}/k_{k_model}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}/{case_name}"
@@ -84,7 +75,7 @@ for stn_i in stn_input:
     input_scenarios = np.loadtxt(f"{path_str}/input_scenarios.csv")
     output_scenarios = np.loadtxt(f"{path_str}/output_scenarios.csv")
 
-    threshold = 10
+    threshold = 0
     plot_df = pd.DataFrame(
         {
             "k": k,
