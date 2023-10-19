@@ -517,7 +517,8 @@ def plot_scenarios(
     )
     (cyan_line,) = ax[1].plot([], [], "c-", label="Scenarios")
 
-    ax[1].set_ylim([min(truth_df["Q_true"]) * 0.925, max(truth_df["Q_true"]) * 1.065])
+    # ax[1].set_ylim([min(truth_df["Q_true"]) * 0.925, max(truth_df["Q_true"]) * 1.065])
+    ax[1].set_ylim([min(truth_df["Q_true"])*0.9995, max(truth_df["Q_true"])*1.0005])
     ax[1].set_xlim([real_start - 0.2, real_end + 0.2])
     ax[1].set_ylabel("Output signal", fontsize=16)
     ax[1].set_xlabel("Timestep", fontsize=16)

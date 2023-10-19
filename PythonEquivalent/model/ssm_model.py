@@ -59,6 +59,7 @@ class SSModel:
         self.N = model_interface.N
         self.K = model_interface.K
         self.is_MAP_MCMC = model_interface.config["use_MAP_MCMC"]
+        self.update_theta_dist = model_interface.config["update_theta_dist"]
 
         # pass model structure for each chain
         self.models_for_each_chain = [model_interface for d in range(self.D)]
@@ -148,17 +149,14 @@ class SSModel:
         self.state_record[0,:] = best_model._get_X_traj(best_model.state.X, B)
         self.output_record[0,:] = best_model._get_Y_traj(best_model.state.Y, B)
 
+        if self.update_theta_dist:
+            best_theta = {}
+            for p, key in enumerate(self._theta_to_estimate):
+                best_theta[key] = [self.theta_record[0,p], save_std[p]]
 
-        best_theta = {}
-        for p, key in enumerate(self._theta_to_estimate):
-            best_theta[key] = [self.theta_record[0,p], save_std[p]]
+            for d in range(self.D):
+                chains[d].model_interface._set_parameter_distribution(update=True, theta_new=best_theta)
 
-        for d in range(self.D):
-            chains[d].model_interface._set_parameter_distribution(update=True, theta_new=best_theta)
-
-
-
-        
 
         # for each MCMC iteration
         for l in tqdm(range(self.L)):
@@ -205,12 +203,13 @@ class SSModel:
             self.state_record[l+1,:] = best_model._get_X_traj(best_model.state.X, B)
             self.output_record[l+1,:] = best_model._get_Y_traj(best_model.state.Y, B)
 
-            best_theta = {}
-            for p, key in enumerate(self._theta_to_estimate):
-                best_theta[key] = [self.theta_record[l+1,p], save_std[p]]
+            if self.update_theta_dist:
+                best_theta = {}
+                for p, key in enumerate(self._theta_to_estimate):
+                    best_theta[key] = [self.theta_record[l+1,p], save_std[p]]
 
-            for d in range(self.D):
-                chains[d].model_interface._set_parameter_distribution(update=True, theta_new=best_theta)
+                for d in range(self.D):
+                    chains[d].model_interface._set_parameter_distribution(update=True, theta_new=best_theta)
                 
 
     def run_particle_Gibbs_parallel(self) -> None:

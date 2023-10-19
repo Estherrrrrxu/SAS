@@ -89,7 +89,8 @@ class ModelInterface:
             "observed_made_each_step": True,
             "use_MAP_ref_traj": False,
             "use_MAP_AS_weight": False,
-            "use_MAP_MCMC": False
+            "use_MAP_MCMC": False,
+            "update_theta_dist": False
         }
 
         if self.config is None:
@@ -306,8 +307,9 @@ class ModelInterface:
                     mean, std = current_theta["prior_params"]
 
                 else:
-                    mean, std = theta_new[key]   
-                    # std *= 2.           
+                    mean, std = theta_new[key]
+                    if std < mean/10.:
+                        std = mean/10.         
 
                 # truncate or not
                 if is_nonnegative:

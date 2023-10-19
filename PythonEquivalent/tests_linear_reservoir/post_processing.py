@@ -1,4 +1,7 @@
-    
+# %%
+import pandas as pd
+import numpy as np
+
 
 
 
@@ -6,20 +9,31 @@
 num_input_scenarios = 30
 num_parameter_samples = 25
 len_parameter_MCMC = 20
-k = 1.
-ipt_std = 0.1
+k_true = 1.
+ipt_std = 0.5
 obs_mode = "deci_2d"
 interval = [0, 40]
+ipt_mean = 5.0
 
-k_true = 1.0
-initial_state_true = 5.0
-input_uncertainty_true = 0.1
-obs_uncertainty_true = 0.0
+test_case = "WhiteNoise"
+data_root = "/Users/esthersida/pMESAS"
+
+stn_i = 5
+case_name = "WhiteNoise"
+data_root = "/Users/esthersida/pMESAS"
+path_str = f"../Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}/{case_name}"
+#%%
+k_true= .001
 dt = 1.0 
-
 sig_e = dt / stn_i
 phi = 1 - k_true * dt
 sig_q = np.sqrt(sig_e**2 / (1 - phi**2))
+initial_state_true = ipt_mean/k_true
+input_uncertainty_true = 1.
+obs_uncertainty_true = sig_q
+
+
+
 
 
 
@@ -30,6 +44,9 @@ sig_q = np.sqrt(sig_e**2 / (1 - phi**2))
 
 path_str = f"../Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}/{case_name}"
 
+#%%
+path_str = "/Users/esthersida/Documents/Code/particle/SAS/PythonEquivalent/Results/TestLR/WhiteNoise/5_N_30_D_25_L_20/Decimated every 2d"
+#%%
 k = np.loadtxt(f"{path_str}/k.csv")
 initial_state = np.loadtxt(f"{path_str}/initial_state.csv")
 input_uncertainty = np.loadtxt(f"{path_str}/input_uncertainty.csv")
@@ -37,7 +54,7 @@ obs_uncertainty = np.loadtxt(f"{path_str}/obs_uncertainty.csv")
 input_scenarios = np.loadtxt(f"{path_str}/input_scenarios.csv")
 output_scenarios = np.loadtxt(f"{path_str}/output_scenarios.csv")
 
-threshold = 5
+threshold = 3
 plot_df = pd.DataFrame(
     {
         "k": k,

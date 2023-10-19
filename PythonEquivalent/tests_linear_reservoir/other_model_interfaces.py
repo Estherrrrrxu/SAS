@@ -69,8 +69,6 @@ class ModelInterfaceBulk(ModelInterface):
 
         return R_prime
     
-    def transition_model_probability(self, X_1toT: np.ndarray) -> np.ndarray:
-        return 1.
     
 
 # %%
@@ -78,14 +76,19 @@ class ModelInterfaceDeci(ModelInterface):
     def __init__(self, df: pd.DataFrame, customized_model: Any | None = None, theta_init: dict[str, Any] | None = None, config: dict[str, Any] | None = None, num_input_scenarios: int | None = 10) -> None:
         super().__init__(df, customized_model, theta_init, config, num_input_scenarios)
 
-        input_obs_ind = np.arange(self.T)[self.df['is_obs']]
-        # data = self.influx.to_numpy()
-        # self.interpolated = np.interp(np.arange(self.T), input_obs_ind, data[input_obs_ind])
+        not_obs_ipt_ind = np.arange(self.T)[self.df['is_obs'] == False]
+
         data = self.influx.to_numpy()
-        mean = data[input_obs_ind].mean()
-        std = data[input_obs_ind].std(ddof=1)
-        data[~input_obs_ind] = ss.norm(mean, std).rvs(data[~input_obs_ind].size)
-        self.interpolated = data
+
+        mean = data[~not_obs_ipt_ind].mean()
+        std = data[~not_obs_ipt_ind].std(ddof=1)
+        
+        self.deci_ipt = np.zeros((self.N, self.T))
+        self.deci_ipt[:, ~not_obs_ipt_ind] = data[~not_obs_ipt_ind]
+        self.deci_ipt[:, not_obs_ipt_ind] = ss.norm(mean, std).rvs((self.N, not_obs_ipt_ind.size))
+
+
+
 
     def input_model(self, start_ind: int, end_ind: int) -> None:
         """Input model for linear reservoir
@@ -102,17 +105,15 @@ class ModelInterfaceDeci(ModelInterface):
             np.ndarray: Rt
         """
 
-            
-        R_prime = np.zeros((self.N, end_ind - start_ind))
+
         sig_r = self.theta.input_model
-        R_hat = self.interpolated[start_ind:end_ind]
+        R_hat = self.deci_ipt[:,start_ind:end_ind]
+        
+        R_prime = np.zeros((self.N, end_ind - start_ind))
 
         for n in range(self.N):
-            R_prime[n,:] = ss.norm(R_hat, scale=sig_r).rvs()
-            if R_prime[n,:][R_prime[n,:] >0].size == 0:
-                R_prime[n,:][R_prime[n,:] <= 0] = 10**(-8)
-            else:
-                R_prime[n,:][R_prime[n,:] <= 0] = min(10**(-8), min(R_prime[n,:][R_prime[n,:] > 0]))
+            R_prime[n,:] = ss.norm(R_hat[n,:], scale=sig_r).rvs(end_ind - start_ind)
+
 
         return R_prime
 

@@ -12,8 +12,8 @@ sys.path.append("../")
 from functions.get_dataset import get_different_input_scenarios
 from tests_linear_reservoir.test_utils import *
 import pandas as pd
-from model.model_interface import ModelInterface
-from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk, ModelInterfaceDeci
+
+from tests_linear_reservoir.other_model_interfaces import ModelInterfaceDeci
 
 # %%
 # model run settings
@@ -24,13 +24,13 @@ from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk, Mo
 # ipt_std = float(sys.argv[5])
 # obs_mode = sys.argv[6]
 # %%
-num_input_scenarios = 50
-num_parameter_samples = 25
-len_parameter_MCMC = 50
-k = 0.001
-ipt_std = 0.5
+num_input_scenarios = 20
+num_parameter_samples = 5
+len_parameter_MCMC = 25
+k = 1.
+ipt_std = 1.
 obs_mode = "deci_2d"
-interval = [0, 30]
+interval = [0, 40]
 # %%
 ipt_mean = 5.0
 
@@ -63,7 +63,7 @@ for stn_i in stn_input:
     obs_uncertainty_prior = [sig_obs_hat/100., sig_obs_hat/100. /3.]
 
 
-    config = {"observed_made_each_step": obs_made, "outflux": "Q_true", "use_MAP_AS_weight": False, "use_MAP_ref_traj": False, "use_MAP_MCMC": False, "update_theta_dist": False}
+    config = {"observed_made_each_step": obs_made, "outflux": "Q_true", "use_MAP_AS_weight": False, "use_MAP_ref_traj": False, "use_MAP_MCMC": False}
 
     # Save prior parameters
     path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}"
