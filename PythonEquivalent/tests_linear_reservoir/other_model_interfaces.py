@@ -74,7 +74,10 @@ class ModelInterfaceBulk(ModelInterface):
 # %%
 class ModelInterfaceDeci(ModelInterface):
     def __init__(self, df: pd.DataFrame, customized_model: Any | None = None, theta_init: dict[str, Any] | None = None, config: dict[str, Any] | None = None, num_input_scenarios: int | None = 10) -> None:
+        # initialize the model interface
         super().__init__(df, customized_model, theta_init, config, num_input_scenarios)
+
+        # Decimation case: generate input scenarios based on all input values
 
         not_obs_ipt_ind = np.arange(self.T)[self.df['is_obs'] == False]
 
@@ -82,17 +85,14 @@ class ModelInterfaceDeci(ModelInterface):
 
         mean = data[~not_obs_ipt_ind].mean()
         std = data[~not_obs_ipt_ind].std(ddof=1)
-        
+
+        # generate random input scenarios for unoberseved input values     
         self.deci_ipt = np.zeros((self.N, self.T))
         self.deci_ipt[:, ~not_obs_ipt_ind] = data[~not_obs_ipt_ind]
         self.deci_ipt[:, not_obs_ipt_ind] = ss.norm(mean, std).rvs((self.N, not_obs_ipt_ind.size))
 
-
-
-
     def input_model(self, start_ind: int, end_ind: int) -> None:
         """Input model for linear reservoir
-
 
         Ut: influx at time t
         R't = N(Ut, Ut_std)
@@ -105,17 +105,39 @@ class ModelInterfaceDeci(ModelInterface):
             np.ndarray: Rt
         """
 
-
-        sig_r = self.theta.input_model
-        R_hat = self.deci_ipt[:,start_ind:end_ind]
+        sig_r = self.theta.input_model # ipt obs uncertainty
+        R_hat = self.deci_ipt[:,start_ind:end_ind] # actual ipt + guessed ipt
         
         R_prime = np.zeros((self.N, end_ind - start_ind))
 
         for n in range(self.N):
             R_prime[n,:] = ss.norm(R_hat[n,:], scale=sig_r).rvs(end_ind - start_ind)
 
-
         return R_prime
 
     
 # %%
+class ModelInterfaceDeciFineInput(ModelInterface):
+    def input_model(self, start_ind: int, end_ind: int) -> None:
+        """Input model for linear reservoir
+
+        Ut: influx at time t
+        R't = N(Ut, Ut_std)
+
+        Args:
+            start_ind (int): start index of the input time series
+            end_ind (int): end index of the input time series
+
+        Returns:
+            np.ndarray: Rt
+        """
+
+        sig_r = self.theta.input_model # ipt obs uncertainty
+        R_hat = self.influx.to_numpy()[start_ind:end_ind] # actual ipt + guessed ipt
+        
+        R_prime = np.zeros((self.N, end_ind - start_ind))
+
+        for n in range(self.N):
+            R_prime[n,:] = ss.norm(R_hat, scale=sig_r).rvs(end_ind - start_ind)
+
+        return R_prime

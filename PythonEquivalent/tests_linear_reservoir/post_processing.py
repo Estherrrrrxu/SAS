@@ -47,14 +47,15 @@ path_str = f"../Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{nu
 #%%
 path_str = "/Users/esthersida/Documents/Code/particle/SAS/PythonEquivalent/Results/TestLR/WhiteNoise/5_N_30_D_25_L_20/Decimated every 2d"
 #%%
-k = np.loadtxt(f"{path_str}/k.csv")
-initial_state = np.loadtxt(f"{path_str}/initial_state.csv")
-input_uncertainty = np.loadtxt(f"{path_str}/input_uncertainty.csv")
-obs_uncertainty = np.loadtxt(f"{path_str}/obs_uncertainty.csv")
-input_scenarios = np.loadtxt(f"{path_str}/input_scenarios.csv")
-output_scenarios = np.loadtxt(f"{path_str}/output_scenarios.csv")
+model_run_time = 2.8518850803375244
+k = np.loadtxt(f"{path_str}/k_{model_run_time}.csv")
+initial_state = np.loadtxt(f"{path_str}/initial_state_{model_run_time}.csv")
+input_uncertainty = np.loadtxt(f"{path_str}/input_uncertainty_{model_run_time}.csv")
+obs_uncertainty = np.loadtxt(f"{path_str}/obs_uncertainty_{model_run_time}.csv")
+input_scenarios = np.loadtxt(f"{path_str}/input_scenarios_{model_run_time}.csv")
+output_scenarios = np.loadtxt(f"{path_str}/output_scenarios_{model_run_time}.csv")
 
-threshold = 3
+threshold = 0
 plot_df = pd.DataFrame(
     {
         "k": k,

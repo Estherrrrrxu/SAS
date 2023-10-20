@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.stats as ss
 
+import time
 
 # %%
 def run_with_given_settings(
@@ -95,7 +96,9 @@ def run_with_given_settings(
         num_parameter_samples=num_parameter_samples,
         len_parameter_MCMC=len_parameter_MCMC,
     )
+    st = time.time()
     model.run_particle_Gibbs()
+    model_run_time = time.time() - st
 
     # SAVE RESULTS ================================================================
     # get estimated parameters
@@ -107,17 +110,16 @@ def run_with_given_settings(
     output_scenarios = model.output_record
     df = model_interface.df
 
-    np.savetxt(f"{path_str}/k.csv", k)
-    np.savetxt(f"{path_str}/initial_state.csv", initial_state)
-    np.savetxt(f"{path_str}/input_uncertainty.csv", input_uncertainty)
-    np.savetxt(f"{path_str}/obs_uncertainty.csv", obs_uncertainty)
-    np.savetxt(f"{path_str}/input_scenarios.csv", input_scenarios)
-    np.savetxt(f"{path_str}/output_scenarios.csv", output_scenarios)
+    np.savetxt(f"{path_str}/k_{model_run_time}.csv", k)
+    np.savetxt(f"{path_str}/initial_state_{model_run_time}.csv", initial_state)
+    np.savetxt(f"{path_str}/input_uncertainty_{model_run_time}.csv", input_uncertainty)
+    np.savetxt(f"{path_str}/obs_uncertainty_{model_run_time}.csv", obs_uncertainty)
+    np.savetxt(f"{path_str}/input_scenarios_{model_run_time}.csv", input_scenarios)
+    np.savetxt(f"{path_str}/output_scenarios_{model_run_time}.csv", output_scenarios)
     df.to_csv(f"{path_str}/df.csv")
 
-    print(f"Results saved to {path_str}.")
+    print(f"Results saved to {path_str} with run time {model_run_time}.")
     return None
-
 
 # %%
 # %%
