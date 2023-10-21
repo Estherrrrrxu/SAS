@@ -379,6 +379,7 @@ def plot_scenarios(
     estimation: pd.DataFrame,
     start_ind: int,
     stn_i: int,
+    sig_e: float,
     sig_q: float,
     line_mode: Optional[bool] = False,
 ):
@@ -389,8 +390,8 @@ def plot_scenarios(
     # uncertainty bounds
     ax[0].fill_between(
         truth_df["index"][real_start:real_end],
-        truth_df["J_true"][real_start:real_end] - 1.96 * 0.2 / stn_i,
-        truth_df["J_true"][real_start:real_end] + 1.96 * 0.2 / stn_i,
+        truth_df["J_true"][real_start:real_end] - 1.96 * sig_e / stn_i,
+        truth_df["J_true"][real_start:real_end] + 1.96 * sig_e / stn_i,
         color="grey",
         alpha=0.3,
         label=r"95% theoretical uncertainty bounds",
@@ -520,7 +521,7 @@ def plot_scenarios(
     (cyan_line,) = ax[1].plot([], [], "c-", label="Scenarios")
 
     # ax[1].set_ylim([min(truth_df["Q_true"]) * 0.925, max(truth_df["Q_true"]) * 1.065])
-    ax[1].set_ylim([min(truth_df["Q_true"])*0.9995, max(truth_df["Q_true"])*1.0005])
+    ax[1].set_ylim([min(truth_df["Q_true"]), max(truth_df["Q_true"])])
     ax[1].set_xlim([real_start - 0.2, real_end + 0.2])
     ax[1].set_ylabel("Output signal", fontsize=16)
     ax[1].set_xlabel("Timestep", fontsize=16)
