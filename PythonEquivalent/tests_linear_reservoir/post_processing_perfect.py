@@ -74,6 +74,7 @@ def cal_RMSE(
     case_name: str,
     threshold: int,
     result_root: str,
+    make_plot: bool = False,
         
 ):
     path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}"
@@ -93,7 +94,59 @@ def cal_RMSE(
     truth_df = pd.read_csv(f"{path_str}/df.csv", index_col=0)
     RMSE_J = np.sqrt(np.mean((estimation["input"][threshold:,1:].mean(axis=0) - truth_df["J_true"][1:])**2))
     RMSE_Q = np.sqrt(np.mean((estimation["output"][threshold:,:].mean(axis=0) - truth_df["Q_true"][:])**2))
-    return RMSE_J, RMSE_Q
+
+    if make_plot:
+        # theoretical values
+        input_uncertainty_true = ipt_std / stn_i
+        sig_e = input_uncertainty_true * dt
+        phi = 1 - k_true * dt
+        obs_uncertainty_true = np.sqrt(sig_e**2 / (1 - phi**2))
+        initial_state_true = ipt_mean/k_true
+
+        # load data
+        k = np.loadtxt(f"{path_str}/k_{model_run_time}.csv")
+        initial_state = np.loadtxt(f"{path_str}/initial_state_{model_run_time}.csv")
+        input_uncertainty = np.loadtxt(f"{path_str}/input_uncertainty_{model_run_time}.csv")
+        obs_uncertainty = np.loadtxt(f"{path_str}/obs_uncertainty_{model_run_time}.csv")
+        prior_params = pd.read_csv(f"{path_str}/prior_parameters_{stn_i}.csv", index_col=0)
+
+        # make plot dataframe
+        plot_df = pd.DataFrame(
+            {
+                "k": k,
+                "initial state": initial_state,
+                "input uncertainty": input_uncertainty,
+                "obs uncertainty": obs_uncertainty,
+            }
+        )
+
+        # unpack true parameters
+        true_params = [
+            k_true,
+            initial_state_true,
+            input_uncertainty_true,
+            obs_uncertainty_true,
+        ]
+
+        # plot posterior
+        g = plot_parameter_posterior(plot_df, true_params, prior_params, threshold)
+        g.savefig(f"{path_str}/posterior.pdf")
+
+        # plot trajectories
+        estimation = {"input": input_scenarios, "output": output_scenarios}
+        truth_df = pd.read_csv(f"{path_str}/df.csv", index_col=0)
+
+        g = plot_scenarios(truth_df, estimation, threshold, stn_i,input_uncertainty_true,obs_uncertainty_true, line_mode=False)
+        g.savefig(f"{path_str}/scenarios.pdf")
+
+        g = plot_scenarios(truth_df, estimation, threshold, stn_i,input_uncertainty_true,obs_uncertainty_true, line_mode=True)
+        g.savefig(f"{path_str}/scenarios_line.pdf")
+
+        # convergence check
+        convergence_check_plot(plot_df, 100)
+
+
+    return RMSE_J, RMSE_Q, model_run_time
 
 # %%
 
@@ -115,7 +168,7 @@ for ipt_std in stds:
     for stn_i in stn_ratios:
         for k_true in ks:
             for threshold in [20, 50, 70, 90]:
-                RMSE_J, RMSE_Q = cal_RMSE(
+                RMSE_J, RMSE_Q, model_run_time = cal_RMSE(
                     num_input_scenarios,
                     num_parameter_samples,
                     len_parameter_MCMC,
@@ -134,7 +187,8 @@ for ipt_std in stds:
                     "stn_i": stn_i,
                     "k_true": k_true,
                     "ipt_std": ipt_std,
-                    "threshold": threshold
+                    "threshold": threshold,
+                    "model_run_time": model_run_time,
                 }
                 data_list.append(data)
 
@@ -144,99 +198,5 @@ data_list = pd.DataFrame(data_list)
 data_list.to_csv(f"{result_root}/RMSE_{case_name}.csv")
 
 # %%
-
-
-
-#%%
-
-
-
-
-
 # %%
-# =============================================================================
-# making plot session
-def make_plots(
-    num_input_scenarios: int,
-    num_parameter_samples: int,
-    len_parameter_MCMC: int,
-    ipt_mean: float,
-    ipt_std: float,
-    stn_i: int,
-    k_true: float,
-    dt: float,
-    case_name: str,
-    model_run_time: float,
-    threshold: int,
-    result_root: str,
-)->List[float]:
-    # get path
-    path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}"
 
-    # theoretical values
-    input_uncertainty_true = ipt_std / stn_i
-    sig_e = input_uncertainty_true * dt
-    phi = 1 - k_true * dt
-    obs_uncertainty_true = np.sqrt(sig_e**2 / (1 - phi**2))
-    initial_state_true = ipt_mean/k_true
-
-    # load data
-    k = np.loadtxt(f"{path_str}/k_{model_run_time}.csv")
-    initial_state = np.loadtxt(f"{path_str}/initial_state_{model_run_time}.csv")
-    input_uncertainty = np.loadtxt(f"{path_str}/input_uncertainty_{model_run_time}.csv")
-    obs_uncertainty = np.loadtxt(f"{path_str}/obs_uncertainty_{model_run_time}.csv")
-    input_scenarios = np.loadtxt(f"{path_str}/input_scenarios_{model_run_time}.csv")
-    output_scenarios = np.loadtxt(f"{path_str}/output_scenarios_{model_run_time}.csv")
-    prior_params = pd.read_csv(f"{path_str}/prior_parameters_{stn_i}.csv", index_col=0)
-
-    # make plot dataframe
-    plot_df = pd.DataFrame(
-        {
-            "k": k,
-            "initial state": initial_state,
-            "input uncertainty": input_uncertainty,
-            "obs uncertainty": obs_uncertainty,
-        }
-    )
-
-    # unpack true parameters
-    true_params = [
-        k_true,
-        initial_state_true,
-        input_uncertainty_true,
-        obs_uncertainty_true,
-    ]
-
-    # plot posterior
-    g = plot_parameter_posterior(plot_df, true_params, prior_params, threshold)
-    g.savefig(f"{path_str}/posterior.pdf")
-
-    # plot trajectories
-    estimation = {"input": input_scenarios, "output": output_scenarios}
-    truth_df = pd.read_csv(f"{path_str}/df.csv", index_col=0)
-
-    g = plot_scenarios(truth_df, estimation, threshold, stn_i,input_uncertainty_true,obs_uncertainty_true, line_mode=False)
-    g.savefig(f"{path_str}/scenarios.pdf")
-
-    g = plot_scenarios(truth_df, estimation, threshold, stn_i,input_uncertainty_true,obs_uncertainty_true, line_mode=True)
-    g.savefig(f"{path_str}/scenarios_line.pdf")
-
-    # convergence check
-    convergence_check_plot(plot_df, 100)
-    return 
-
-# %%
-make_plots(
-    num_input_scenarios,
-    num_parameter_samples,
-    len_parameter_MCMC,
-    ipt_mean,
-    ipt_std,
-    stn_i,
-    k_true,
-    dt,
-    case_name,
-    model_run_time,
-    threshold,
-    result_root,
-)

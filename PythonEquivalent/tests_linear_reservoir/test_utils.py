@@ -33,6 +33,7 @@ def run_with_given_settings(
         prior_record (pd.DataFrame): the prior parameters to sample from
         plot_preliminary (bool, optional): whether to test run algorithms. Defaults to True.
     """
+    #%%
     # SET PRIOR PARAMETERS ================================================================
     # Unpack prior parameters
     k_prior = prior_record.loc["k"].values.tolist()
@@ -107,6 +108,7 @@ def run_with_given_settings(
     input_uncertainty = model.theta_record[:, 2]
     obs_uncertainty = model.theta_record[:, 3]
     input_scenarios = model.input_record
+
     output_scenarios = model.output_record
     df = model_interface.df
 

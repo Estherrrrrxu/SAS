@@ -144,7 +144,7 @@ class SSModel:
             ind_best_param = _inverse_pmf(theta_new[:,-1], W_theta, num=1)[0]
 
         best_model = chains[ind_best_param]
-        B = BB[ind_best_param,:]
+        B = BB[ind_best_param,:] 
         self.input_record[0,:] = best_model._get_R_traj(best_model.state.R, B)
         self.state_record[0,:] = best_model._get_X_traj(best_model.state.X, B)
         self.output_record[0,:] = best_model._get_Y_traj(best_model.state.Y, B)

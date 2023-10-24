@@ -149,11 +149,12 @@ class ModelInterface:
                 # if is all bool and all True
                 if all(isinstance(entry, bool) and entry for entry in obs_made):
                     self.K = self.T
+                
                     self.observed_ind = np.arange(self.T)
 
                 # if is all bool and some are not True
                 elif all(isinstance(entry, bool) for entry in obs_made):
-                    self.K = sum(obs_made)
+                    self.K = sum(obs_made) 
                     self.observed_ind = np.arange(self.T)[obs_made]
 
             else:
@@ -164,7 +165,7 @@ class ModelInterface:
         # give observation interval as a int - how many timesteps
         elif isinstance(obs_made, int):
             # in this case K is still equal to T
-            self.K = int(self.T//obs_made)
+            self.K = int(self.T//obs_made)+1
             self.observed_ind = np.arange(self.T, step=obs_made)
         else:
             raise ValueError("Error: Input format not supported!")

@@ -39,13 +39,13 @@ ipt_mean = 5.0
 test_case = "WhiteNoise"
 data_root = "/Users/esthersida/pMESAS"
 
-stn_input = [1, 3, 5]
-
+# stn_input = [1, 3, 5]
+stn_input = [5]
 length = 3000
 
 model_interface_class = ModelInterfaceDeci
 
-observation_patterns = ["matching", "fine output", "fine input"]
+observation_patterns = ["matching"]
 
 # %%
 for stn_i in stn_input:
@@ -127,10 +127,14 @@ for stn_i in stn_input:
 
 
 # %%
-path_str = '/Users/esthersida/pMESAS/Results/TestLR/WhiteNoise/1_N_5_D_5_L_5_k_1.0_mean_5.0_std_1.0_length_20/Decimated every 7d/fine input'
+# path_str = '/Users/esthersida/pMESAS/Results/TestLR/WhiteNoise/1_N_5_D_5_L_5_k_1.0_mean_5.0_std_1.0_length_20/Decimated every 7d/fine input'
 
-raw = pd.read_csv(path_str + "/df.csv", index_col=0)
-input = pd.read_csv(path_str + "/input_scenarios_0.9324827194213867.csv", header=None)
-output = pd.read_csv(path_str + "/output_scenarios_0.9324827194213867.csv", header=None)
+# raw = pd.read_csv(path_str + "/df.csv", index_col=0)
+# input = np.loadtxt(path_str + "/input_scenarios_0.9324827194213867.csv")
+# output = np.loadtxt(path_str + "/output_scenarios_0.9324827194213867.csv")
+
+# plt.plot(raw['Q_true'].values, label='Q_true')
+# plt.plot(raw['Q_obs'].values, label='Q_obs')
+# plt.plot(output.T, label='Q_sim')
 
 # %%

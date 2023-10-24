@@ -87,7 +87,6 @@ class Chain:
             end_ind_k = self.post_ind[k]
 
             Rt = self.model_interface.input_model(start_ind=start_ind_k, end_ind=end_ind_k)
-
             # the state at the last time step of the previous interval
             Ak = _inverse_pmf(X[Ak, start_ind_k - 1], W, num=self.N)
             xkm1 = X[Ak, start_ind_k - 1]
@@ -270,11 +269,12 @@ class Chain:
         """
 
         traj_R = np.zeros(self.T)
-
-        for i in range(self.K):
+        
+        for i in range(1, self.K):
             traj_R[self.pre_ind[i] : self.post_ind[i]] = R[
                 B[i], self.pre_ind[i] : self.post_ind[i]
             ]
+
         return traj_R
 
 
