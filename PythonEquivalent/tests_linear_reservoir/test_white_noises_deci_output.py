@@ -18,21 +18,21 @@ from tests_linear_reservoir.other_model_interfaces import ModelInterfaceDeci, Mo
 # %%
 # model run settings
 
-# num_input_scenarios = int(sys.argv[1])
-# num_parameter_samples = int(sys.argv[2])
-# len_parameter_MCMC = int(sys.argv[3])
-# k = float(sys.argv[4])
-# ipt_std = float(sys.argv[5])
-# obs_mode = sys.argv[6]
-# interval = [0, int(sys.argv[7])]
+num_input_scenarios = int(sys.argv[1])
+num_parameter_samples = int(sys.argv[2])
+len_parameter_MCMC = int(sys.argv[3])
+k = float(sys.argv[4])
+ipt_std = float(sys.argv[5])
+obs_mode = sys.argv[6]
+interval = [0, int(sys.argv[7])]
 # %%
-num_input_scenarios = 5
-num_parameter_samples = 5
-len_parameter_MCMC = 5
-k = 1.0
-ipt_std = 1.0
-obs_mode = "deci_7d"
-interval = [0, 20]
+# num_input_scenarios = 5
+# num_parameter_samples = 5
+# len_parameter_MCMC = 5
+# k = 1.0
+# ipt_std = 1.0
+# obs_mode = "deci_2d"
+# interval = [0, 20]
 
 # %%
 ipt_mean = 5.0
@@ -41,11 +41,12 @@ data_root = "/Users/esthersida/pMESAS"
 
 # stn_input = [1, 3, 5]
 stn_input = [5]
+
 length = 3000
 
 model_interface_class = ModelInterfaceDeci
 
-observation_patterns = ["matching"]
+observation_patterns = ["matching", "fine output", "fine input"]
 
 # %%
 for stn_i in stn_input:
@@ -67,7 +68,7 @@ for stn_i in stn_input:
 
     for obs_pattern in observation_patterns:
         # Create result path
-        path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}/{obs_pattern}"
+        path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}_output/{obs_pattern}"
         if not os.path.exists(path_str):
             os.makedirs(path_str)
 
@@ -83,7 +84,8 @@ for stn_i in stn_input:
         if obs_pattern == "matching" or obs_pattern == "fine input":
             config = {
                 "observed_made_each_step": obs_made,
-                "outflux": "Q_true",
+                "influx": "J_true",
+                "outflux": "Q_obs",
                 "use_MAP_AS_weight": False,
                 "use_MAP_ref_traj": False,
                 "use_MAP_MCMC": False,
@@ -94,7 +96,8 @@ for stn_i in stn_input:
         elif obs_pattern == "fine output":
             config = {
                 "observed_made_each_step": True,
-                "outflux": "Q_true",
+                "influx": "J_true",
+                "outflux": "Q_obs",
                 "use_MAP_AS_weight": False,
                 "use_MAP_ref_traj": False,
                 "use_MAP_MCMC": False,
@@ -125,16 +128,5 @@ for stn_i in stn_input:
             model_interface_class=model_interface_class,
         )
 
-
-# %%
-# path_str = '/Users/esthersida/pMESAS/Results/TestLR/WhiteNoise/1_N_5_D_5_L_5_k_1.0_mean_5.0_std_1.0_length_20/Decimated every 7d/fine input'
-
-# raw = pd.read_csv(path_str + "/df.csv", index_col=0)
-# input = np.loadtxt(path_str + "/input_scenarios_0.9324827194213867.csv")
-# output = np.loadtxt(path_str + "/output_scenarios_0.9324827194213867.csv")
-
-# plt.plot(raw['Q_true'].values, label='Q_true')
-# plt.plot(raw['Q_obs'].values, label='Q_obs')
-# plt.plot(output.T, label='Q_sim')
 
 # %%

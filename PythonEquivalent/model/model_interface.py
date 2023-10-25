@@ -165,8 +165,13 @@ class ModelInterface:
         # give observation interval as a int - how many timesteps
         elif isinstance(obs_made, int):
             # in this case K is still equal to T
-            self.K = int(self.T//obs_made)+1
+            
+            if self.T % obs_made == 0:
+                self.K = int(self.T//obs_made)
+            else:
+                self.K = int(self.T//obs_made)+1
             self.observed_ind = np.arange(self.T, step=obs_made)
+
         else:
             raise ValueError("Error: Input format not supported!")
 

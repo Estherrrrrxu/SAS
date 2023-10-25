@@ -31,7 +31,7 @@ num_parameter_samples = 5
 len_parameter_MCMC = 5
 k = 1.0
 ipt_std = 1.0
-obs_mode = "deci_7d"
+obs_mode = "deci_2d"
 interval = [0, 20]
 
 # %%
@@ -39,7 +39,8 @@ ipt_mean = 5.0
 test_case = "WhiteNoise"
 data_root = "/Users/esthersida/pMESAS"
 
-stn_input = [1, 3, 5]
+# stn_input = [1, 3, 5]
+stn_input = [5]
 
 length = 3000
 
@@ -125,12 +126,5 @@ for stn_i in stn_input:
             model_interface_class=model_interface_class,
         )
 
-
-# %%
-path_str = '/Users/esthersida/pMESAS/Results/TestLR/WhiteNoise/1_N_5_D_5_L_5_k_1.0_mean_5.0_std_1.0_length_20/Decimated every 7d/fine input'
-
-raw = pd.read_csv(path_str + "/df.csv", index_col=0)
-input = pd.read_csv(path_str + "/input_scenarios_0.9324827194213867.csv", header=None)
-output = pd.read_csv(path_str + "/output_scenarios_0.9324827194213867.csv", header=None)
 
 # %%
