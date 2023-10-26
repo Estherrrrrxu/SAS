@@ -67,8 +67,7 @@ class ModelInterfaceBulk(ModelInterface):
                 R_prime[n,:][R_prime[n,:] <= 0] = min(10**(-8), min(R_prime[n,:][R_prime[n,:] > 0]))
             R_prime[n,:] = normalize_over_interval(R_prime[n,:], U[0] + ss.norm(0, sig_r).rvs())
 
-        return R_prime
-    
+        return R_prime   
     
 
 # %%

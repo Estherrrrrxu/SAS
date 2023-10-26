@@ -31,7 +31,7 @@ num_parameter_samples = 5
 len_parameter_MCMC = 5
 k = 1.0
 ipt_std = 1.0
-obs_mode = "bulk_2d"
+obs_mode = "bulk_7d"
 interval = [0, 200]
 
 # %%
@@ -63,12 +63,13 @@ for stn_i in stn_input:
     )
 
     df_obs = case.df_obs
+    df_obs["J_fine_obs"] = df_obs["J_true"] + ss.norm(0, ipt_std/stn_i).rvs(df_obs.shape[0])
     obs_made = case.obs_made
     case_name = case.case_name
 
     for obs_pattern in observation_patterns:
         # Create result path
-        path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}/{obs_pattern}"
+        path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}_output/{obs_pattern}"
         if not os.path.exists(path_str):
             os.makedirs(path_str)
 
@@ -81,31 +82,24 @@ for stn_i in stn_input:
         obs_uncertainty_prior = [sig_obs_hat / 100.0, sig_obs_hat / 100.0 / 3.0]
         # Observation is set to be very small because currently using Q_true as the observation 
         
-        if obs_pattern == "matching":
+        if obs_pattern == "matching" or obs_pattern == "fine input":
             config = {
                 "observed_made_each_step": obs_made,
-                "outflux": "Q_true",
+                "influx": "J_true",
+                "outflux": "Q_obs",
                 "use_MAP_AS_weight": False,
                 "use_MAP_ref_traj": False,
                 "use_MAP_MCMC": False,
                 "update_theta_dist": False,
             }
-        elif obs_pattern == "fine input":
-            config = {
-                "observed_made_each_step": obs_made,
-                "influx": "J_fine_obs",
-                "outflux": "Q_true",
-                "use_MAP_AS_weight": False,
-                "use_MAP_ref_traj": False,
-                "use_MAP_MCMC": False,
-                "update_theta_dist": False,
-            }
-            model_interface_class = ModelInterface
-            
+            if obs_pattern == "fine input":
+                model_interface_class = ModelInterface
+
         elif obs_pattern == "fine output":
             config = {
                 "observed_made_each_step": True,
-                "outflux": "Q_true",
+                "influx": "J_true",
+                "outflux": "Q_obs",
                 "use_MAP_AS_weight": False,
                 "use_MAP_ref_traj": False,
                 "use_MAP_MCMC": False,

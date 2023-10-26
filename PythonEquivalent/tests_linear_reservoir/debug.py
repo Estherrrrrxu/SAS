@@ -12,8 +12,7 @@ sys.path.append("../")
 from functions.get_dataset import get_different_input_scenarios
 from tests_linear_reservoir.test_utils import *
 import pandas as pd
-from model.model_interface import ModelInterface
-from tests_linear_reservoir.other_model_interfaces import ModelInterfaceDeci
+from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
 
 # %%
 
@@ -22,8 +21,8 @@ num_parameter_samples = 5
 len_parameter_MCMC = 5
 k = 1.
 ipt_std = 0.5
-obs_mode = "deci_7d"
-interval = [0, 30]
+obs_mode = "bulk_7d"
+interval = [0, 200]
 # %%
 # settings that are not likely to change
 ipt_mean = 5.0
@@ -34,7 +33,7 @@ stn_input = [5]
 
 length = 3000
 
-model_interface_class = ModelInterfaceDeci
+model_interface_class = ModelInterfaceBulk
 
 # %%
 for stn_i in stn_input:
@@ -171,9 +170,9 @@ for stn_i in stn_input:
 
 # %%
 obs_ind = np.where(df['is_obs'])[0]
-plt.plot(model_interface.df["J_true"])
-plt.plot(input_scenarios[0, :])
+plt.plot(model_interface.df["J_true"], "k", linewidth=10)
+plt.plot(input_scenarios[1:, :].mean(axis=0), marker='.')
 # %%
-plt.plot(model_interface.df["Q_true"])
-plt.plot(output_scenarios[0, :])
+plt.plot(model_interface.df["Q_true"], "k", linewidth=10)
+plt.plot(output_scenarios[1:, :].mean(axis=0), marker='.')
 # %%
