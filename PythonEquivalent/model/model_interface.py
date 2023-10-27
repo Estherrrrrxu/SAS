@@ -441,7 +441,7 @@ class ModelInterface:
         Xt = np.ones((self.N, num_iter + 1)) * Xtm1.reshape(-1, 1)
 
         for i in range(1, num_iter + 1):
-            Xt[:, i] = (1 - theta_k * theta_dt) * Xt[:, i - 1] + theta_dt * Rt[:, i - 1]
+            Xt[:, i] = (1 - theta_k * theta_dt) * Xt[:, i - 1] + theta_k * Rt[:, i - 1]
 
         return Xt[:, 1:]  # return w/out initial state
 

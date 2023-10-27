@@ -380,20 +380,21 @@ def plot_scenarios(
     truth_df: pd.DataFrame,
     estimation: pd.DataFrame,
     start_ind: int,
-    stn_i: int,
-    sig_e: float,
-    sig_q: float,
+    sig_input: float,
+    sig_output: float,
     line_mode: Optional[bool] = False,
+    uncertain_input: Optional[bool] = True,
 ):
     fig, ax = plt.subplots(2, 1, figsize=(8, 8))
     real_start = truth_df["index"][truth_df["is_obs"]].iloc[1]
     real_end = truth_df["index"][truth_df["is_obs"]].iloc[-1] + 1
     img_start = truth_df["index"][truth_df["is_obs"]].iloc[0]
     # uncertainty bounds
+
     ax[0].fill_between(
         truth_df["index"][real_start:real_end],
-        truth_df["J_true"][real_start:real_end] - 1.96 * sig_e / stn_i,
-        truth_df["J_true"][real_start:real_end] + 1.96 * sig_e / stn_i,
+        truth_df["J_true"][real_start:real_end] - 1.96 * sig_input,
+        truth_df["J_true"][real_start:real_end] + 1.96 * sig_input,
         color="grey",
         alpha=0.3,
         label=r"95% theoretical uncertainty bounds",
@@ -442,16 +443,28 @@ def plot_scenarios(
         label="Truth",
         linewidth=0.8,
     )
+
     # observations
-    ax[0].scatter(
-        truth_df["index"][truth_df["is_obs"]][1:real_end],
-        truth_df["J_obs"][truth_df["is_obs"]][1:real_end],
-        marker="+",
-        c="k",
-        s=100,
-        linewidth=2,
-        label="Observations",
-    )
+    if uncertain_input:
+        ax[0].scatter(
+            truth_df["index"][truth_df["is_obs"]][1:real_end],
+            truth_df["J_obs"][truth_df["is_obs"]][1:real_end],
+            marker="+",
+            c="k",
+            s=100,
+            linewidth=2,
+            label="Observations",
+        )
+    else:
+        ax[0].scatter(
+            truth_df["index"][truth_df["is_obs"]][1:real_end],
+            truth_df["J_true"][truth_df["is_obs"]][1:real_end],
+            marker="+",
+            c="k",
+            s=100,
+            linewidth=2,
+            label="Observations",
+        )
 
     ax[0].set_ylim([min(truth_df["J_true"]) * 0.925, max(truth_df["J_true"]) * 1.065])
     ax[0].set_xlim([real_start - 0.2, real_end + 0.2])
@@ -463,8 +476,8 @@ def plot_scenarios(
 
     ax[1].fill_between(
         truth_df["index"][real_start:real_end],
-        truth_df["Q_true"][real_start:real_end] - 1.96 * sig_q,
-        truth_df["Q_true"][real_start:real_end] + 1.96 * sig_q,
+        truth_df["Q_true"][real_start:real_end] - 1.96 * sig_output,
+        truth_df["Q_true"][real_start:real_end] + 1.96 * sig_output,
         color="grey",
         alpha=0.3,
         label=r"95% theoretical uncertainty",
@@ -510,16 +523,29 @@ def plot_scenarios(
         label="Truth",
         linewidth=0.8,
     )
+
     # observations
-    ax[1].scatter(
-        truth_df["index"][truth_df["is_obs"]][1:real_end],
-        truth_df["Q_true"][truth_df["is_obs"]][1:real_end],
-        marker="+",
-        c="k",
-        s=100,
-        linewidth=2,
-        label="Observations",
-    )
+    if uncertain_input:
+        ax[1].scatter(
+            truth_df["index"][truth_df["is_obs"]][1:real_end],
+            truth_df["Q_true"][truth_df["is_obs"]][1:real_end],
+            marker="+",
+            c="k",
+            s=100,
+            linewidth=2,
+            label="Observations",
+        )
+    else:
+        ax[1].scatter(
+            truth_df["index"][truth_df["is_obs"]][1:real_end],
+            truth_df["Q_obs"][truth_df["is_obs"]][1:real_end],
+            marker="+",
+            c="k",
+            s=100,
+            linewidth=2,
+            label="Observations",
+        )
+
     (cyan_line,) = ax[1].plot([], [], "c-", label="Scenarios")
 
     # ax[1].set_ylim([min(truth_df["Q_true"]) * 0.925, max(truth_df["Q_true"]) * 1.065])

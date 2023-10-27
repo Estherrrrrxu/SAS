@@ -29,7 +29,7 @@ def linear_reservoir_transition_model(
         float: discharge at timestep t+1
 
     """
-    qtp1 = (1 - k * delta_t) * qt + delta_t * jt
+    qtp1 = (1. - delta_t * k) * qt + k * jt
     return qtp1
 
 
@@ -120,7 +120,7 @@ def generate_w_diff_noise_level(
     # generate outflow
     Q = generate_outflow(J, delta_t, k, Q_init)
 
-    sig_e = np.std(J * delta_t, ddof=1)
+    sig_e = np.std(J, ddof=1) * k
     phi = 1 - k * delta_t
     sig_q = np.sqrt(sig_e**2 / (1 - phi**2))
 
@@ -133,8 +133,8 @@ def generate_w_diff_noise_level(
         Q = deepcopy(Q_true)
 
         # add noise according to signal to noise ratio
-        noise_j = sig_e / stn_ipt
-        noise_q = noise_j
+        noise_j = sig_e / stn_ipt / k
+        noise_q = sig_q / stn_ipt * (sig_e/sig_q)
 
         a = (0 - J) / noise_j
         J = ss.truncnorm.rvs(a, np.inf, loc=J, scale=noise_j)
@@ -156,6 +156,7 @@ def generate_w_diff_noise_level(
         plt.plot(df["Q_obs"], "*", label="Obs")
         plt.title(f"Output")
         plt.legend(frameon=False)
+        plt.suptitle(f"k = {k}, std = {params_ips[1]}, stn = {stn_ipt}")
         plt.tight_layout()
         
         if sum(df["Q_obs"]<=0.):
@@ -185,10 +186,13 @@ if __name__ == "__main__":
     delta_t = 1.
     
     stn_ipts = [1, 3, 5]
+
+    ks = [0.001, 0.01, 0.1, 1.]
+    stds = [1.]
     
     
-    for k in [1., 0.1, 0.01, 0.001]:
-        for std in [0.1, 0.2, 0.5, 1.]:
+    for k in ks:
+        for std in stds:
             params_ips = [5., std]
             np.random.seed(1014)
             generate_w_diff_noise_level(
@@ -199,7 +203,7 @@ if __name__ == "__main__":
                 length=length,
                 k=k,
                 delta_t=delta_t,
-                Q_init=params_ips[0] / k,
+                Q_init=params_ips[0],
             )
 
 

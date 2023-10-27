@@ -71,9 +71,9 @@ for stn_i in stn_input:
     k_prior = [k, k / 3.0]
     initial_state_prior = [df_obs["Q_obs"][0], df_obs["Q_obs"][0] / 3.0]
     sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
-    input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
+    input_uncertainty_prior = [sig_ipt_hat / 100., sig_ipt_hat /100./ 3.0]
     sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
-    obs_uncertainty_prior = [sig_obs_hat / 100.0, sig_obs_hat / 100.0 / 3.0]
+    obs_uncertainty_prior = [sig_obs_hat , sig_obs_hat / 3.0]
     # Observation is set to be very small because currently using Q_true as the observation 
     
     

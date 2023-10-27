@@ -14,37 +14,53 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from test_utils import *
-
+from post_processing_utils import *
 # %%
 # root directory to search
-result_root = "/Users/esthersida/pMESAS/Results/TestLR/WhiteNoise"
+result_root = "/Users/esthersida/pMESAS/Rockfish_results"
 
 # Use os.walk to traverse the directory and its subdirectories
 subdirs = []
 for root, dirs, files in os.walk(result_root):
     for dir_name in dirs:
         subdirs.append(os.path.join(root,dir_name))
-dir_names = subdirs[48:]
-dir_names = [dir_name[51:].split("/") for dir_name in dir_names]
+dir_names = []
+for subdir in subdirs:
+    dir_name = subdir.split("/")
+    dir_names.append(dir_name[5:])
 
 # %%
 # for perfect case
-deci2d, deci4d, deci7d = [], [], []
+deci2d_ipt, deci4d_ipt, deci7d_ipt = [], [], []
+deci2d_opt, deci4d_opt, deci7d_opt = [], [], []
 
 
 for d_name in dir_names:
     if len(d_name) == 1:
         continue
-    if d_name[1] == "Decimated every 2d" and d_name[0] not in deci2d:
-        deci2d.append(d_name[0])
-    if d_name[1] == "Decimated every 4d" and d_name[0] not in deci4d:
-        deci4d.append(d_name[0])
-    if d_name[1] == "Decimated every 7d" and d_name[0] not in deci7d:
-        deci7d.append(d_name[0])
-#%%
+    if d_name[1] == "Decimated every 2d" and d_name[0] not in deci2d_ipt:
+        deci2d_ipt.append(d_name[0])
+    if d_name[1] == "Decimated every 4d" and d_name[0] not in deci4d_ipt:
+        deci4d_ipt.append(d_name[0])
+    if d_name[1] == "Decimated every 7d" and d_name[0] not in deci7d_ipt:
+        deci7d_ipt.append(d_name[0])
+    if d_name[1] == "Decimated every 2d_output" and d_name[0] not in deci2d_opt:
+        deci2d_opt.append(d_name[0])
+    if d_name[1] == "Decimated every 4d_output" and d_name[0] not in deci4d_opt:
+        deci4d_opt.append(d_name[0])
+    if d_name[1] == "Decimated every 7d_output" and d_name[0] not in deci7d_opt:
+        deci7d_opt.append(d_name[0])
+
+if len(deci2d_ipt) != len(deci2d_opt):
+    print("Error: input and output have different number of subdirectories", len(deci2d_ipt), len(deci2d_opt))
+if len(deci4d_ipt) != len(deci4d_opt):
+    print("Error: input and output have different number of subdirectories", len(deci4d_ipt), len(deci4d_opt))
+if len(deci7d_ipt) != len(deci7d_opt):
+    print("Error: input and output have different number of subdirectories", len(deci7d_ipt), len(deci7d_opt))
+# %%
 stn_ratios, ks, means, stds, length = [], [], [], [], []
 Ns, Ds, Ls = [], [], []
-for p in deci2d:
+for p in deci2d_ipt:
     pp = p.split("_")
     stn_ratios.append(int(pp[0]))
     Ns.append(int(pp[2]))
@@ -67,131 +83,29 @@ print("Signal to noise ratio levels are:", stn_ratios)
 print("True k values are:", ks)
 print("input standard deviation are:", stds)
 
-# %%
-# calculate RMSE
-def cal_RMSE(
-    num_input_scenarios: int,
-    num_parameter_samples: int,
-    len_parameter_MCMC: int,
-    ipt_mean: float,
-    ipt_std: float,
-    stn_i: int,
-    k_true: float,
-    le: int,
-    case_name: str,
-    threshold: int,
-    result_root: str,
-    make_plot: bool = False,
-    obs_mode: Optional[str] = None,
-        
-):
-    #
-
-    if obs_mode is None:
-        path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}"
-    else:
-        path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}/{obs_mode}"
-
-    model_run_times = []
-    for filename in os.listdir(path_str):
-        if filename.startswith("k"):
-            model_run_times.append(float(filename[2:-4]))
-
-    model_run_time = model_run_times[0]
-
-
-    input_scenarios = np.loadtxt(f"{path_str}/input_scenarios_{model_run_time}.csv")
-    output_scenarios = np.loadtxt(f"{path_str}/output_scenarios_{model_run_time}.csv")
-
-    estimation = {"input": input_scenarios, "output": output_scenarios}
-    truth_df = pd.read_csv(f"{path_str}/df.csv", index_col=0)
-    obs_ind = np.where(truth_df['is_obs'][1:] == True)[0]
-    
-
-    RMSE_J_total = np.sqrt(np.mean((estimation["input"][threshold:,1:obs_ind[-2]].mean(axis=0) - truth_df["J_true"].iloc[1:obs_ind[-2]])**2))
-    RMSE_Q_total = np.sqrt(np.mean((estimation["output"][threshold:,:obs_ind[-2]].mean(axis=0) - truth_df["Q_true"][:obs_ind[-2]])**2))
-
-    RMSE_J_obs = np.sqrt(np.mean((estimation["input"][threshold:,1:obs_ind[-2]][:,obs_ind[:-2]].mean(axis=0) - truth_df["J_true"].values[1:obs_ind[-2]][obs_ind[:-2]])**2))
-    RMSE_Q_obs = np.sqrt(np.mean((estimation["output"][threshold:,:obs_ind[-2]][:,obs_ind[:-2]].mean(axis=0) - truth_df["Q_true"].values[1:obs_ind[-2]][obs_ind[:-2]])**2))
-
-
-
-    if make_plot:
-        # theoretical values
-        input_uncertainty_true = ipt_std / stn_i
-        sig_e = input_uncertainty_true * dt
-        phi = 1 - k_true * dt
-        obs_uncertainty_true = np.sqrt(sig_e**2 / (1 - phi**2))
-        initial_state_true = ipt_mean/k_true
-
-        # load data
-        k = np.loadtxt(f"{path_str}/k_{model_run_time}.csv")
-        initial_state = np.loadtxt(f"{path_str}/initial_state_{model_run_time}.csv")
-        input_uncertainty = np.loadtxt(f"{path_str}/input_uncertainty_{model_run_time}.csv")
-        obs_uncertainty = np.loadtxt(f"{path_str}/obs_uncertainty_{model_run_time}.csv")
-        prior_params = pd.read_csv(f"{path_str}/prior_parameters_{stn_i}.csv", index_col=0)
-
-        # make plot dataframe
-        plot_df = pd.DataFrame(
-            {
-                "k": k,
-                "initial state": initial_state,
-                "input uncertainty": input_uncertainty,
-                "obs uncertainty": obs_uncertainty,
-            }
-        )
-
-        # unpack true parameters
-        true_params = [
-            k_true,
-            initial_state_true,
-            input_uncertainty_true,
-            obs_uncertainty_true,
-        ]
-
-        # plot posterior
-        g = plot_parameter_posterior(plot_df, true_params, prior_params, threshold)
-        g.savefig(f"{path_str}/posterior.pdf")
-
-        # plot trajectories
-        estimation = {"input": input_scenarios, "output": output_scenarios}
-        truth_df = pd.read_csv(f"{path_str}/df.csv", index_col=0)
-
-        g = plot_scenarios(truth_df, estimation, threshold, stn_i,input_uncertainty_true,obs_uncertainty_true, line_mode=False)
-        g.savefig(f"{path_str}/scenarios.pdf")
-
-        g = plot_scenarios(truth_df, estimation, threshold, stn_i,input_uncertainty_true,obs_uncertainty_true, line_mode=True)
-        g.savefig(f"{path_str}/scenarios_line.pdf")
-
-        # convergence check
-        convergence_check_plot(plot_df, 100)
-
-
-    return RMSE_J_total, RMSE_Q_total, model_run_time, RMSE_J_obs, RMSE_Q_obs
 
 # %%
-
 num_input_scenarios = Ns[0]
 num_parameter_samples = Ds[0]
 len_parameter_MCMC = Ls[0]
 ipt_mean = means[0]
 le = length[0]
 dt = 1.0 
-#%%
-case_name = "Decimated every 4d"
-#%%
-import pandas as pd
+# %%
+case_name = "Decimated every 7d"
+# %%
+for obs_mode in ["fine output", "fine input", "matching"]:
 
-# Initialize an empty list to store dictionaries of data
-data_list = []
+    # Initialize an empty list to store dictionaries of data
+    data_list_input = []
+    data_list_output = []
 
-# Iterate over the nested loops
-for ipt_std in stds:
-    for stn_i in stn_ratios:
-        for k_true in ks:
-            for threshold in [20]:
-                for obs_mode in ['matching', 'fine input', 'fine output']:
-                    RMSE_J, RMSE_Q, model_run_time, RMSE_J_obs, RMSE_Q_obs = cal_RMSE(
+    # Iterate over the nested loops
+    for ipt_std in stds:
+        for stn_i in stn_ratios:
+            for k_true in ks:
+                for threshold in [20]:
+                    RMSE_J, RMSE_Q, model_run_time, RMSE_J_obs, RMSE_Q_obs = cal_RMSE_deci(
                         num_input_scenarios,
                         num_parameter_samples,
                         len_parameter_MCMC,
@@ -204,11 +118,12 @@ for ipt_std in stds:
                         threshold,
                         result_root,
                         make_plot=False,
+                        uncertain_input=True,
                         obs_mode=obs_mode,
                     )
-                    data = {
-                        "RMSE_J_total": RMSE_J,
-                        "RMSE_Q_total": RMSE_Q,
+                    data_input = {
+                        "RMSE_J": RMSE_J,
+                        "RMSE_Q": RMSE_Q,
                         "stn_i": stn_i,
                         "k_true": k_true,
                         "ipt_std": ipt_std,
@@ -218,46 +133,158 @@ for ipt_std in stds:
                         "RMSE_J_obs": RMSE_J_obs,
                         "RMSE_Q_obs": RMSE_Q_obs,
                     }
-                    data_list.append(data)
+                    data_list_input.append(data_input)
 
-# Create a DataFrame from the list of dictionaries
-data_list = pd.DataFrame(data_list)
 
-data_list.to_csv(f"{result_root}/RMSE_{case_name}.csv")
+                    RMSE_J, RMSE_Q, model_run_time, RMSE_J_obs, RMSE_Q_obs = cal_RMSE_deci(
+                        num_input_scenarios,
+                        num_parameter_samples,
+                        len_parameter_MCMC,
+                        ipt_mean,
+                        ipt_std,
+                        stn_i,
+                        k_true,
+                        le,
+                        case_name,
+                        threshold,
+                        result_root,
+                        make_plot=False,
+                        uncertain_input=False,
+                        obs_mode=obs_mode,
+                    )
+                    data_output = {
+                        "RMSE_J": RMSE_J,
+                        "RMSE_Q": RMSE_Q,
+                        "stn_i": stn_i,
+                        "k_true": k_true,
+                        "ipt_std": ipt_std,
+                        "threshold": threshold,
+                        "model_run_time": model_run_time,
+                        "obs_mode": obs_mode,
+                        "RMSE_J_obs": RMSE_J_obs,
+                        "RMSE_Q_obs": RMSE_Q_obs,
+                    }
+                    data_list_output.append(data_output)
+    # Create a DataFrame from the list of dictionaries
+    data_list_input = pd.DataFrame(data_list_input)
+    data_list_output = pd.DataFrame(data_list_output)
+
+    data_list_input.to_csv(f"{result_root}/RMSE_{case_name}_{obs_mode}_in.csv")
+    data_list_output.to_csv(f"{result_root}/RMSE_{case_name}_{obs_mode}_out.csv")
 
 # %%
-subset = data_list[data_list['stn_i'] == 5]
-subset.columns = [
+df_ipt_matching = pd.read_csv(f"{result_root}/RMSE_{case_name}_matching_in.csv", index_col=0)
+df_ipt_fine_input = pd.read_csv(f"{result_root}/RMSE_{case_name}_fine input_in.csv", index_col=0)
+df_ipt_fine_output = pd.read_csv(f"{result_root}/RMSE_{case_name}_fine output_in.csv", index_col=0)
+df_opt_matching = pd.read_csv(f"{result_root}/RMSE_{case_name}_matching_out.csv", index_col=0)
+df_opt_fine_input = pd.read_csv(f"{result_root}/RMSE_{case_name}_fine input_out.csv", index_col=0)
+df_opt_fine_output = pd.read_csv(f"{result_root}/RMSE_{case_name}_fine output_out.csv", index_col=0)
+
+df_ipt = pd.concat([df_ipt_matching, df_ipt_fine_input, df_ipt_fine_output])
+df_opt = pd.concat([df_opt_matching, df_opt_fine_input, df_opt_fine_output])
+
+# %%
+df_ipt.columns = [
     "Input RMSE",
     "Output RMSE",
-    "Signal to Noise",
+    "Signal to Noise ratio",
     "True k",
     "Input st.dev",
     "threshold",
-    "model_run_time",
-    "obs_mode",
-    "Input RMSE obs",
-    "Output RMSE obs",
+    "Model run time",
+    "Observation pattern",
+    "Input RMSE at observed time",
+    "Output RMSE at observed time",
+]
+df_opt.columns = [
+    "Input RMSE",
+    "Output RMSE",
+    "Signal to Noise ratio",
+    "True k",
+    "Output st.dev",
+    "threshold",
+    "Model run time",
+    "Observation pattern",
+    "Input RMSE at observed time",
+    "Output RMSE at observed time",
 ]
 
-subset["Input theoretical RMSE"] = subset["Input st.dev"]/subset["Signal to Noise"]
-subset["Output theoretical RMSE"] = np.sqrt(subset["Input theoretical RMSE"]**2 / (1 - (1 - subset["True k"])**2))
-fig, ax = plt.subplots(2, 1, figsize=(10, 10))
-sns.lineplot(data=subset, x="True k", y=subset["Input RMSE"], hue="obs_mode", ax=ax[0], marker="o")
-sns.lineplot(data=subset, x="True k", y=subset["Output RMSE"], hue="obs_mode", ax=ax[1], marker="o")
+
+# %%
+df_ipt["Theoretical RMSE"] = df_ipt["Input st.dev"]/df_ipt["Signal to Noise ratio"]
+df_opt["Theoretical RMSE"] = df_opt["Output st.dev"]/df_opt["Signal to Noise ratio"]
+
+# %%
+fig, ax = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+sns.lineplot(
+    x="True k",
+    y=df_ipt["Input RMSE"] / df_ipt["Theoretical RMSE"],
+    hue="Observation pattern",
+    data=df_ipt,
+    ax=ax[0],
+    palette="muted",
+    marker="o",
+)
+sns.lineplot(
+    x="True k",
+    y=df_opt["Output RMSE"] / df_opt["Theoretical RMSE"],
+    hue="Observation pattern",
+    data=df_opt,
+    ax=ax[1],
+    palette="muted",
+    marker="o",
+)
+
+ax[0].set_xlabel("")
+ax[1].set_xlabel("True k", fontsize=14)
 ax[0].set_xscale("log")
 ax[1].set_xscale("log")
-ax[0].set_ylabel("Input total RMSE" )
-ax[1].set_ylabel("Output total RMSE")
+ax[0].set_ylabel("RMSE/theoretical RMSE", fontsize = 14)
+ax[1].set_ylabel("RMSE/theoretical RMSE", fontsize = 14)
+ax[0].set_title("Input", fontsize = 15)
+ax[1].set_title("Output", fontsize = 15)
+ax[0].legend(frameon=False, title="Observation pattern", fontsize=12, loc = "upper right")
+ax[1].legend(frameon=False, title="Observation pattern", fontsize=12, loc = "upper right")
+plt.rcParams['legend.title_fontsize'] = 'larger'
+fig.suptitle("Varying observation pattern", fontsize = 15)
+fig.tight_layout()
+
 
 
 # %%
-fig, ax = plt.subplots(2, 1, figsize=(10, 10))
-sns.lineplot(data=subset, x="True k", y=subset["Input RMSE obs"], hue="obs_mode", ax=ax[0], marker="o")
-sns.lineplot(data=subset, x="True k", y=subset["Output RMSE obs"], hue="obs_mode", ax=ax[1], marker="o")
+fig, ax = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+sns.lineplot(
+    x="True k",
+    y=df_ipt["Input RMSE at observed time"] / df_ipt["Theoretical RMSE"],
+    hue="Observation pattern",
+    data=df_ipt,
+    ax=ax[0],
+    palette="muted",
+    marker="o",
+)
+sns.lineplot(
+    x="True k",
+    y=df_opt["Output RMSE at observed time"] / df_opt["Theoretical RMSE"],
+    hue="Observation pattern",
+    data=df_opt,
+    ax=ax[1],
+    palette="muted",
+    marker="o",
+)
+
+ax[0].set_xlabel("")
+ax[1].set_xlabel("True k", fontsize=14)
 ax[0].set_xscale("log")
 ax[1].set_xscale("log")
-ax[1].set_yscale("log")
+ax[0].set_ylabel("RMSE/theoretical RMSE", fontsize = 14)
+ax[1].set_ylabel("RMSE/theoretical RMSE", fontsize = 14)
+ax[0].set_title("Input", fontsize = 15)
+ax[1].set_title("Output", fontsize = 15)
+ax[0].legend(frameon=False, title="Observation pattern", fontsize=12, loc = "upper right")
+ax[1].legend(frameon=False, title="Observation pattern", fontsize=12, loc = "upper right")
+plt.rcParams['legend.title_fontsize'] = 'larger'
+fig.suptitle("Varying observation pattern", fontsize = 15)
+fig.tight_layout()
 
-# %%
+
 # %%

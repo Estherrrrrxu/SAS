@@ -16,13 +16,13 @@ from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
 
 # %%
 
-num_input_scenarios = 5
-num_parameter_samples = 5
+num_input_scenarios = 15
+num_parameter_samples = 25
 len_parameter_MCMC = 5
 k = 1.
 ipt_std = 0.5
-obs_mode = "bulk_7d"
-interval = [0, 200]
+obs_mode = "perfect"
+interval = [0, 30]
 # %%
 # settings that are not likely to change
 ipt_mean = 5.0
@@ -33,7 +33,7 @@ stn_input = [5]
 
 length = 3000
 
-model_interface_class = ModelInterfaceBulk
+model_interface_class = ModelInterface
 
 # %%
 for stn_i in stn_input:
@@ -61,10 +61,10 @@ for stn_i in stn_input:
     # Set prior parameters
     k_prior = [k, k / 3.0]
     initial_state_prior = [df_obs["Q_obs"][0], df_obs["Q_obs"][0] / 3.0]
-    sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
-    input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
-    sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
-    obs_uncertainty_prior = [sig_obs_hat / 100.0, sig_obs_hat / 100.0 / 3.0]
+    sig_ipt_hat = df_obs["J_obs"].std(ddof=1) 
+    input_uncertainty_prior = [sig_ipt_hat/ 100.0, sig_ipt_hat/ 100.0 / 3.0]
+    sig_obs_hat = df_obs["Q_obs"].std(ddof=1) / stn_i
+    obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat/ 3.0]
     # Observation is set to be very small because currently using Q_true as the observation 
     
     
