@@ -24,14 +24,16 @@ k = float(sys.argv[4])
 ipt_std = float(sys.argv[5])
 obs_mode = sys.argv[6]
 interval = [0, int(sys.argv[7])]
+uncertainty_mode = sys.argv[8]
 # %%
 # num_input_scenarios = 50
 # num_parameter_samples = 25
-# len_parameter_MCMC = 50
+# len_parameter_MCMC = 5
 # k = 0.001
-# ipt_std = 0.5
+# ipt_std = 1.0
 # obs_mode = "perfect"
-# interval = [0, 30]
+# interval = [0, 5]
+# uncertainty_mode = "both"
 # %%
 # settings that are not likely to change
 ipt_mean = 5.0
@@ -63,20 +65,43 @@ for stn_i in stn_input:
     case_name = case.case_name
 
     # Create result path
-    path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}"
-    if not os.path.exists(path_str):
-        os.makedirs(path_str)
+    if uncertainty_mode == "input":
+        # path name
+        path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}_uncertain_input"
+        if not os.path.exists(path_str):
+            os.makedirs(path_str)
 
-    # Set prior parameters
+        sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
+        input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
+        sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
+        obs_uncertainty_prior = [sig_obs_hat / 100.0, sig_obs_hat / 100.0 / 3.0]
+    
+    elif uncertainty_mode == "output":
+        
+        path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}_uncertain_output"
+        if not os.path.exists(path_str):
+            os.makedirs(path_str)
+
+        sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
+        input_uncertainty_prior = [sig_ipt_hat / 100.0, sig_ipt_hat / 100.0 / 3.0]
+        sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
+        obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
+    
+    elif uncertainty_mode == "both":
+
+        path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}_uncertain_both"
+        if not os.path.exists(path_str):
+            os.makedirs(path_str)
+
+        sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
+        input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
+        sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
+        obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
+    
+    # Set other prior parameters
     k_prior = [k, k / 3.0]
     initial_state_prior = [df_obs["Q_obs"][0], df_obs["Q_obs"][0] / 3.0]
-    sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
-    input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
-    sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
-    obs_uncertainty_prior = [sig_obs_hat / 100.0, sig_obs_hat / 100.0 / 3.0]
-    # Observation is set to be very small because currently using Q_true as the observation 
-    
-    
+
     config = {
         "observed_made_each_step": obs_made,
         "outflux": "Q_true",

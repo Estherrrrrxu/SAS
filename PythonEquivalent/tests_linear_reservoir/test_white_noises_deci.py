@@ -18,35 +18,35 @@ from tests_linear_reservoir.other_model_interfaces import ModelInterfaceDeci, Mo
 # %%
 # model run settings
 
-# num_input_scenarios = int(sys.argv[1])
-# num_parameter_samples = int(sys.argv[2])
-# len_parameter_MCMC = int(sys.argv[3])
-# k = float(sys.argv[4])
-# ipt_std = float(sys.argv[5])
-# obs_mode = sys.argv[6]
-# interval = [0, int(sys.argv[7])]
+num_input_scenarios = int(sys.argv[1])
+num_parameter_samples = int(sys.argv[2])
+len_parameter_MCMC = int(sys.argv[3])
+k = float(sys.argv[4])
+ipt_std = float(sys.argv[5])
+obs_mode = sys.argv[6]
+interval = [0, int(sys.argv[7])]
+uncertainty_mode = sys.argv[8]
 # %%
-num_input_scenarios = 5
-num_parameter_samples = 5
-len_parameter_MCMC = 5
-k = 1.0
-ipt_std = 1.0
-obs_mode = "deci_2d"
-interval = [0, 20]
+# num_input_scenarios = 5
+# num_parameter_samples = 5
+# len_parameter_MCMC = 5
+# k = 1.0
+# ipt_std = 1.0
+# obs_mode = "deci_2d"
+# interval = [0, 20]
 
 # %%
 ipt_mean = 5.0
 test_case = "WhiteNoise"
 data_root = "/Users/esthersida/pMESAS"
 
-# stn_input = [1, 3, 5]
-stn_input = [5]
+stn_input = [1, 3, 5]
 
 length = 3000
 
 model_interface_class = ModelInterfaceDeci
 
-observation_patterns = ["matching", "fine output", "fine input"]
+observation_patterns = ["deci both", "deci input", "deci output"]
 
 # %%
 for stn_i in stn_input:
@@ -67,21 +67,47 @@ for stn_i in stn_input:
     case_name = case.case_name
 
     for obs_pattern in observation_patterns:
-        # Create result path
-        path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}/{obs_pattern}"
-        if not os.path.exists(path_str):
-            os.makedirs(path_str)
+
+        if uncertainty_mode == "input":
+            # path name
+            path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}_uncertain_input/{obs_pattern}"
+            if not os.path.exists(path_str):
+                os.makedirs(path_str)
+
+            sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
+            input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
+            sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
+            obs_uncertainty_prior = [sig_obs_hat / 100.0, sig_obs_hat / 100.0 / 3.0]
+        
+        elif uncertainty_mode == "output":
+            
+            path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}_uncertain_output/{obs_pattern}"
+            if not os.path.exists(path_str):
+                os.makedirs(path_str)
+
+            sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
+            input_uncertainty_prior = [sig_ipt_hat / 100.0, sig_ipt_hat / 100.0 / 3.0]
+            sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
+            obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
+        
+        elif uncertainty_mode == "both":
+
+            path_str = f"{data_root}/Results/TestLR/{test_case}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k}_mean_{ipt_mean}_std_{ipt_std}_length_{interval[1]-interval[0]}/{case_name}_uncertain_both/{obs_pattern}"
+            if not os.path.exists(path_str):
+                os.makedirs(path_str)
+
+            sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
+            input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
+            sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
+            obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
 
         # Set prior parameters
         k_prior = [k, k / 3.0]
         initial_state_prior = [df_obs["Q_obs"][0], df_obs["Q_obs"][0] / 3.0]
-        sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
-        input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
-        sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
-        obs_uncertainty_prior = [sig_obs_hat / 100.0, sig_obs_hat / 100.0 / 3.0]
+
         # Observation is set to be very small because currently using Q_true as the observation 
         
-        if obs_pattern == "matching" or obs_pattern == "fine input":
+        if obs_pattern == "deci both" or obs_pattern == "deci output":
             config = {
                 "observed_made_each_step": obs_made,
                 "outflux": "Q_true",
@@ -90,9 +116,10 @@ for stn_i in stn_input:
                 "use_MAP_MCMC": False,
                 "update_theta_dist": False,
             }
-            if obs_pattern == "fine input":
+            if obs_pattern == "deci output":
                 model_interface_class = ModelInterfaceDeciFineInput
-        elif obs_pattern == "fine output":
+                
+        elif obs_pattern == "deci input":
             config = {
                 "observed_made_each_step": True,
                 "outflux": "Q_true",

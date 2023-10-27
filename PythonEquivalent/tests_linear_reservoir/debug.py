@@ -16,11 +16,11 @@ from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
 
 # %%
 
-num_input_scenarios = 15
-num_parameter_samples = 25
+num_input_scenarios = 5
+num_parameter_samples = 5
 len_parameter_MCMC = 5
 k = 1.
-ipt_std = 0.5
+ipt_std = 1.0
 obs_mode = "perfect"
 interval = [0, 30]
 # %%
@@ -174,5 +174,5 @@ plt.plot(model_interface.df["J_true"], "k", linewidth=10)
 plt.plot(input_scenarios[1:, :].mean(axis=0), marker='.')
 # %%
 plt.plot(model_interface.df["Q_true"], "k", linewidth=10)
-plt.plot(output_scenarios[1:, :].mean(axis=0), marker='.')
+plt.plot(output_scenarios[5:, :].T, marker='.')
 # %%
