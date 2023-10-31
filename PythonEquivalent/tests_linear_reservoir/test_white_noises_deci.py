@@ -34,19 +34,50 @@ uncertainty_mode = sys.argv[8]
 # ipt_std = 1.0
 # obs_mode = "deci_2d"
 # interval = [0, 20]
+# uncertainty_mode = "both"
 
 # %%
 ipt_mean = 5.0
 test_case = "WhiteNoise"
 data_root = "/Users/esthersida/pMESAS"
 
-stn_input = [1, 3, 5]
+stn_input = [5]
 
 length = 3000
 
 model_interface_class = ModelInterfaceDeci
 
 observation_patterns = ["deci both", "deci input", "deci output"]
+
+# %%
+def set_config(influx_type: str, outflux_type: str, obs_made: Any, obs_pattern: str, model_interface_class: Any):
+    if obs_pattern == "deci both" or obs_pattern == "deci output":
+        config = {
+            "observed_made_each_step": obs_made,
+            "influx": influx_type,
+            "outflux": outflux_type,
+            "use_MAP_AS_weight": False,
+            "use_MAP_ref_traj": False,
+            "use_MAP_MCMC": False,
+            "update_theta_dist": False,
+        }
+        if obs_pattern == "deci output":
+            model_interface_class = ModelInterfaceDeciFineInput
+
+            
+    elif obs_pattern == "deci input":
+        config = {
+            "observed_made_each_step": True,
+            "influx": influx_type,
+            "outflux": outflux_type,
+            "use_MAP_AS_weight": False,
+            "use_MAP_ref_traj": False,
+            "use_MAP_MCMC": False,
+            "update_theta_dist": False,
+        }
+    else:
+        raise ValueError("Invalid observation pattern.")
+    return config, model_interface_class
 
 # %%
 for stn_i in stn_input:
@@ -75,9 +106,11 @@ for stn_i in stn_input:
                 os.makedirs(path_str)
 
             sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
-            input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
-            sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
+            input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0 ] 
+            sig_obs_hat = df_obs["Q_true"].std(ddof=1)
             obs_uncertainty_prior = [sig_obs_hat / 100.0, sig_obs_hat / 100.0 / 3.0]
+
+            config, model_interface_class=set_config("J_obs", "Q_true", obs_made, obs_pattern, model_interface_class)
         
         elif uncertainty_mode == "output":
             
@@ -85,10 +118,12 @@ for stn_i in stn_input:
             if not os.path.exists(path_str):
                 os.makedirs(path_str)
 
-            sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
+            sig_ipt_hat = df_obs["J_true"].std(ddof=1) / stn_i
             input_uncertainty_prior = [sig_ipt_hat / 100.0, sig_ipt_hat / 100.0 / 3.0]
             sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
             obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
+
+            config, model_interface_class=set_config("J_true", "Q_obs", obs_made, obs_pattern, model_interface_class)
         
         elif uncertainty_mode == "both":
 
@@ -101,35 +136,11 @@ for stn_i in stn_input:
             sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
             obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
 
+            config, model_interface_class=set_config("J_obs", "Q_obs", obs_made, obs_pattern, model_interface_class)
+
         # Set prior parameters
         k_prior = [k, k / 3.0]
-        initial_state_prior = [df_obs["Q_obs"][0], df_obs["Q_obs"][0] / 3.0]
-
-        # Observation is set to be very small because currently using Q_true as the observation 
-        
-        if obs_pattern == "deci both" or obs_pattern == "deci output":
-            config = {
-                "observed_made_each_step": obs_made,
-                "outflux": "Q_true",
-                "use_MAP_AS_weight": False,
-                "use_MAP_ref_traj": False,
-                "use_MAP_MCMC": False,
-                "update_theta_dist": False,
-            }
-            if obs_pattern == "deci output":
-                model_interface_class = ModelInterfaceDeciFineInput
-                
-        elif obs_pattern == "deci input":
-            config = {
-                "observed_made_each_step": True,
-                "outflux": "Q_true",
-                "use_MAP_AS_weight": False,
-                "use_MAP_ref_traj": False,
-                "use_MAP_MCMC": False,
-                "update_theta_dist": False,
-            }
-        else:
-            raise ValueError("Invalid observation pattern.")
+        initial_state_prior = [df_obs["Q_obs"][0], df_obs["Q_obs"][0] / 3.0 * np.sqrt(k)]
         
         # Save prior parameters and compile
         prior_record = pd.DataFrame(
@@ -143,7 +154,7 @@ for stn_i in stn_input:
         run_parameter = [num_input_scenarios, num_parameter_samples, len_parameter_MCMC]
 
         # run model
-        run_with_given_settings(
+        ipt, opt, df = run_with_given_settings(
             df_obs,
             config,
             run_parameter,
@@ -152,6 +163,5 @@ for stn_i in stn_input:
             plot_preliminary=False,
             model_interface_class=model_interface_class,
         )
-
 
 # %%

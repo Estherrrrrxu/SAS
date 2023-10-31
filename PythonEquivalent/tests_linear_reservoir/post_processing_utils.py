@@ -22,14 +22,11 @@ def cal_RMSE(
     threshold: int,
     result_root: str,
     make_plot: bool = False,
-    uncertain_input: bool = True, 
     dt: float = 1.0,    
 ) -> List[float]:
     # path to the directory
-    if uncertain_input:
-        path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}"
-    else:
-        path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}_output"
+
+    path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}"
 
 
     model_run_times = []

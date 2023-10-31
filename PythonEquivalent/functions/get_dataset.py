@@ -121,7 +121,7 @@ def get_different_input_scenarios(
             obs_made=4, 
             case_name="Bulk every 4d"
             )
-        
+
         return bulk_4d
     
     elif observation_mode == "bulk_7d":
@@ -130,13 +130,13 @@ def get_different_input_scenarios(
 
         if plot:
             plot_bulk(bulk_7d)
-
+        
         bulk_7d = Cases(
             df_obs=bulk_7d, 
             obs_made=7, 
             case_name="Bulk every 7d"
             )
-        
+
         return bulk_7d
     
     else:

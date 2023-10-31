@@ -220,12 +220,10 @@ def create_bulk_sample(original: pd.DataFrame, n: int) -> pd.DataFrame:
     bulk["index"] = original.loc[is_obs, "index"].values
 
     df_temp = pd.merge(original, bulk, on="index", how="left")
+    df_temp.columns = ['J_true_fine', 'J_obs_fine', 'Q_true_fine', 'Q_obs_fine', 'index', 'is_obs_fine', 'J_true', 'J_obs', 'Q_true', 'Q_obs', 'is_obs']
     df_temp = df_temp.drop(
-        ["J_true_x", "J_obs_x", "Q_true_x", "Q_obs_x", "is_obs_x"], axis=1
+        ["is_obs_fine"], axis=1
     )
-    df_temp.columns = ["index", "J_true", "J_obs", "Q_true", "Q_obs", "is_obs"]
-    df_temp["Q_true"] = original["Q_true"]
-    df_temp["J_true"] = original["J_true"]
 
     bulk = df_temp.fillna(method="bfill").dropna()
     bulk["is_obs"] = is_obs[: last_true_index + 1]

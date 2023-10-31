@@ -73,8 +73,18 @@ for stn_i in stn_input:
 
         sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
         input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
-        sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
+        sig_obs_hat = df_obs["Q_true"].std(ddof=1)
         obs_uncertainty_prior = [sig_obs_hat / 100.0, sig_obs_hat / 100.0 / 3.0]
+
+        config = {
+        "observed_made_each_step": obs_made,
+        "influx": "J_obs",
+        "outflux": "Q_true",
+        "use_MAP_AS_weight": False,
+        "use_MAP_ref_traj": False,
+        "use_MAP_MCMC": False,
+        "update_theta_dist": False,
+    }
     
     elif uncertainty_mode == "output":
         
@@ -82,10 +92,20 @@ for stn_i in stn_input:
         if not os.path.exists(path_str):
             os.makedirs(path_str)
 
-        sig_ipt_hat = df_obs["J_obs"].std(ddof=1) / stn_i
+        sig_ipt_hat = df_obs["J_true"].std(ddof=1) / stn_i
         input_uncertainty_prior = [sig_ipt_hat / 100.0, sig_ipt_hat / 100.0 / 3.0]
         sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
         obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
+
+        config = {
+        "observed_made_each_step": obs_made,
+        "influx": "J_true",
+        "outflux": "Q_obs",
+        "use_MAP_AS_weight": False,
+        "use_MAP_ref_traj": False,
+        "use_MAP_MCMC": False,
+        "update_theta_dist": False,
+    }
     
     elif uncertainty_mode == "both":
 
@@ -97,19 +117,20 @@ for stn_i in stn_input:
         input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat / 3.0]
         sig_obs_hat = df_obs["Q_obs"].std(ddof=1)
         obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat / 3.0]
-    
-    # Set other prior parameters
-    k_prior = [k, k / 3.0]
-    initial_state_prior = [df_obs["Q_obs"][0], df_obs["Q_obs"][0] / 3.0]
 
-    config = {
+        config = {
         "observed_made_each_step": obs_made,
-        "outflux": "Q_true",
+        "influx": "J_obs",
+        "outflux": "Q_obs",
         "use_MAP_AS_weight": False,
         "use_MAP_ref_traj": False,
         "use_MAP_MCMC": False,
         "update_theta_dist": False,
     }
+    
+    # Set other prior parameters
+    k_prior = [k, k / 3.0]
+    initial_state_prior = [df_obs["Q_obs"][0], df_obs["Q_obs"][0] / 3.0 * np.sqrt(k)]
 
     # Save prior parameters and compile
     prior_record = pd.DataFrame(
@@ -123,7 +144,7 @@ for stn_i in stn_input:
     run_parameter = [num_input_scenarios, num_parameter_samples, len_parameter_MCMC]
 
     # run model
-    run_with_given_settings(
+    ipt, opt, df = run_with_given_settings(
         df_obs,
         config,
         run_parameter,
@@ -132,6 +153,3 @@ for stn_i in stn_input:
         plot_preliminary=False,
         model_interface_class=model_interface_class,
     )
-
-
-# %%

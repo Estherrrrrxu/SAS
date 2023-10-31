@@ -12,16 +12,16 @@ sys.path.append("../")
 from functions.get_dataset import get_different_input_scenarios
 from tests_linear_reservoir.test_utils import *
 import pandas as pd
-from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
+from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk, ModelInterfaceDeci
 
 # %%
 
 num_input_scenarios = 5
 num_parameter_samples = 5
 len_parameter_MCMC = 5
-k = 1.
+k = 0.1
 ipt_std = 1.0
-obs_mode = "perfect"
+obs_mode = "bulk_7d"
 interval = [0, 30]
 # %%
 # settings that are not likely to change
@@ -33,7 +33,7 @@ stn_input = [5]
 
 length = 3000
 
-model_interface_class = ModelInterface
+model_interface_class = ModelInterfaceBulk
 
 # %%
 for stn_i in stn_input:
@@ -60,9 +60,9 @@ for stn_i in stn_input:
 
     # Set prior parameters
     k_prior = [k, k / 3.0]
-    initial_state_prior = [df_obs["Q_obs"][0], df_obs["Q_obs"][0] / 3.0]
+    initial_state_prior = [df_obs["Q_obs"][0], df_obs["Q_obs"][0] / 3. * np.sqrt(k)]
     sig_ipt_hat = df_obs["J_obs"].std(ddof=1) 
-    input_uncertainty_prior = [sig_ipt_hat/ 100.0, sig_ipt_hat/ 100.0 / 3.0]
+    input_uncertainty_prior = [sig_ipt_hat, sig_ipt_hat/ 3.0]
     sig_obs_hat = df_obs["Q_obs"].std(ddof=1) / stn_i
     obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat/ 3.0]
     # Observation is set to be very small because currently using Q_true as the observation 
@@ -70,7 +70,8 @@ for stn_i in stn_input:
     
     config = {
         "observed_made_each_step": obs_made,
-        "outflux": "Q_true",
+        "influx": "J_obs",
+        "outflux": "Q_obs",
         "use_MAP_AS_weight": False,
         "use_MAP_ref_traj": False,
         "use_MAP_MCMC": False,

@@ -121,7 +121,7 @@ def run_with_given_settings(
     df.to_csv(f"{path_str}/df.csv")
 
     print(f"Results saved to {path_str} with run time {model_run_time}.")
-    return None
+    return input_scenarios, output_scenarios, df
 
 # %%
 # %%

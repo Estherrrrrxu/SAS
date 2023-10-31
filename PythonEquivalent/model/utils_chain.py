@@ -72,6 +72,7 @@ class Chain:
         A[:, 0] = Ak = np.arange(self.N)
 
         # initialization at the first observation
+        #TODO: in the future, let x be evolving with the input
         ind_init = self.pre_ind[0]
         X[:, ind_init] = X[:, ind_init] * self.model_interface.initial_state_model(num=self.N)
         Y[:, ind_init] = self.model_interface.observation_model(Xk=X[:, ind_init])
