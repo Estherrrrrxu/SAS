@@ -120,18 +120,27 @@ for ipt_std in stds:
     for stn_i in stn_ratios:
         for k_true in ks:
             for threshold in [30]:
+                # sig_e = ipt_std * k_true
+                # phi = 1 - k_true
+                # sig_q = np.sqrt(sig_e**2 / (1 - phi**2))
+                # sig_input = sig_e / stn_i / k_true
+                # sig_output = sig_q / stn_i * (sig_e / sig_q)
+
 
                 case_name_input = case_name + "_uncertain_input"
                 data_input = get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name_input)
                 data_list_uncertain_input.append(data_input)
+                plot_each_scenarios(root_folder_name, stn_i, num_input_scenarios, num_parameter_samples, len_parameter_MCMC, ipt_mean, ipt_std, k_true, le, case_name_input, threshold)
 
                 case_name_output = case_name + "_uncertain_output"
                 data_output = get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name_output)
                 data_list_uncertain_output.append(data_output)
+                plot_each_scenarios(root_folder_name, stn_i, num_input_scenarios, num_parameter_samples, len_parameter_MCMC, ipt_mean, ipt_std, k_true, le, case_name_output, threshold)
 
                 case_name_both = case_name + "_uncertain_both"
                 data_both = get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name_both)
                 data_list_uncertain_both.append(data_both)
+                plot_each_scenarios(root_folder_name, stn_i, num_input_scenarios, num_parameter_samples, len_parameter_MCMC, ipt_mean, ipt_std, k_true, le, case_name_both, threshold)
 
 # %%
 data_list_uncertain_input = pd.DataFrame(data_list_uncertain_input)

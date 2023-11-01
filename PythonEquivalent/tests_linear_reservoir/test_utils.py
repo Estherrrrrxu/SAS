@@ -385,6 +385,7 @@ def plot_scenarios(
     line_mode: Optional[bool] = False,
     uncertain_input: Optional[bool] = True,
 ):
+    # %%
     fig, ax = plt.subplots(2, 1, figsize=(8, 8))
     real_start = truth_df["index"][truth_df["is_obs"]].iloc[1]
     real_end = truth_df["index"][truth_df["is_obs"]].iloc[-1] + 1
@@ -445,7 +446,7 @@ def plot_scenarios(
     )
 
     # observations
-    if uncertain_input:
+    if uncertain_input == "input" or uncertain_input == "both":
         ax[0].scatter(
             truth_df["index"][truth_df["is_obs"]][1:real_end],
             truth_df["J_obs"][truth_df["is_obs"]][1:real_end],
@@ -466,7 +467,7 @@ def plot_scenarios(
             label="Observations",
         )
 
-    ax[0].set_ylim([min(truth_df["J_true"]) * 0.925, max(truth_df["J_true"]) * 1.065])
+    ax[0].set_ylim([min(truth_df["J_true"]- 3 * sig_input) , max(truth_df["J_true"])+ 3 * sig_input ])
     ax[0].set_xlim([real_start - 0.2, real_end + 0.2])
     ax[0].set_ylabel("Input signal", fontsize=16)
     ax[0].set_xticks([])
@@ -525,7 +526,7 @@ def plot_scenarios(
     )
 
     # observations
-    if uncertain_input:
+    if uncertain_input == "input":
         ax[1].scatter(
             truth_df["index"][truth_df["is_obs"]][1:real_end],
             truth_df["Q_true"][truth_df["is_obs"]][1:real_end],
@@ -549,7 +550,7 @@ def plot_scenarios(
     (cyan_line,) = ax[1].plot([], [], "c-", label="Scenarios")
 
     # ax[1].set_ylim([min(truth_df["Q_true"]) * 0.925, max(truth_df["Q_true"]) * 1.065])
-    ax[1].set_ylim([min(truth_df["Q_true"]), max(truth_df["Q_true"])])
+    ax[1].set_ylim([min(truth_df["Q_true"]- 3 * sig_output), max(truth_df["Q_true"]+ 3 * sig_output)])
     ax[1].set_xlim([real_start - 0.2, real_end + 0.2])
     ax[1].set_ylabel("Output signal", fontsize=16)
     ax[1].set_xlabel("Timestep", fontsize=16)

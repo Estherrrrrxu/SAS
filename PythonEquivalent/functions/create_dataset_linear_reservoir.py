@@ -120,9 +120,9 @@ def generate_w_diff_noise_level(
     # generate outflow
     Q = generate_outflow(J, delta_t, k, Q_init)
 
-    sig_e = np.std(J, ddof=1) * k
+    sig_e = np.std(J, ddof=1)
     phi = 1 - k * delta_t
-    sig_q = np.sqrt(sig_e**2 / (1 - phi**2))
+    sig_q = np.sqrt(sig_e**2 / (1 - phi**2)) * k
 
     J_true = deepcopy(J)
     Q_true = deepcopy(Q)
@@ -133,8 +133,8 @@ def generate_w_diff_noise_level(
         Q = deepcopy(Q_true)
 
         # add noise according to signal to noise ratio
-        noise_j = sig_e / stn_ipt / k
-        noise_q = sig_q / stn_ipt * (sig_e/sig_q)
+        noise_j = sig_e / stn_ipt
+        noise_q = sig_q / stn_ipt #* (sig_e * k / sig_q)
 
         a = (0 - J) / noise_j
         J = ss.truncnorm.rvs(a, np.inf, loc=J, scale=noise_j)
@@ -181,7 +181,7 @@ def generate_w_diff_noise_level(
 if __name__ == "__main__":
     data_root = "/Users/esthersida/pMESAS/Data/"
     # universal constants
-    length = 3000
+    length = 30
 
     delta_t = 1.
     

@@ -49,92 +49,126 @@ def cal_RMSE(
     full_input_mean = estimation["input"][threshold:, 1 : obs_ind[-1] + 1].mean(axis=0)
     full_output_mean = estimation["output"][threshold:, : obs_ind[-1] + 1].mean(axis=0)
     full_input_truth = truth_df["J_true"].iloc[1 : obs_ind[-1] + 1]
-    full_output_truth = truth_df["Q_true"].iloc[ : obs_ind[-1] + 1]
+    full_output_truth = truth_df["Q_true"].iloc[: obs_ind[-1] + 1]
 
     RMSE_J_total = np.sqrt(np.mean((full_input_mean - full_input_truth) ** 2))
     RMSE_Q_total = np.sqrt(np.mean((full_output_mean - full_output_truth) ** 2))
 
-    RMSE_J_obs = np.sqrt(np.mean((full_input_mean[obs_ind[1:]-1] - full_input_truth[obs_ind[1:]]) ** 2))
-    RMSE_Q_obs = np.sqrt(np.mean((full_output_mean[obs_ind] - full_output_truth[obs_ind]) ** 2))
+    RMSE_J_obs = np.sqrt(
+        np.mean((full_input_mean[obs_ind[1:] - 1] - full_input_truth[obs_ind[1:]]) ** 2)
+    )
+    RMSE_Q_obs = np.sqrt(
+        np.mean((full_output_mean[obs_ind] - full_output_truth[obs_ind]) ** 2)
+    )
 
     return RMSE_J_total, RMSE_Q_total, model_run_time, RMSE_J_obs, RMSE_Q_obs
-    # %%
+
+
+# %%
+def plot_each_scenarios(
+    result_root,
+    stn_i,
+    num_input_scenarios,
+    num_parameter_samples,
+    len_parameter_MCMC,
+    ipt_mean,
+    ipt_std,
+    k_true,
+    le,
+    case_name,
+    threshold,
+    obs_mode=None,
+):
+    if obs_mode is None:
+        path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}"
+    else:
+        path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}/{obs_mode}"
+
+    model_run_times = []
+    for filename in os.listdir(path_str):
+        if filename.startswith("k"):
+            model_run_times.append(float(filename[2:-4]))
+
+    # only one run for now
+    model_run_time = model_run_times[0]
+
+    input_scenarios = np.loadtxt(f"{path_str}/input_scenarios_{model_run_time}.csv")
+    output_scenarios = np.loadtxt(f"{path_str}/output_scenarios_{model_run_time}.csv")
+
+    estimation = {"input": input_scenarios, "output": output_scenarios}
+    truth_df = pd.read_csv(f"{path_str}/df.csv", index_col=0)
+
+    obs_ind = np.where(truth_df["is_obs"][:] == True)[0]
     cn = case_name.split("_")
+    uncertain_type = cn[-1]
 
-    if make_plot:
-        # theoretical values
-        if cn[-1] == "input":
-            input_uncertainty_true = ipt_std / stn_i
-            sig_e = input_uncertainty_true * dt
-            phi = 1 - k_true * dt
-            obs_uncertainty_true = np.sqrt(sig_e**2 / (1 - phi**2))
-            initial_state_true = ipt_mean / k_true
-            uncertain_input = True
-        else:
-            obs_uncertainty_true = ipt_std / stn_i
-            phi = 1 - k_true * dt
-            input_uncertainty_true = np.sqrt(obs_uncertainty_true**2 * (1 - phi**2))
-            initial_state_true = ipt_mean / k_true
-            uncertain_input = False
+    sig_e = ipt_std * k_true
+    phi = 1 - k_true
+    sig_q = np.sqrt(sig_e**2 / (1 - phi**2))
+    input_uncertainty_true = sig_e / stn_i / k_true
+    obs_uncertainty_true = sig_q / stn_i * (sig_e / sig_q)
+    initial_state_true = truth_df["Q_true"].iloc[0]
 
-        # load data
-        k = np.loadtxt(f"{path_str}/k_{model_run_time}.csv")
-        initial_state = np.loadtxt(f"{path_str}/initial_state_{model_run_time}.csv")
-        input_uncertainty = np.loadtxt(
-            f"{path_str}/input_uncertainty_{model_run_time}.csv"
-        )
-        obs_uncertainty = np.loadtxt(f"{path_str}/obs_uncertainty_{model_run_time}.csv")
-        prior_params = pd.read_csv(
-            f"{path_str}/prior_parameters_{stn_i}.csv", index_col=0
-        )
+    # load data
+    k = np.loadtxt(f"{path_str}/k_{model_run_time}.csv")
+    initial_state = np.loadtxt(f"{path_str}/initial_state_{model_run_time}.csv")
+    input_uncertainty = np.loadtxt(f"{path_str}/input_uncertainty_{model_run_time}.csv")
+    obs_uncertainty = np.loadtxt(f"{path_str}/obs_uncertainty_{model_run_time}.csv")
+    prior_params = pd.read_csv(f"{path_str}/prior_parameters_{stn_i}.csv", index_col=0)
 
-        # make plot dataframe
-        plot_df = pd.DataFrame(
-            {
-                "k": k,
-                "initial state": initial_state,
-                "input uncertainty": input_uncertainty,
-                "obs uncertainty": obs_uncertainty,
-            }
-        )
+    # make plot dataframe
+    plot_df = pd.DataFrame(
+        {
+            "k": k,
+            "initial state": initial_state,
+            "input uncertainty": input_uncertainty,
+            "obs uncertainty": obs_uncertainty,
+        }
+    )
 
-        # unpack true parameters
-        true_params = [
-            k_true,
-            initial_state_true,
-            input_uncertainty_true,
-            obs_uncertainty_true,
-        ]
+    # unpack true parameters
+    true_params = [
+        k_true,
+        initial_state_true,
+        input_uncertainty_true,
+        obs_uncertainty_true,
+    ]
 
-        # plot posterior
-        g = plot_parameter_posterior(plot_df, true_params, prior_params, threshold)
-        g.savefig(f"{path_str}/posterior.pdf")
+    # plot posterior
+    g = plot_parameter_posterior(plot_df, true_params, prior_params, threshold)
+    g.savefig(f"{path_str}/posterior.pdf")
 
-        # plot trajectories
-        estimation = {"input": input_scenarios, "output": output_scenarios}
-        truth_df = pd.read_csv(f"{path_str}/df.csv", index_col=0)
+    # plot trajectories
+    estimation = {"input": input_scenarios, "output": output_scenarios}
+    truth_df = pd.read_csv(f"{path_str}/df.csv", index_col=0)
 
-        g = plot_scenarios(
-            truth_df,
-            estimation,
-            threshold,
-            input_uncertainty_true,
-            obs_uncertainty_true,
-            line_mode=False,
-            uncertain_input=uncertain_input,
-        )
-        g.savefig(f"{path_str}/scenarios.pdf")
+    g = plot_scenarios(
+        truth_df,
+        estimation,
+        threshold,
+        input_uncertainty_true,
+        obs_uncertainty_true,
+        line_mode=False,
+        uncertain_input=uncertain_type,
+    )
+    g.savefig(f"{path_str}/scenarios.pdf")
 
-        g = plot_scenarios(
-            truth_df,
-            estimation,
-            threshold,
-            input_uncertainty_true,
-            obs_uncertainty_true,
-            line_mode=True,
-            uncertain_input=uncertain_input,
-        )
-        g.savefig(f"{path_str}/scenarios_line.pdf")
+    g = plot_scenarios(
+        truth_df,
+        estimation,
+        threshold,
+        input_uncertainty_true,
+        obs_uncertainty_true,
+        line_mode=True,
+        uncertain_input=uncertain_type,
+    )
+    g.savefig(f"{path_str}/scenarios_line.pdf")
 
-        # convergence check
-        convergence_check_plot(plot_df, 100)
+    # convergence check
+    convergence_check_plot(plot_df, 100)
+    plt.savefig(f"{path_str}/convergence_check.pdf")
+
+    return None
+
+
+# %%
