@@ -392,14 +392,25 @@ def plot_scenarios(
     img_start = truth_df["index"][truth_df["is_obs"]].iloc[0]
     # uncertainty bounds
 
-    ax[0].fill_between(
-        truth_df["index"][real_start:real_end],
-        truth_df["J_true"][real_start:real_end] - 1.96 * sig_input,
-        truth_df["J_true"][real_start:real_end] + 1.96 * sig_input,
-        color="grey",
-        alpha=0.3,
-        label=r"95% theoretical uncertainty bounds",
-    )
+    if uncertain_input == "input" or uncertain_input == "both":
+
+        ax[0].fill_between(
+            truth_df["index"][real_start:real_end],
+            truth_df["J_true"][real_start:real_end] - 1.96 * sig_input,
+            truth_df["J_true"][real_start:real_end] + 1.96 * sig_input,
+            color="grey",
+            alpha=0.3,
+            label=r"95% theoretical uncertainty bounds",
+        )
+    else:
+        ax[0].fill_between(
+            truth_df["index"][real_start:real_end],
+            truth_df["J_true"][real_start:real_end],
+            truth_df["J_true"][real_start:real_end],
+            color="grey",
+            alpha=0.3,
+            label=r"95% theoretical uncertainty bounds",
+        )
 
     # scenarios
     if line_mode:
@@ -475,14 +486,25 @@ def plot_scenarios(
     # ========================================
     # uncertainty bounds
 
-    ax[1].fill_between(
-        truth_df["index"][real_start:real_end],
-        truth_df["Q_true"][real_start:real_end] - 1.96 * sig_output,
-        truth_df["Q_true"][real_start:real_end] + 1.96 * sig_output,
-        color="grey",
-        alpha=0.3,
-        label=r"95% theoretical uncertainty",
-    )
+    if uncertain_input == "output":
+        ax[1].fill_between(
+            truth_df["index"][real_start:real_end],
+            truth_df["Q_true"][real_start:real_end] - 1.96 * sig_output,
+            truth_df["Q_true"][real_start:real_end] + 1.96 * sig_output,
+            color="grey",
+            alpha=0.3,
+            label=r"95% theoretical uncertainty",
+        )
+    else:
+        ax[1].fill_between(
+            truth_df["index"][real_start:real_end],
+            truth_df["Q_true"][real_start:real_end],
+            truth_df["Q_true"][real_start:real_end],
+            color="grey",
+            alpha=0.3,
+            label=r"95% theoretical uncertainty",
+        )
+        
     # scenarios
     if line_mode:
         ax[1].plot(

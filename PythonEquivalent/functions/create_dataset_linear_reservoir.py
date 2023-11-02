@@ -181,7 +181,7 @@ def generate_w_diff_noise_level(
 if __name__ == "__main__":
     data_root = "/Users/esthersida/pMESAS/Data/"
     # universal constants
-    length = 30
+    length = 3000
 
     delta_t = 1.
     
@@ -237,5 +237,6 @@ if __name__ == "__main__":
     #     delta_t=delta_t,
     #     Q_init=0.01,
     # )
+
 
 # %%
