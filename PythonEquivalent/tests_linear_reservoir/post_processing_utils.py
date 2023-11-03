@@ -45,7 +45,7 @@ def cal_RMSE(
     
     #%%
 
-    model_run_time = model_run_times[0]
+    model_run_time = model_run_times[-1]
 
     input_scenarios = np.loadtxt(f"{path_str}/input_scenarios_{model_run_time}.csv")
     output_scenarios = np.loadtxt(f"{path_str}/output_scenarios_{model_run_time}.csv")
@@ -114,7 +114,7 @@ def plot_each_scenarios(
         return None, None, None, None, None       
     #%%
     # only one run for now
-    model_run_time = model_run_times[0]
+    model_run_time = model_run_times[-1]
 
     input_scenarios = np.loadtxt(f"{path_str}/input_scenarios_{model_run_time}.csv")
     output_scenarios = np.loadtxt(f"{path_str}/output_scenarios_{model_run_time}.csv")

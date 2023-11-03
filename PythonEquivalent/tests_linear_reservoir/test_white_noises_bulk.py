@@ -40,7 +40,7 @@ ipt_mean = 5.0
 test_case = "WhiteNoise"
 data_root = "/Users/esthersida/pMESAS"
 
-stn_input = [5]
+stn_input = [3]
 
 length = 3000
 

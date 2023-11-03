@@ -17,7 +17,7 @@ from test_utils import *
 from post_processing_utils import *
 # %%
 # root directory to search
-root_folder_name = "/Users/esthersida/pMESAS/Results/TestLR/WhiteNoise"
+root_folder_name = "/Users/esthersida/pMESAS/Results_with_new/TestLR/WhiteNoise"
 
 # Use os.walk to traverse the directory and its subdirectories
 subdirs = []
@@ -354,12 +354,14 @@ ax[1, 0].legend().remove()
 ax[1, 1].legend().remove()
 ax[1, 2].legend().remove()
 
+fig.suptitle("Total RMSE", fontsize=20)
+
 # %%
 fig, ax = plt.subplots(2, 3, figsize=(15, 9))
 subset = data_list[data_list["Uncertainty"] == "input"]
 sns.lineplot(
     x="k_true",
-    y=subset["input_RMSE_obs"],
+    y=subset["input_RMSE_obs"]/subset["input_RMSE_total"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -369,7 +371,7 @@ sns.lineplot(
 )
 sns.lineplot(
     x="k_true",
-    y=subset["output_RMSE_obs"],
+    y=subset["output_RMSE_obs"]/subset["output_RMSE_total"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -380,7 +382,7 @@ sns.lineplot(
 subset = data_list[data_list["Uncertainty"] == "output"]
 sns.lineplot(
     x="k_true",
-    y=subset["input_RMSE_obs"],
+    y=subset["input_RMSE_obs"]/subset["input_RMSE_total"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -390,7 +392,7 @@ sns.lineplot(
 )
 sns.lineplot(
     x="k_true",
-    y=subset["output_RMSE_obs"],
+    y=subset["output_RMSE_obs"]/subset["output_RMSE_total"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -401,7 +403,7 @@ sns.lineplot(
 subset = data_list[data_list["Uncertainty"] == "both"]
 sns.lineplot(
     x="k_true",
-    y=subset["input_RMSE_obs"],
+    y=subset["input_RMSE_obs"]/subset["input_RMSE_total"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -411,7 +413,7 @@ sns.lineplot(
 )
 sns.lineplot(
     x="k_true",
-    y=subset["output_RMSE_obs"],
+    y=subset["output_RMSE_obs"]/subset["output_RMSE_total"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -445,8 +447,8 @@ ax[0, 0].set_title("Uncertain input", fontsize=15)
 ax[0, 1].set_title("Uncertain output", fontsize=15)
 ax[0, 2].set_title("Uncertain both", fontsize=15)
 
-ax[0, 0].set_ylabel("Input RMSE", fontsize=14)
-ax[1, 0].set_ylabel("Output RMSE", fontsize=14)
+ax[0, 0].set_ylabel("Input obs/total RMSE", fontsize=14)
+ax[1, 0].set_ylabel("Output obs/total RMSE", fontsize=14)
 
 ax[1, 0].set_xlabel("True k", fontsize=14)
 ax[1, 1].set_xlabel("True k", fontsize=14)
@@ -459,3 +461,363 @@ ax[1, 0].legend().remove()
 ax[1, 1].legend().remove()
 ax[1, 2].legend().remove()
 # %%
+# %%
+stn_i = 5
+N = 50
+D = 25
+L = 100
+k_true = 0.01
+ipt_mean = 5.0
+ipt_std = 1.0
+le = 30
+# %%
+def get_plot_info(
+    result_root,
+    stn_i,
+    num_input_scenarios,
+    num_parameter_samples,
+    len_parameter_MCMC,
+    ipt_mean,
+    ipt_std,
+    k_true,
+    le,
+    case_name,
+    obs_mode,
+):
+    
+    path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}/{obs_mode}"
+
+    model_run_times = []
+    for filename in os.listdir(path_str):
+        if filename.startswith("k"):
+            model_run_times.append(float(filename[2:-4]))
+
+    # only one run for now
+    model_run_time = model_run_times[-1]
+
+    input_scenarios = np.loadtxt(f"{path_str}/input_scenarios_{model_run_time}.csv")
+    output_scenarios = np.loadtxt(f"{path_str}/output_scenarios_{model_run_time}.csv")
+
+    estimation = {"input": input_scenarios, "output": output_scenarios}
+    truth_df = pd.read_csv(f"{path_str}/df.csv", index_col=0)
+
+    obs_ind = np.where(truth_df["is_obs"][:] == True)[0]
+    cn = case_name.split("_")
+    uncertain_type = cn[-1]
+
+    sig_e = ipt_std
+    phi = 1 - k_true
+    sig_q = np.sqrt(sig_e**2 / (1 - phi**2)) * k_true
+    input_uncertainty_true = sig_e / stn_i
+    obs_uncertainty_true = sig_q / stn_i
+    initial_state_true = truth_df["Q_true"].iloc[0]
+
+    # load data
+    k = np.loadtxt(f"{path_str}/k_{model_run_time}.csv")
+    initial_state = np.loadtxt(f"{path_str}/initial_state_{model_run_time}.csv")
+    input_uncertainty = np.loadtxt(f"{path_str}/input_uncertainty_{model_run_time}.csv")
+    obs_uncertainty = np.loadtxt(f"{path_str}/obs_uncertainty_{model_run_time}.csv")
+    prior_params = pd.read_csv(f"{path_str}/prior_parameters_{stn_i}.csv", index_col=0)
+
+    # make plot dataframe
+    plot_df = pd.DataFrame(
+        {
+            "k": k,
+            "initial state": initial_state,
+            "input uncertainty": input_uncertainty,
+            "obs uncertainty": obs_uncertainty,
+        }
+    )
+
+    # unpack true parameters
+    true_params = [
+        k_true,
+        initial_state_true,
+        input_uncertainty_true,
+        obs_uncertainty_true,
+    ]
+
+    # plot trajectories
+    estimation = {"input": input_scenarios, "output": output_scenarios}
+    truth_df = pd.read_csv(f"{path_str}/df.csv", index_col=0)
+
+    real_start = truth_df["index"][truth_df["is_obs"]].iloc[1]
+    real_end = truth_df["index"][truth_df["is_obs"]].iloc[-1] + 1
+    img_start = truth_df["index"][truth_df["is_obs"]].iloc[0]
+
+    return (
+        estimation,
+        truth_df,
+        real_start,
+        real_end,
+        img_start,
+        uncertain_type,
+        ax,
+        input_uncertainty_true,
+        obs_uncertainty_true,
+    )
+
+
+
+
+# %%
+for k_true in [0.001, 0.01, 0.1, 1.]:
+    for deci_num in [2, 4, 7]:
+        case_names = [f"Decimated every {deci_num}d_uncertain_input", f"Decimated every {deci_num}d_uncertain_output", f"Decimated every {deci_num}d_uncertain_both"]
+
+        fig, ax = plt.subplots(2, 3, figsize=(20, 10))
+        for i in range(len(case_names)):
+            case_name = case_names[i]
+
+            (
+                estimation,
+                truth_df,
+                real_start,
+                real_end,
+                img_start,
+                uncertain_type,
+                ax,
+                sig_input,
+                sig_output,
+            ) = get_plot_info(
+                root_folder_name,
+                stn_i,
+                num_input_scenarios,
+                num_parameter_samples,
+                len_parameter_MCMC,
+                ipt_mean,
+                ipt_std,
+                k_true,
+                le,
+                case_name,
+                obs_mode,
+            )
+
+            cn = case_name.split("_")
+            uncertain_input = cn[-1]
+            line_mode = False
+            start_ind = 30
+
+            if uncertain_input == "input" or uncertain_input == "both":
+                ax[0, i].fill_between(
+                    truth_df["index"][real_start:real_end],
+                    truth_df["J_true"][real_start:real_end] - 1.96 * sig_input,
+                    truth_df["J_true"][real_start:real_end] + 1.96 * sig_input,
+                    color="grey",
+                    alpha=0.3,
+                    label=r"95% theoretical uncertainty bounds",
+                )
+            else:
+                ax[0, i].fill_between(
+                    truth_df["index"][real_start:real_end],
+                    truth_df["J_true"][real_start:real_end],
+                    truth_df["J_true"][real_start:real_end],
+                    color="grey",
+                    alpha=0.3,
+                    label=r"95% theoretical uncertainty bounds",
+                )
+
+            # scenarios
+            if line_mode:
+                alpha = 5.0 / estimation["input"][start_ind:,].shape[0]
+                ax[0, i].plot(
+                    truth_df["index"][real_start:real_end],
+                    estimation["input"][start_ind:, real_start:real_end].T,
+                    color="C9",
+                    linewidth=1.5,
+                    zorder=0,
+                    alpha=alpha,
+                )
+
+            else:
+                sns.boxplot(
+                    estimation["input"][start_ind:, :real_end],
+                    orient="v",
+                    ax=ax[0, i],
+                    order=truth_df["index"] - img_start,
+                    color="C9",
+                    linewidth=1.5,
+                    fliersize=1.5,
+                    zorder=0,
+                    width=0.8,
+                    fill=False,
+                    whis=(2.5, 97.5),
+                )
+                ax[0, i].plot(
+                    truth_df["index"][real_start:real_end],
+                    estimation["input"][start_ind:, real_start:real_end].mean(axis=0),
+                    color="C9",
+                    linewidth=3,
+                    zorder=0,
+                    label=f"Ensemble mean",
+                )
+
+            # truth trajectory
+            ax[0, i].plot(
+                truth_df["index"][real_start:real_end],
+                truth_df["J_true"][real_start:real_end],
+                color="k",
+                label="Truth",
+                linewidth=0.8,
+            )
+
+            # observations
+            if uncertain_input == "input" or uncertain_input == "both":
+                ax[0, i].scatter(
+                    truth_df["index"][truth_df["is_obs"]][1:real_end],
+                    truth_df["J_obs"][truth_df["is_obs"]][1:real_end],
+                    marker="+",
+                    c="k",
+                    s=100,
+                    linewidth=2,
+                    label="Observations",
+                )
+            else:
+                ax[0, i].scatter(
+                    truth_df["index"][truth_df["is_obs"]][1:real_end],
+                    truth_df["J_true"][truth_df["is_obs"]][1:real_end],
+                    marker="+",
+                    c="k",
+                    s=100,
+                    linewidth=2,
+                    label="Observations",
+                )
+
+            # ========================================
+            # uncertainty bounds
+
+            if uncertain_input == "output" or uncertain_input == "both":
+                ax[1, i].fill_between(
+                    truth_df["index"][real_start:real_end],
+                    truth_df["Q_true"][real_start:real_end] - 1.96 * sig_output,
+                    truth_df["Q_true"][real_start:real_end] + 1.96 * sig_output,
+                    color="grey",
+                    alpha=0.3,
+                    label=r"95% theoretical uncertainty",
+                )
+            else:
+                ax[1, i].fill_between(
+                    truth_df["index"][real_start:real_end],
+                    truth_df["Q_true"][real_start:real_end],
+                    truth_df["Q_true"][real_start:real_end],
+                    color="grey",
+                    alpha=0.3,
+                    label=r"95% theoretical uncertainty",
+                )
+
+            # scenarios
+            if line_mode:
+                ax[1, i].plot(
+                    truth_df["index"][real_start:real_end],
+                    estimation["output"][start_ind:, real_start:real_end].T,
+                    color="C9",
+                    linewidth=1.5,
+                    zorder=0,
+                    alpha=alpha,
+                )
+            else:
+                sns.boxplot(
+                    estimation["output"][start_ind:, real_start:real_end],
+                    order=truth_df["index"] - real_start,
+                    orient="v",
+                    ax=ax[1, i],
+                    color="C9",
+                    linewidth=1.5,
+                    fliersize=1.5,
+                    zorder=0,
+                    width=0.8,
+                    fill=False,
+                    whis=(2.5, 97.5),
+                )
+                ax[1, i].plot(
+                    truth_df["index"][real_start:real_end],
+                    estimation["output"][start_ind:, real_start:real_end].mean(axis=0),
+                    color="C9",
+                    linewidth=3,
+                    zorder=0,
+                    label=f"Ensemble mean",
+                )
+
+            # truth trajectory
+            ax[1, i].plot(
+                truth_df["index"][real_start:real_end],
+                truth_df["Q_true"][real_start:real_end],
+                color="k",
+                label="Truth",
+                linewidth=0.8,
+            )
+
+            # observations
+            if uncertain_input == "input":
+                ax[1, i].scatter(
+                    truth_df["index"][truth_df["is_obs"]][1:real_end],
+                    truth_df["Q_true"][truth_df["is_obs"]][1:real_end],
+                    marker="+",
+                    c="k",
+                    s=100,
+                    linewidth=2,
+                    label="Observations",
+                )
+            else:
+                ax[1, i].scatter(
+                    truth_df["index"][truth_df["is_obs"]][1:real_end],
+                    truth_df["Q_obs"][truth_df["is_obs"]][1:real_end],
+                    marker="+",
+                    c="k",
+                    s=100,
+                    linewidth=2,
+                    label="Observations",
+                )
+
+            ax[0, i].set_ylim(
+                [
+                    min(truth_df["J_true"] - 3 * sig_input),
+                    max(truth_df["J_true"]) + 3 * sig_input,
+                ]
+            )
+            ax[1, i].set_ylim(
+                [
+                    min(truth_df["Q_true"] - 3 * sig_output),
+                    max(truth_df["Q_true"] + 3 * sig_output),
+                ]
+            )
+
+            ax[0, i].set_xlim([real_start - 0.2, real_end + 0.2])
+            ax[1, i].set_xlim([real_start - 0.2, real_end + 0.2])
+
+            if i == 0:
+                ax[0, i].set_ylabel("Input signal", fontsize=16)
+                ax[0, i].set_xticks([])
+                ax[1, i].set_ylabel("Output signal", fontsize=16)
+            else:
+                ax[0, i].set_ylabel("", fontsize=16)
+                ax[0, i].set_xticks([])
+                ax[1, i].set_ylabel("", fontsize=16)
+
+            ax[1, i].set_xlabel("Timestep", fontsize=16)
+            ax[1, i].set_xticks(np.arange(real_start, real_end, 5))
+
+            if i == 1:
+                if line_mode:
+                    (cyan_line,) = ax[1, i].plot([], [], "c-", label="Scenarios")
+                    ax[1, i].legend(
+                        frameon=False, ncol=5, loc="upper center", bbox_to_anchor=(0.5, 1.1)
+                    )
+                else:
+                    ax[1, i].legend(
+                        frameon=False, ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.1)
+                    )
+            else:
+                ax[1, i].legend().remove()
+
+            ax[0,1].set_title(
+                f"Signal to noise ratio = {stn_i}, k = {k_true} for decimated {cn[0][-2]} days",
+                fontsize=20,
+            )
+        fig.subplots_adjust(wspace=0.1, hspace=0.1)
+        if not os.path.exists(f"{root_folder_name}/Deci_traj"):
+            os.makedirs(f"{root_folder_name}/Deci_traj")
+        fig.savefig(
+            f"{root_folder_name}/Deci_traj/{uncertain_input}_stn_{stn_i}_k_{k_true}_deci_{cn[0][-2:]}.pdf")
+
+    # %%

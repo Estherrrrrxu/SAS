@@ -12,7 +12,7 @@ sys.path.append("../")
 from functions.get_dataset import get_different_input_scenarios
 from tests_linear_reservoir.test_utils import *
 import pandas as pd
-from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk, ModelInterfaceDeci
+from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
 
 # %%
 
@@ -23,18 +23,19 @@ k = 0.1
 ipt_std = 1.0
 obs_mode = "bulk_4d"
 interval = [0, 30]
+uncertainty_mode = "output"
 # %%
 # settings that are not likely to change
 ipt_mean = 5.0
 test_case = "WhiteNoise"
 data_root = "/Users/esthersida/pMESAS"
 
-stn_input = [5]
+stn_input = [3]
 
 length = 3000
 
 model_interface_class = ModelInterfaceBulk
-
+obs_pattern = "bulk both" 
 
 # %%
 for stn_i in stn_input:
@@ -68,17 +69,19 @@ for stn_i in stn_input:
     obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat/ 3.0]
     # Observation is set to be very small because currently using Q_true as the observation 
 
-    influx_type = "J_true"
-    outflux_type = "Q_true"
+    influx_type = "J_obs"
+    outflux_type = "Q_obs"
     
     config = {
-    "observed_made_each_step": True,
-    "influx": influx_type,
-    "outflux": outflux_type+"_fine",
-    "use_MAP_AS_weight": False,
-    "use_MAP_ref_traj": False,
-    "use_MAP_MCMC": False,
-    "update_theta_dist": False,}
+        "observed_made_each_step": obs_made,
+        "influx": influx_type+'_fine',
+        "outflux": outflux_type,
+        "use_MAP_AS_weight": False,
+        "use_MAP_ref_traj": False,
+        "use_MAP_MCMC": False,
+        "update_theta_dist": False,
+    }
+    model_interface_class = ModelInterface
 
     # Save prior parameters and compile
     prior_record = pd.DataFrame(
