@@ -14,27 +14,26 @@ from tests_linear_reservoir.test_utils import *
 import pandas as pd
 from model.model_interface import ModelInterface
 from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
-
 # %%
 # model run settings
 
-num_input_scenarios = int(sys.argv[1])
-num_parameter_samples = int(sys.argv[2])
-len_parameter_MCMC = int(sys.argv[3])
-k = float(sys.argv[4])
-ipt_std = float(sys.argv[5])
-obs_mode = sys.argv[6]
-interval = [0, int(sys.argv[7])]
-uncertainty_mode = sys.argv[8]
+# num_input_scenarios = int(sys.argv[1])
+# num_parameter_samples = int(sys.argv[2])
+# len_parameter_MCMC = int(sys.argv[3])
+# k = float(sys.argv[4])
+# ipt_std = float(sys.argv[5])
+# obs_mode = sys.argv[6]
+# interval = [0, int(sys.argv[7])]
+# uncertainty_mode = sys.argv[8]
 # %%
-# num_input_scenarios = 5
-# num_parameter_samples = 5
-# len_parameter_MCMC = 5
-# k = 1.0
-# ipt_std = 1.0
-# obs_mode = "bulk_2d"
-# interval = [0, 20]
-# uncertainty_mode = "input"  
+num_input_scenarios = 5
+num_parameter_samples = 5
+len_parameter_MCMC = 5
+k = 1.0
+ipt_std = 1.0
+obs_mode = "bulk_4d"
+interval = [0, 20]
+uncertainty_mode = "output"  
 
 # %%
 ipt_mean = 5.0
@@ -84,6 +83,7 @@ def set_config(influx_type: str, outflux_type: str, obs_made: Any, obs_pattern: 
             "use_MAP_MCMC": False,
             "update_theta_dist": False,
         }
+
     else:
         raise ValueError("Invalid observation pattern.")
 
@@ -174,6 +174,19 @@ for stn_i in stn_input:
             plot_preliminary=False,
             model_interface_class=model_interface_class,
         )
+
+        print(f"Finished {case_name} with {obs_pattern}.")
+
+        plt.figure()
+        plt.plot(df["J_true"], "k", linewidth=10)
+        plt.plot(ipt[1:, :].mean(axis=0), marker='.')
+        plt.show()
+        # 
+        plt.figure()
+        plt.plot(df["Q_true"], "k", linewidth=10)
+        plt.plot(opt[5:, :].T, marker='.')
+        plt.ylim([3, 6])
+        plt.show()
 
 
 # %%

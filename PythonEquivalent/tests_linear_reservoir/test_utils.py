@@ -486,7 +486,7 @@ def plot_scenarios(
     # ========================================
     # uncertainty bounds
 
-    if uncertain_input == "output":
+    if uncertain_input == "output" or "both":
         ax[1].fill_between(
             truth_df["index"][real_start:real_end],
             truth_df["Q_true"][real_start:real_end] - 1.96 * sig_output,

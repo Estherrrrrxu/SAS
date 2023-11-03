@@ -21,7 +21,7 @@ num_parameter_samples = 5
 len_parameter_MCMC = 5
 k = 0.1
 ipt_std = 1.0
-obs_mode = "bulk_7d"
+obs_mode = "bulk_4d"
 interval = [0, 30]
 # %%
 # settings that are not likely to change
@@ -34,6 +34,7 @@ stn_input = [5]
 length = 3000
 
 model_interface_class = ModelInterfaceBulk
+
 
 # %%
 for stn_i in stn_input:
@@ -66,17 +67,18 @@ for stn_i in stn_input:
     sig_obs_hat = df_obs["Q_obs"].std(ddof=1) / stn_i
     obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat/ 3.0]
     # Observation is set to be very small because currently using Q_true as the observation 
-    
+
+    influx_type = "J_true"
+    outflux_type = "Q_true"
     
     config = {
-        "observed_made_each_step": obs_made,
-        "influx": "J_obs",
-        "outflux": "Q_obs",
-        "use_MAP_AS_weight": False,
-        "use_MAP_ref_traj": False,
-        "use_MAP_MCMC": False,
-        "update_theta_dist": False,
-    }
+    "observed_made_each_step": True,
+    "influx": influx_type,
+    "outflux": outflux_type+"_fine",
+    "use_MAP_AS_weight": False,
+    "use_MAP_ref_traj": False,
+    "use_MAP_MCMC": False,
+    "update_theta_dist": False,}
 
     # Save prior parameters and compile
     prior_record = pd.DataFrame(
@@ -176,4 +178,5 @@ plt.plot(input_scenarios[1:, :].mean(axis=0), marker='.')
 # %%
 plt.plot(model_interface.df["Q_true"], "k", linewidth=10)
 plt.plot(output_scenarios[5:, :].T, marker='.')
+plt.ylim([4, 5.5])
 # %%

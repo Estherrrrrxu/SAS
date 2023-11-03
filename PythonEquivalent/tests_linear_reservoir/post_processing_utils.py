@@ -31,11 +31,20 @@ def cal_RMSE(
         path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}/{obs_mode}"
 
     model_run_times = []
+    if not os.path.exists(path_str):
+        return None, None, None, None, None
+
+
     for filename in os.listdir(path_str):
         if filename.startswith("k"):
             model_run_times.append(float(filename[2:-4]))
 
     # only one run for now
+    if len(model_run_times) == 0:
+        return None, None, None, None, None
+    
+    #%%
+
     model_run_time = model_run_times[0]
 
     input_scenarios = np.loadtxt(f"{path_str}/input_scenarios_{model_run_time}.csv")
@@ -84,11 +93,26 @@ def plot_each_scenarios(
     else:
         path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}/{obs_mode}"
 
+    
     model_run_times = []
+
+    if not os.path.exists(path_str):
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(f"no model run for {path_str}")
+        print("returning None")
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        return None, None, None, None, None
+
     for filename in os.listdir(path_str):
         if filename.startswith("k"):
             model_run_times.append(float(filename[2:-4]))
-
+    if len(model_run_times) == 0:
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(f"no model run for {path_str}")
+        print("returning None")
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        return None, None, None, None, None       
+    #%%
     # only one run for now
     model_run_time = model_run_times[0]
 
@@ -102,11 +126,11 @@ def plot_each_scenarios(
     cn = case_name.split("_")
     uncertain_type = cn[-1]
 
-    sig_e = ipt_std * k_true
+    sig_e = ipt_std
     phi = 1 - k_true
-    sig_q = np.sqrt(sig_e**2 / (1 - phi**2))
-    input_uncertainty_true = sig_e / stn_i / k_true
-    obs_uncertainty_true = sig_q / stn_i * (sig_e / sig_q)
+    sig_q = np.sqrt(sig_e**2 / (1 - phi**2)) * k_true
+    input_uncertainty_true = sig_e / stn_i
+    obs_uncertainty_true = sig_q / stn_i 
     initial_state_true = truth_df["Q_true"].iloc[0]
 
     # load data
