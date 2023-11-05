@@ -154,7 +154,7 @@ for case_name in case_names:
     for obs_mode in obs_modes:
         # Iterate over the nested loops
         for ipt_std in stds:
-            for stn_i in stn_ratios:
+            for stn_i in [3]:
                 for k_true in ks:
                     for threshold in [30]:
                         case_name_input = f"{case_name}_uncertain_input"
@@ -246,6 +246,11 @@ data_list['Uncertainty'] = data_list['case_name'].str.split("_").str[2]
 data_list['Decimation'] = data_list['case_name'].str.split("_").str[0]
 
 # %%
+mask = data_list.isnull().any(axis=1)
+print(data_list[mask])
+
+
+
 data_list.fillna(0, inplace=True)
 
 # %%
@@ -561,7 +566,9 @@ def get_plot_info(
 
 
 # %%
-for k_true in [0.001, 0.01, 0.1, 1.]:
+stn_i = 3
+# for k_true in [0.001, 0.01, 0.1, 1.]:
+for k_true in [0.1]:
     for deci_num in [2, 4, 7]:
         case_names = [f"Decimated every {deci_num}d_uncertain_input", f"Decimated every {deci_num}d_uncertain_output", f"Decimated every {deci_num}d_uncertain_both"]
 

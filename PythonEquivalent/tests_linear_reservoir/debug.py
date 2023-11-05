@@ -16,9 +16,9 @@ from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
 
 # %%
 
-num_input_scenarios = 5
-num_parameter_samples = 5
-len_parameter_MCMC = 5
+num_input_scenarios = 50
+num_parameter_samples = 25
+len_parameter_MCMC = 50
 k = 0.1
 ipt_std = 1.0
 obs_mode = "bulk_4d"
@@ -35,7 +35,7 @@ stn_input = [3]
 length = 3000
 
 model_interface_class = ModelInterfaceBulk
-obs_pattern = "bulk both" 
+obs_pattern = "bulk input" 
 
 # %%
 for stn_i in stn_input:
@@ -69,19 +69,19 @@ for stn_i in stn_input:
     obs_uncertainty_prior = [sig_obs_hat, sig_obs_hat/ 3.0]
     # Observation is set to be very small because currently using Q_true as the observation 
 
-    influx_type = "J_obs"
-    outflux_type = "Q_obs"
+    influx_type = "J_true"
+    outflux_type = "Q_true"
     
     config = {
         "observed_made_each_step": obs_made,
-        "influx": influx_type+'_fine',
-        "outflux": outflux_type,
+        "influx": influx_type,
+        "outflux": outflux_type+"_fine",
         "use_MAP_AS_weight": False,
         "use_MAP_ref_traj": False,
         "use_MAP_MCMC": False,
         "update_theta_dist": False,
     }
-    model_interface_class = ModelInterface
+
 
     # Save prior parameters and compile
     prior_record = pd.DataFrame(
@@ -177,9 +177,9 @@ for stn_i in stn_input:
 # %%
 obs_ind = np.where(df['is_obs'])[0]
 plt.plot(model_interface.df["J_true"], "k", linewidth=10)
-plt.plot(input_scenarios[1:, :].mean(axis=0), marker='.')
+plt.plot(input_scenarios[:, :].T, marker='.')
 # %%
 plt.plot(model_interface.df["Q_true"], "k", linewidth=10)
-plt.plot(output_scenarios[5:, :].T, marker='.')
+plt.plot(output_scenarios[:, :].T, marker='.')
 plt.ylim([4, 5.5])
 # %%

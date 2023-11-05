@@ -215,6 +215,7 @@ for ipt_std in stds:
 data_list_uncertain_input = pd.DataFrame(data_list_uncertain_input)
 data_list_uncertain_output = pd.DataFrame(data_list_uncertain_output)
 data_list_uncertain_both = pd.DataFrame(data_list_uncertain_both)
+
 # %%
 data_list_uncertain_input["Uncertainty"] = "Input"
 data_list_uncertain_output["Uncertainty"] = "Output"
@@ -323,13 +324,16 @@ ax[1, 0].set_xlabel("True k", fontsize=14)
 ax[1, 1].set_xlabel("True k", fontsize=14)
 ax[1, 2].set_xlabel("True k", fontsize=14)
 
-ax[0, 0].legend(title="Signal to noise ratio", frameon=False)
+ax[1, 0].legend(title="Signal to noise ratio", frameon=False)
 ax[0, 1].legend().remove()
 ax[0, 2].legend().remove()
-ax[1, 0].legend().remove()
+ax[0, 0].legend().remove()
 ax[1, 1].legend().remove()
 ax[1, 2].legend().remove()
+if not os.path.exists(f"{root_folder_name}/Perfect_traj"):
+    os.makedirs(f"{root_folder_name}/Perfect_traj")
 
+fig.savefig(f"{root_folder_name}/Perfect_traj/RMSE_total.pdf")
 # %%
 data_list.fillna(0, inplace=True)
 fig, ax = plt.subplots(1, 2, figsize=(12, 6))
@@ -373,9 +377,10 @@ labels[0] = "Signal to noise ratio"
 labels[4] = "Uncertainty type"
 
 ax[0].legend(
-    handles=handles[:], labels=labels[:], frameon=False, title_fontsize=12, ncols=2
+    handles=handles[:], labels=labels[:], frameon=False, title_fontsize=12, ncols=2, bbox_to_anchor=(1, 0.45)
 )
 ax[1].legend().remove()
+fig.savefig(f"{root_folder_name}/Perfect_traj/RMSE_total_ratio.pdf")
 
 
 # %%
@@ -472,7 +477,7 @@ case_names = [
     case_name + "_uncertain_both",
 ]
 # %%
-stn_i = 1
+stn_i = 3
 N = 50
 D = 25
 L = 100
@@ -483,9 +488,10 @@ le = 30
 
 
 # %%
-for stn_i in [1,3,5]:
+for stn_i in [1, 3, 5]:
     for k_true in [0.001, 0.01, 0.1, 1.]:
-
+# for stn_i in [3]:
+#     for k_true in [0.01]:
         fig, ax = plt.subplots(2, 3, figsize=(20, 10))
         for i in range(len(case_names)):
             case_name = case_names[i]
@@ -734,9 +740,7 @@ for stn_i in [1,3,5]:
                 f"Signal to noise ratio = {stn_i}, k = {k_true}",
                 fontsize=20,
             )
-        fig.subplots_adjust(wspace=0.1, hspace=0.1)
-        if not os.path.exists(f"{root_folder_name}/Perfect_traj"):
-            os.makedirs(f"{root_folder_name}/Perfect_traj")
+        fig.subplots_adjust(wspace=0.15, hspace=0.1)
         fig.savefig(
             f"{root_folder_name}/Perfect_traj/{uncertain_input}_stn_{stn_i}_k_{k_true}.pdf")
 

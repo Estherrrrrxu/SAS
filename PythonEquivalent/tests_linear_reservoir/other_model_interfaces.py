@@ -80,7 +80,7 @@ class ModelInterfaceBulk(ModelInterface):
 
         input_obs = self.df['is_obs'].to_numpy()
 
-        ipt_observed_ind_start = np.arange(self.T)[input_obs == True][:-1]
+        ipt_observed_ind_start = np.arange(self.T)[input_obs == True][:-1] + 1
         ipt_observed_ind_start = np.insert(ipt_observed_ind_start, 0, 0)
         ipt_observed_ind_end = np.arange(self.T)[input_obs == True] +1
 
@@ -95,7 +95,7 @@ class ModelInterfaceBulk(ModelInterface):
 
             U = self.influx[start_ind:end_ind].values
 
-            sig_u = self.theta.input_model
+            sig_u = self.theta.input_model / (end_ind - start_ind)
 
             for n in range(self.N):
                 self.R_prime[n,start_ind:end_ind] = ss.norm(U, scale=sig_r).rvs()
@@ -103,7 +103,14 @@ class ModelInterfaceBulk(ModelInterface):
                     self.R_prime[n,start_ind:end_ind][self.R_prime[n,start_ind:end_ind] <= 0] = 10**(-8)
                 else:
                     self.R_prime[n,start_ind:end_ind][self.R_prime[n,start_ind:end_ind] <= 0] = min(10**(-8), min(self.R_prime[n,start_ind:end_ind][self.R_prime[n,start_ind:end_ind] > 0]))
-                self.R_prime[n,start_ind:end_ind] = normalize_over_interval(self.R_prime[n,start_ind:end_ind], U[0] + ss.norm(0, sig_u).rvs())
+                U_prime = U[0] + ss.norm(0, sig_u).rvs()
+                self.R_prime[n,start_ind:end_ind] = normalize_over_interval(self.R_prime[n,start_ind:end_ind], U_prime)
+        
+        plt.plot(self.R_prime.T)
+        plt.plot(self.influx.to_numpy(),"k", linewidth=10)
+        plt.show()
+            
+
     
     def input_model(self, start_ind: int, end_ind: int) -> None:
         """Input model for linear reservoir

@@ -184,7 +184,7 @@ for stn_i in stn_input:
         # 
         plt.figure()
         plt.plot(df["Q_true"], "k", linewidth=10)
-        plt.plot(opt[5:, :].T, marker='.')
+        plt.plot(opt[1:, :].T, marker='.')
         plt.ylim([3, 6])
         plt.show()
 
