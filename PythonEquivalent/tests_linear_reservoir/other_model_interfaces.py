@@ -106,11 +106,7 @@ class ModelInterfaceBulk(ModelInterface):
                 U_prime = U[0] + ss.norm(0, sig_u).rvs()
                 self.R_prime[n,start_ind:end_ind] = normalize_over_interval(self.R_prime[n,start_ind:end_ind], U_prime)
         
-        plt.plot(self.R_prime.T)
-        plt.plot(self.influx.to_numpy(),"k", linewidth=10)
-        plt.show()
             
-
     
     def input_model(self, start_ind: int, end_ind: int) -> None:
         """Input model for linear reservoir
