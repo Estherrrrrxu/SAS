@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from test_utils import *
 from post_processing_utils import *
+
 # %%
 # root directory to search
 root_folder_name = "/Users/esthersida/pMESAS/Results_with_new/TestLR/WhiteNoise"
@@ -352,14 +353,27 @@ ax[1, 0].set_xlabel("True k", fontsize=14)
 ax[1, 1].set_xlabel("True k", fontsize=14)
 ax[1, 2].set_xlabel("True k", fontsize=14)
 
-ax[0, 1].legend(frameon=False, ncol = 2)
+handles, labels = ax[0, 1].get_legend_handles_labels()
+labels[0] = "Decimation interval"
+labels[4] = "type"
+
+ax[0,1].legend(
+    handles=handles[:], labels=labels[:], frameon=False,  ncols=2
+)
+
+
 ax[0, 0].legend().remove()
 ax[0, 2].legend().remove()
 ax[1, 0].legend().remove()
 ax[1, 1].legend().remove()
 ax[1, 2].legend().remove()
 
-fig.suptitle("Total RMSE", fontsize=20)
+
+
+if not os.path.exists(f"{root_folder_name}/Deci_traj"):
+    os.makedirs(f"{root_folder_name}/Deci_traj")
+
+fig.savefig(f"{root_folder_name}/Deci_traj/RMSE_total_deci.pdf")
 
 # %%
 fig, ax = plt.subplots(2, 3, figsize=(15, 9))
@@ -459,12 +473,22 @@ ax[1, 0].set_xlabel("True k", fontsize=14)
 ax[1, 1].set_xlabel("True k", fontsize=14)
 ax[1, 2].set_xlabel("True k", fontsize=14)
 
-ax[0, 1].legend(frameon=False, ncol = 2)
+handles, labels = ax[0, 1].get_legend_handles_labels()
+labels[0] = "Decimation interval"
+labels[4] = "type"
+
+ax[0,1].legend(
+    handles=handles[:], labels=labels[:], frameon=False,  ncols=2
+)
+
 ax[0, 0].legend().remove()
 ax[0, 2].legend().remove()
 ax[1, 0].legend().remove()
 ax[1, 1].legend().remove()
 ax[1, 2].legend().remove()
+
+fig.savefig(f"{root_folder_name}/Deci_traj/RMSE_obs_total_deci.pdf")
+
 # %%
 # %%
 stn_i = 5
@@ -568,13 +592,17 @@ def get_plot_info(
 # %%
 stn_i = 3
 # for k_true in [0.001, 0.01, 0.1, 1.]:
+
 for k_true in [0.1]:
     for deci_num in [2, 4, 7]:
-        case_names = [f"Decimated every {deci_num}d_uncertain_input", f"Decimated every {deci_num}d_uncertain_output", f"Decimated every {deci_num}d_uncertain_both"]
-
+        # case_names = [f"Decimated every {deci_num}d_uncertain_input", f"Decimated every {deci_num}d_uncertain_output", f"Decimated every {deci_num}d_uncertain_both"]
+        case_names = [f"Decimated every {deci_num}d_uncertain_output"]
+        obs_modes =  ["deci input", "deci output", "deci both"]
         fig, ax = plt.subplots(2, 3, figsize=(20, 10))
-        for i in range(len(case_names)):
-            case_name = case_names[i]
+
+        for i in range(len(obs_modes)):
+            case_name = case_names[0]
+            obs_mode = obs_modes[i]
 
             (
                 estimation,
@@ -670,25 +698,48 @@ for k_true in [0.1]:
 
             # observations
             if uncertain_input == "input" or uncertain_input == "both":
-                ax[0, i].scatter(
-                    truth_df["index"][truth_df["is_obs"]][1:real_end],
-                    truth_df["J_obs"][truth_df["is_obs"]][1:real_end],
-                    marker="+",
-                    c="k",
-                    s=100,
-                    linewidth=2,
-                    label="Observations",
-                )
+                if obs_mode == "deci output":
+                    ax[0, i].scatter(
+                        truth_df["index"][1:real_end],
+                        truth_df["J_obs"][1:real_end],
+                        marker="+",
+                        c="k",
+                        s=100,
+                        linewidth=2,
+                        label="Observations",
+                    )
+                else:
+                    ax[0, i].scatter(
+                        truth_df["index"][truth_df["is_obs"]][1:real_end],
+                        truth_df["J_obs"][truth_df["is_obs"]][1:real_end],
+                        marker="+",
+                        c="k",
+                        s=100,
+                        linewidth=2,
+                        label="Observations",
+                    )
+                
             else:
-                ax[0, i].scatter(
-                    truth_df["index"][truth_df["is_obs"]][1:real_end],
-                    truth_df["J_true"][truth_df["is_obs"]][1:real_end],
-                    marker="+",
-                    c="k",
-                    s=100,
-                    linewidth=2,
-                    label="Observations",
-                )
+                if obs_mode == "deci output":
+                    ax[0, i].scatter(
+                        truth_df["index"][1:real_end],
+                        truth_df["J_true"][1:real_end],
+                        marker="+",
+                        c="k",
+                        s=100,
+                        linewidth=2,
+                        label="Observations",
+                    )
+                else:
+                    ax[0, i].scatter(
+                        truth_df["index"][truth_df["is_obs"]][1:real_end],
+                        truth_df["J_true"][truth_df["is_obs"]][1:real_end],
+                        marker="+",
+                        c="k",
+                        s=100,
+                        linewidth=2,
+                        label="Observations",
+                    )
 
             # ========================================
             # uncertainty bounds
@@ -756,25 +807,48 @@ for k_true in [0.1]:
 
             # observations
             if uncertain_input == "input":
-                ax[1, i].scatter(
-                    truth_df["index"][truth_df["is_obs"]][1:real_end],
-                    truth_df["Q_true"][truth_df["is_obs"]][1:real_end],
-                    marker="+",
-                    c="k",
-                    s=100,
-                    linewidth=2,
-                    label="Observations",
-                )
+                if obs_mode == "deci input":
+                    ax[1, i].scatter(
+                        truth_df["index"][1:real_end],
+                        truth_df["Q_true"][1:real_end],
+                        marker="+",
+                        c="k",
+                        s=100,
+                        linewidth=2,
+                        label="Observations",
+                    )
+                else:
+                    ax[1, i].scatter(
+                        truth_df["index"][truth_df["is_obs"]][1:real_end],
+                        truth_df["Q_true"][truth_df["is_obs"]][1:real_end],
+                        marker="+",
+                        c="k",
+                        s=100,
+                        linewidth=2,
+                        label="Observations",
+                    )
+
             else:
-                ax[1, i].scatter(
-                    truth_df["index"][truth_df["is_obs"]][1:real_end],
-                    truth_df["Q_obs"][truth_df["is_obs"]][1:real_end],
-                    marker="+",
-                    c="k",
-                    s=100,
-                    linewidth=2,
-                    label="Observations",
-                )
+                if obs_mode == "deci input":
+                    ax[1, i].scatter(
+                        truth_df["index"][1:real_end],
+                        truth_df["Q_obs"][1:real_end],
+                        marker="+",
+                        c="k",
+                        s=100,
+                        linewidth=2,
+                        label="Observations",
+                    )
+                else:
+                    ax[1, i].scatter(
+                        truth_df["index"][truth_df["is_obs"]][1:real_end],
+                        truth_df["Q_obs"][truth_df["is_obs"]][1:real_end],
+                        marker="+",
+                        c="k",
+                        s=100,
+                        linewidth=2,
+                        label="Observations",
+                    )
 
             ax[0, i].set_ylim(
                 [

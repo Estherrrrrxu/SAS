@@ -12,18 +12,18 @@ sys.path.append("../")
 from functions.get_dataset import get_different_input_scenarios
 from tests_linear_reservoir.test_utils import *
 import pandas as pd
-from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
+from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulkFineInput
 
 # %%
 
-num_input_scenarios = 50
-num_parameter_samples = 25
-len_parameter_MCMC = 50
-k = 0.1
+num_input_scenarios = 15
+num_parameter_samples = 5
+len_parameter_MCMC = 5
+k = 1.
 ipt_std = 1.0
-obs_mode = "bulk_4d"
+obs_mode = "bulk_7d"
 interval = [0, 30]
-uncertainty_mode = "output"
+uncertainty_mode = "input"
 # %%
 # settings that are not likely to change
 ipt_mean = 5.0
@@ -34,8 +34,8 @@ stn_input = [3]
 
 length = 3000
 
-model_interface_class = ModelInterfaceBulk
-obs_pattern = "bulk input" 
+model_interface_class = ModelInterfaceBulkFineInput
+obs_pattern = "bulk output" 
 
 # %%
 for stn_i in stn_input:
@@ -74,8 +74,8 @@ for stn_i in stn_input:
     
     config = {
         "observed_made_each_step": obs_made,
-        "influx": influx_type,
-        "outflux": outflux_type+"_fine",
+        "influx": influx_type+'_fine',
+        "outflux": outflux_type,
         "use_MAP_AS_weight": False,
         "use_MAP_ref_traj": False,
         "use_MAP_MCMC": False,
@@ -172,6 +172,7 @@ for stn_i in stn_input:
 
     output_scenarios = model.output_record
     df = model_interface.df
+
 
 
 # %%

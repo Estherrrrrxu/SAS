@@ -513,8 +513,10 @@ class ModelInterface:
         """
 
         theta = self.theta.observation_model
-
-        return ss.norm(yhk, theta).logpdf(yk)
+        if len(yhk.shape) == 1:
+            return ss.norm(yhk, theta).logpdf(yk)
+        else:
+            return ss.norm(yhk[:, -1], theta).logpdf(yk)
     
     def initial_state_model(self, num: int) -> np.ndarray:
         """Initial state model

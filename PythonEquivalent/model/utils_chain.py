@@ -97,7 +97,7 @@ class Chain:
             yk = self.model_interface.observation_model(Xk=xk)
 
             w_temp = self.model_interface.observation_model_probability(
-                    yhk=yk[:, -1], yk=self.outflux[end_ind_k - 1]
+                    yhk=yk, yk=self.outflux[end_ind_k - 1]
                 )
 
             w_temp = np.exp(w_temp - w_temp.max())
@@ -188,7 +188,7 @@ class Chain:
             # update weight
             yk = self.model_interface.observation_model(Xk=xk)
             wkp1 = self.model_interface.observation_model_probability(
-                    yhk=yk[:,-1], yk=self.outflux[end_ind_k - 1]
+                    yhk=yk, yk=self.outflux[end_ind_k - 1]
                 )
             wkp1 = np.exp(wkp1 - wkp1.max())
             W = wkp1 / wkp1.sum()

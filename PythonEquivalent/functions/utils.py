@@ -210,7 +210,7 @@ def create_bulk_sample(original: pd.DataFrame, n: int) -> pd.DataFrame:
 
     is_obs = (original.index) % n == 0
     last_true_index = np.where(is_obs)[0][-1]
-    ind_group = original.index // n
+    ind_group = (original.index-1) // n
 
     bulk = (
         original.iloc[: last_true_index + 1]

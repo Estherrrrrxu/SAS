@@ -12,8 +12,7 @@ sys.path.append("../")
 from functions.get_dataset import get_different_input_scenarios
 from tests_linear_reservoir.test_utils import *
 import pandas as pd
-from model.model_interface import ModelInterface
-from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
+from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk, ModelInterfaceBulkFineInput
 # %%
 # model run settings
 
@@ -26,14 +25,14 @@ from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk
 # interval = [0, int(sys.argv[7])]
 # uncertainty_mode = sys.argv[8]
 # %%
-num_input_scenarios = 5
+num_input_scenarios = 15
 num_parameter_samples = 5
 len_parameter_MCMC = 5
-k = 1.0
+k = 0.1
 ipt_std = 1.0
-obs_mode = "bulk_4d"
-interval = [0, 20]
-uncertainty_mode = "output"  
+obs_mode = "bulk_7d"
+interval = [0, 30]
+uncertainty_mode = "input"  
 
 # %%
 ipt_mean = 5.0
@@ -47,6 +46,7 @@ length = 3000
 model_interface_class = ModelInterfaceBulk
 
 observation_patterns = ["bulk both", "bulk input", "bulk output"]
+observation_patterns = ["bulk output"]
 
 # %%
 def set_config(influx_type: str, outflux_type: str, obs_made: Any, obs_pattern: str, model_interface_class: Any):
@@ -71,7 +71,8 @@ def set_config(influx_type: str, outflux_type: str, obs_made: Any, obs_pattern: 
             "use_MAP_MCMC": False,
             "update_theta_dist": False,
         }
-        model_interface_class = ModelInterface
+        
+        model_interface_class = ModelInterfaceBulkFineInput
         
     elif obs_pattern == "bulk input":
         config = {
@@ -179,7 +180,7 @@ for stn_i in stn_input:
 
         plt.figure()
         plt.plot(df["J_true"], "k", linewidth=10)
-        plt.plot(ipt[1:, :].mean(axis=0), marker='.')
+        plt.plot(ipt[1:, :].T, marker='.')
         plt.show()
         # 
         plt.figure()

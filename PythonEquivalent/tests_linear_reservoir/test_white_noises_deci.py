@@ -18,23 +18,23 @@ from tests_linear_reservoir.other_model_interfaces import ModelInterfaceDeci, Mo
 # %%
 # model run settings
 
-num_input_scenarios = int(sys.argv[1])
-num_parameter_samples = int(sys.argv[2])
-len_parameter_MCMC = int(sys.argv[3])
-k = float(sys.argv[4])
-ipt_std = float(sys.argv[5])
-obs_mode = sys.argv[6]
-interval = [0, int(sys.argv[7])]
-uncertainty_mode = sys.argv[8]
+# num_input_scenarios = int(sys.argv[1])
+# num_parameter_samples = int(sys.argv[2])
+# len_parameter_MCMC = int(sys.argv[3])
+# k = float(sys.argv[4])
+# ipt_std = float(sys.argv[5])
+# obs_mode = sys.argv[6]
+# interval = [0, int(sys.argv[7])]
+# uncertainty_mode = sys.argv[8]
 # %%
-# num_input_scenarios = 5
-# num_parameter_samples = 5
-# len_parameter_MCMC = 5
-# k = 1.0
-# ipt_std = 1.0
-# obs_mode = "deci_2d"
-# interval = [0, 20]
-# uncertainty_mode = "both"
+num_input_scenarios = 10
+num_parameter_samples = 5
+len_parameter_MCMC = 5
+k = 1.0
+ipt_std = 1.0
+obs_mode = "deci_2d"
+interval = [0, 20]
+uncertainty_mode = "input"
 
 # %%
 ipt_mean = 5.0
@@ -163,5 +163,16 @@ for stn_i in stn_input:
             plot_preliminary=False,
             model_interface_class=model_interface_class,
         )
+    #%%
+    plt.figure()
+    plt.plot(df["J_true"], "k", linewidth=10)
+    plt.plot(ipt[1:, :].T, marker='.')
+    plt.show()
+    # 
+    plt.figure()
+    plt.plot(df["Q_true"], "k", linewidth=10)
+    plt.plot(opt[1:, :].T, marker='.')
+
+    plt.show()
 
 # %%

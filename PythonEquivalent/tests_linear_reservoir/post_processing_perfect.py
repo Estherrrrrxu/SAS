@@ -130,7 +130,7 @@ def get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name):
 data_list_uncertain_input = []
 data_list_uncertain_output = []
 data_list_uncertain_both = []
-make_plot = False
+make_plot = True
 
 # Iterate over the nested loops
 for ipt_std in stds:
@@ -746,3 +746,5 @@ for stn_i in [1, 3, 5]:
 
 
 # %%
+# make parameter estimation plot for this case:
+
