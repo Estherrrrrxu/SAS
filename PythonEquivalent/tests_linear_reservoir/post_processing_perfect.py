@@ -99,7 +99,7 @@ case_name = "Almost perfect data"
 
 # call function to get data
 def get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name):
-    RMSE_J_total, RMSE_Q_total, model_run_time, RMSE_J_obs, RMSE_Q_obs = cal_RMSE(
+    RMSE_J_total, RMSE_Q_total, model_run_time, RMSE_J_obs, RMSE_Q_obs, RMSE_J_residual, RMSE_Q_RMSE = cal_RMSE(
         num_input_scenarios,
         num_parameter_samples,
         len_parameter_MCMC,
@@ -117,6 +117,8 @@ def get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name):
         "output_RMSE_total": RMSE_Q_total,
         "input_RMSE_obs": RMSE_J_obs,
         "output_RMSE_obs": RMSE_Q_obs,
+        "input_RMSE_residual": RMSE_J_residual,
+        "output_RMSE_residual": RMSE_Q_RMSE,
         "stn_i": stn_i,
         "k_true": k_true,
         "ipt_std": ipt_std,
@@ -130,7 +132,7 @@ def get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name):
 data_list_uncertain_input = []
 data_list_uncertain_output = []
 data_list_uncertain_both = []
-make_plot = True
+make_plot = False
 
 # Iterate over the nested loops
 for ipt_std in stds:
@@ -324,7 +326,7 @@ ax[1, 0].set_xlabel("True k", fontsize=14)
 ax[1, 1].set_xlabel("True k", fontsize=14)
 ax[1, 2].set_xlabel("True k", fontsize=14)
 
-ax[1, 0].legend(title="Signal to noise ratio", frameon=False)
+ax[1, 0].legend(title="Signal-to-noise ratio", frameon=False)
 ax[0, 1].legend().remove()
 ax[0, 2].legend().remove()
 ax[0, 0].legend().remove()
@@ -334,6 +336,9 @@ if not os.path.exists(f"{root_folder_name}/Perfect_traj"):
     os.makedirs(f"{root_folder_name}/Perfect_traj")
 
 fig.savefig(f"{root_folder_name}/Perfect_traj/RMSE_total.pdf")
+# %%
+data_list['theoretical_ipt'][data_list['Uncertainty'] == 'Both'] *= 2
+data_list['theoretical_opt'][data_list['Uncertainty'] == 'Both'] *= 2
 # %%
 data_list.fillna(0, inplace=True)
 fig, ax = plt.subplots(1, 2, figsize=(12, 6))
@@ -373,7 +378,7 @@ ax[0].set_title("Input", fontsize=15)
 ax[1].set_title("Output", fontsize=15)
 
 handles, labels = ax[0].get_legend_handles_labels()
-labels[0] = "Signal to noise ratio"
+labels[0] = "Signal-to-noise ratio"
 labels[4] = "Uncertainty type"
 
 ax[0].legend(
@@ -383,7 +388,7 @@ ax[1].legend().remove()
 fig.savefig(f"{root_folder_name}/Perfect_traj/RMSE_total_ratio.pdf")
 
 
-# %%
+ # %%
 def get_plot_info(
     result_root,
     stn_i,
@@ -735,9 +740,25 @@ for stn_i in [1, 3, 5]:
                     )
             else:
                 ax[1, i].legend().remove()
+            
+            if uncertain_input == 'input':
+                ax[0, i].set_title(
+                    f"Uncertain input",
+                    fontsize=20,
+                )
+            elif uncertain_input == 'output':
+                ax[0, i].set_title(
+                    f"Uncertain output",
+                    fontsize=20,
+                )
+            else:
+                ax[0, i].set_title(
+                    f"Uncertain both",
+                    fontsize=20,
+                )
 
-            ax[0,1].set_title(
-                f"Signal to noise ratio = {stn_i}, k = {k_true}",
+        fig.suptitle(
+                f"Signal-to-noise ratio = {stn_i}, k = {k_true}",
                 fontsize=20,
             )
         fig.subplots_adjust(wspace=0.15, hspace=0.1)

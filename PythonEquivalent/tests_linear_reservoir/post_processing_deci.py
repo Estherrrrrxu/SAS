@@ -116,7 +116,7 @@ obs_modes = ["deci output", "deci input", "deci both"]
 # obs_modes = ["bulk output", "bulk input", "bulk both"]
 
 def get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name, obs_mode):
-    RMSE_J_total, RMSE_Q_total, model_run_time, RMSE_J_obs, RMSE_Q_obs = cal_RMSE(
+    RMSE_J_total, RMSE_Q_total, model_run_time, RMSE_J_obs, RMSE_Q_obs, RMSE_J_residual, RMSE_Q_residual = cal_RMSE(
         num_input_scenarios,
         num_parameter_samples,
         len_parameter_MCMC,
@@ -135,6 +135,8 @@ def get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name, ob
         "output_RMSE_total": RMSE_Q_total,
         "input_RMSE_obs": RMSE_J_obs,
         "output_RMSE_obs": RMSE_Q_obs,
+        "input_RMSE_residual": RMSE_J_residual,
+        "output_RMSE_residual": RMSE_Q_residual,
         "stn_i": stn_i,
         "k_true": k_true,
         "ipt_std": ipt_std,
@@ -354,8 +356,10 @@ ax[1, 1].set_xlabel("True k", fontsize=14)
 ax[1, 2].set_xlabel("True k", fontsize=14)
 
 handles, labels = ax[0, 1].get_legend_handles_labels()
-labels[0] = "Decimation interval"
-labels[4] = "type"
+labels[0] = "Decimated to"
+labels[4] = "Which obs"
+labels[1:4] = ['1 per 2d', '1 per 4d', '1 per 7d']
+labels[5:] = ['Input', 'Output', 'Both']
 
 ax[0,1].legend(
     handles=handles[:], labels=labels[:], frameon=False,  ncols=2
@@ -380,7 +384,7 @@ fig, ax = plt.subplots(2, 3, figsize=(15, 9))
 subset = data_list[data_list["Uncertainty"] == "input"]
 sns.lineplot(
     x="k_true",
-    y=subset["input_RMSE_obs"]/subset["input_RMSE_total"],
+    y=subset["input_RMSE_residual"]/subset["input_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -390,7 +394,7 @@ sns.lineplot(
 )
 sns.lineplot(
     x="k_true",
-    y=subset["output_RMSE_obs"]/subset["output_RMSE_total"],
+    y=subset["output_RMSE_residual"]/subset["output_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -401,7 +405,7 @@ sns.lineplot(
 subset = data_list[data_list["Uncertainty"] == "output"]
 sns.lineplot(
     x="k_true",
-    y=subset["input_RMSE_obs"]/subset["input_RMSE_total"],
+    y=subset["input_RMSE_residual"]/subset["input_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -411,7 +415,7 @@ sns.lineplot(
 )
 sns.lineplot(
     x="k_true",
-    y=subset["output_RMSE_obs"]/subset["output_RMSE_total"],
+    y=subset["output_RMSE_residual"]/subset["output_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -422,7 +426,7 @@ sns.lineplot(
 subset = data_list[data_list["Uncertainty"] == "both"]
 sns.lineplot(
     x="k_true",
-    y=subset["input_RMSE_obs"]/subset["input_RMSE_total"],
+    y=subset["input_RMSE_residual"]/subset["input_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -432,7 +436,7 @@ sns.lineplot(
 )
 sns.lineplot(
     x="k_true",
-    y=subset["output_RMSE_obs"]/subset["output_RMSE_total"],
+    y=subset["output_RMSE_residual"]/subset["output_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -466,16 +470,18 @@ ax[0, 0].set_title("Uncertain input", fontsize=15)
 ax[0, 1].set_title("Uncertain output", fontsize=15)
 ax[0, 2].set_title("Uncertain both", fontsize=15)
 
-ax[0, 0].set_ylabel("Input obs/total RMSE", fontsize=14)
-ax[1, 0].set_ylabel("Output obs/total RMSE", fontsize=14)
+ax[0, 0].set_ylabel("Input RMSE ratio ", fontsize=14)
+ax[1, 0].set_ylabel("Output RMSE ratio", fontsize=14)
 
 ax[1, 0].set_xlabel("True k", fontsize=14)
 ax[1, 1].set_xlabel("True k", fontsize=14)
 ax[1, 2].set_xlabel("True k", fontsize=14)
 
 handles, labels = ax[0, 1].get_legend_handles_labels()
-labels[0] = "Decimation interval"
-labels[4] = "type"
+labels[0] = "Decimated to"
+labels[4] = "Which obs"
+labels[1:4] = ['1 per 2d', '1 per 4d', '1 per 7d']
+labels[5:] = ['Input', 'Output', 'Both']
 
 ax[0,1].legend(
     handles=handles[:], labels=labels[:], frameon=False,  ncols=2
@@ -596,7 +602,7 @@ stn_i = 3
 for k_true in [0.1]:
     for deci_num in [2, 4, 7]:
         # case_names = [f"Decimated every {deci_num}d_uncertain_input", f"Decimated every {deci_num}d_uncertain_output", f"Decimated every {deci_num}d_uncertain_both"]
-        case_names = [f"Decimated every {deci_num}d_uncertain_output"]
+        case_names = [f"Decimated every {deci_num}d_uncertain_both"]
         obs_modes =  ["deci input", "deci output", "deci both"]
         fig, ax = plt.subplots(2, 3, figsize=(20, 10))
 
@@ -890,11 +896,18 @@ for k_true in [0.1]:
                     )
             else:
                 ax[1, i].legend().remove()
+            
+            if obs_mode == 'deci input':
+                ax[0, i].set_title(f"Decimated input", fontsize=20)
+            elif obs_mode == 'deci output':
+                ax[0, i].set_title(f"Decimated output", fontsize=20)
+            elif obs_mode == 'deci both':
+                ax[0, i].set_title(f"Decimated both", fontsize=20)
 
-            ax[0,1].set_title(
-                f"Signal to noise ratio = {stn_i}, k = {k_true} for decimated {cn[0][-2]} days",
-                fontsize=20,
-            )
+        fig.suptitle(
+            f"Signal-to-noise ratio = {stn_i}, k = {k_true}, decimated to 1 per {cn[0][-2]} days",
+            fontsize=20,
+        )
         fig.subplots_adjust(wspace=0.1, hspace=0.1)
         if not os.path.exists(f"{root_folder_name}/Deci_traj"):
             os.makedirs(f"{root_folder_name}/Deci_traj")

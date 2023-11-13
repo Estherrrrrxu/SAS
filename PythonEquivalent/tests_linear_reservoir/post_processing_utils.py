@@ -34,7 +34,6 @@ def cal_RMSE(
     if not os.path.exists(path_str):
         return None, None, None, None, None
 
-
     for filename in os.listdir(path_str):
         if filename.startswith("k"):
             model_run_times.append(float(filename[2:-4]))
@@ -42,8 +41,8 @@ def cal_RMSE(
     # only one run for now
     if len(model_run_times) == 0:
         return None, None, None, None, None
-    
-    #%%
+
+    # %%
 
     model_run_time = model_run_times[-1]
 
@@ -70,7 +69,24 @@ def cal_RMSE(
         np.mean((full_output_mean[obs_ind] - full_output_truth[obs_ind]) ** 2)
     )
 
-    return RMSE_J_total, RMSE_Q_total, model_run_time, RMSE_J_obs, RMSE_Q_obs
+    RMSE_J_residual = np.sqrt(
+        (
+            np.sum((full_input_mean - full_input_truth) ** 2)
+            - np.sum(
+                (full_input_mean[obs_ind[1:] - 1] - full_input_truth[obs_ind[1:]]) ** 2
+            )
+        )
+        / (len(full_input_mean) - len(obs_ind))
+    )
+    RMSE_Q_residual = np.sqrt(
+        (
+            np.sum((full_output_mean - full_output_truth) ** 2)
+            - np.sum((full_output_mean[obs_ind] - full_output_truth[obs_ind]) ** 2)
+        )
+        / (len(full_output_mean) - len(obs_ind))
+    )
+
+    return RMSE_J_total, RMSE_Q_total, model_run_time, RMSE_J_obs, RMSE_Q_obs, RMSE_J_residual, RMSE_Q_residual
 
 
 # %%
@@ -93,26 +109,33 @@ def plot_each_scenarios(
     else:
         path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}/{obs_mode}"
 
-    
     model_run_times = []
 
     if not os.path.exists(path_str):
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        )
         print(f"no model run for {path_str}")
         print("returning None")
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        )
         return None, None, None, None, None
 
     for filename in os.listdir(path_str):
         if filename.startswith("k"):
             model_run_times.append(float(filename[2:-4]))
     if len(model_run_times) == 0:
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        )
         print(f"no model run for {path_str}")
         print("returning None")
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        return None, None, None, None, None       
-    #%%
+        print(
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        )
+        return None, None, None, None, None
+    # %%
     # only one run for now
     model_run_time = model_run_times[-1]
 
@@ -130,7 +153,7 @@ def plot_each_scenarios(
     phi = 1 - k_true
     sig_q = np.sqrt(sig_e**2 / (1 - phi**2)) * k_true
     input_uncertainty_true = sig_e / stn_i
-    obs_uncertainty_true = sig_q / stn_i 
+    obs_uncertainty_true = sig_q / stn_i
     initial_state_true = truth_df["Q_true"].iloc[0]
 
     # load data

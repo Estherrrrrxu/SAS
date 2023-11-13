@@ -2,6 +2,7 @@
 import os
 
 current_path = os.getcwd()
+
 if current_path[-22:] != "tests_linear_reservoir":
     os.chdir("tests_linear_reservoir")
     print("Current working directory changed to 'tests_linear_reservoir'.")
@@ -15,15 +16,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from test_utils import *
 from post_processing_utils import *
+
 # %%
 # root directory to search
-root_folder_name = "/Users/esthersida/pMESAS/Results_with_new/TestLR/WhiteNoise"
+root_folder_name = "/Users/esthersida/pMESAS/Results_new_bulk/TestLR/WhiteNoise/"
 
 # Use os.walk to traverse the directory and its subdirectories
 subdirs = []
 for root, dirs, files in os.walk(root_folder_name):
     for dir_name in dirs:
-        subdirs.append(os.path.join(root,dir_name))
+        subdirs.append(os.path.join(root, dir_name))
 dir_names = []
 for subdir in subdirs:
     dir_name = subdir.split("/")
@@ -60,11 +62,23 @@ for d_name in dir_names:
 
 
 if len(deci2d_ipt) != len(deci2d_opt):
-    print("Error: input and output have different number of subdirectories", len(deci2d_ipt), len(deci2d_opt))
+    print(
+        "Error: input and output have different number of subdirectories",
+        len(deci2d_ipt),
+        len(deci2d_opt),
+    )
 if len(deci4d_ipt) != len(deci4d_opt):
-    print("Error: input and output have different number of subdirectories", len(deci4d_ipt), len(deci4d_opt))
+    print(
+        "Error: input and output have different number of subdirectories",
+        len(deci4d_ipt),
+        len(deci4d_opt),
+    )
 if len(deci7d_ipt) != len(deci7d_opt):
-    print("Error: input and output have different number of subdirectories", len(deci7d_ipt), len(deci7d_opt))
+    print(
+        "Error: input and output have different number of subdirectories",
+        len(deci7d_ipt),
+        len(deci7d_opt),
+    )
 # %%
 stn_ratios, ks, means, stds, length = [], [], [], [], []
 Ns, Ds, Ls = [], [], []
@@ -105,7 +119,7 @@ num_parameter_samples = Ds[0]
 len_parameter_MCMC = Ls[0]
 ipt_mean = means[0]
 le = length[0]
-dt = 1.0 
+dt = 1.0
 # %%
 case_names = ["Bulk every 2d", "Bulk every 4d", "Bulk every 7d"]
 obs_modes = ["bulk output", "bulk input", "bulk both"]
@@ -114,8 +128,17 @@ obs_modes = ["bulk output", "bulk input", "bulk both"]
 # case_names = ["Bulk every 2d", "Bulk every 4d", "Bulk every 7d"]
 # obs_modes = ["bulk output", "bulk input", "bulk both"]
 
+
 def get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name, obs_mode):
-    RMSE_J_total, RMSE_Q_total, model_run_time, RMSE_J_obs, RMSE_Q_obs = cal_RMSE(
+    (
+        RMSE_J_total,
+        RMSE_Q_total,
+        model_run_time,
+        RMSE_J_obs,
+        RMSE_Q_obs,
+        RMSE_J_residual,
+        RMSE_Q_residual,
+    ) = cal_RMSE(
         num_input_scenarios,
         num_parameter_samples,
         len_parameter_MCMC,
@@ -127,13 +150,15 @@ def get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name, ob
         case_name,
         threshold,
         root_folder_name,
-        obs_mode
+        obs_mode,
     )
     data_df = {
         "input_RMSE_total": RMSE_J_total,
         "output_RMSE_total": RMSE_Q_total,
         "input_RMSE_obs": RMSE_J_obs,
         "output_RMSE_obs": RMSE_Q_obs,
+        "input_RMSE_residual": RMSE_J_residual,
+        "output_RMSE_residual": RMSE_Q_residual,
         "stn_i": stn_i,
         "k_true": k_true,
         "ipt_std": ipt_std,
@@ -143,6 +168,8 @@ def get_RMSEs(stn_i, k_true, ipt_std, threshold, root_folder_name, case_name, ob
         "case_name": case_name,
     }
     return data_df
+
+
 # %%
 # Initialize an empty list to store dictionaries of data
 data_list_input = []
@@ -160,7 +187,7 @@ for case_name in case_names:
                         case_name_input = f"{case_name}_uncertain_input"
                         case_name_output = f"{case_name}_uncertain_output"
                         case_name_both = f"{case_name}_uncertain_both"
-                        
+
                         data_input = get_RMSEs(
                             stn_i,
                             k_true,
@@ -168,7 +195,7 @@ for case_name in case_names:
                             threshold,
                             root_folder_name,
                             case_name_input,
-                            obs_mode
+                            obs_mode,
                         )
                         data_output = get_RMSEs(
                             stn_i,
@@ -177,7 +204,7 @@ for case_name in case_names:
                             threshold,
                             root_folder_name,
                             case_name_output,
-                            obs_mode
+                            obs_mode,
                         )
                         data_both = get_RMSEs(
                             stn_i,
@@ -186,7 +213,7 @@ for case_name in case_names:
                             threshold,
                             root_folder_name,
                             case_name_both,
-                            obs_mode
+                            obs_mode,
                         )
                         data_list_input.append(data_input)
                         data_list_output.append(data_output)
@@ -205,7 +232,7 @@ for case_name in case_names:
                                 le,
                                 case_name_input,
                                 threshold,
-                                obs_mode
+                                obs_mode,
                             )
                             plot_each_scenarios(
                                 root_folder_name,
@@ -219,7 +246,7 @@ for case_name in case_names:
                                 le,
                                 case_name_output,
                                 threshold,
-                                obs_mode
+                                obs_mode,
                             )
                             plot_each_scenarios(
                                 root_folder_name,
@@ -233,8 +260,8 @@ for case_name in case_names:
                                 le,
                                 case_name_both,
                                 threshold,
-                                obs_mode
-                            ) 
+                                obs_mode,
+                            )
 
 # %%
 data_list_input_df = pd.DataFrame(data_list_input)
@@ -242,8 +269,8 @@ data_list_output_df = pd.DataFrame(data_list_output)
 data_list_both_df = pd.DataFrame(data_list_both)
 # %%
 data_list = pd.concat([data_list_input_df, data_list_output_df, data_list_both_df])
-data_list['Uncertainty'] = data_list['case_name'].str.split("_").str[2]
-data_list['Decimation'] = data_list['case_name'].str.split("_").str[0]
+data_list["Uncertainty"] = data_list["case_name"].str.split("_").str[2]
+data_list["Decimation"] = data_list["case_name"].str.split("_").str[0]
 
 # %%
 mask = data_list.isnull().any(axis=1)
@@ -350,11 +377,13 @@ ax[1, 1].set_xlabel("True k", fontsize=14)
 ax[1, 2].set_xlabel("True k", fontsize=14)
 
 handles, labels = ax[0, 1].get_legend_handles_labels()
-labels[0] = "Bulk interval"
-labels[4] = "type"
+labels[0] = "Bulk obs"
+labels[4] = "Which obs"
+labels[1:4] = ['Every 2d', 'Every 4d', 'Every 7d']
+labels[5:] = ['Input', 'Output', 'Both']
 
 
-ax[0, 1].legend(handles, labels, frameon=False, ncol = 2)
+ax[0, 1].legend(handles, labels, frameon=False, ncol=2)
 
 ax[0, 0].legend().remove()
 ax[0, 2].legend().remove()
@@ -372,7 +401,7 @@ fig, ax = plt.subplots(2, 3, figsize=(15, 9))
 subset = data_list[data_list["Uncertainty"] == "input"]
 sns.lineplot(
     x="k_true",
-    y=subset["input_RMSE_obs"]/subset["input_RMSE_total"],
+    y=subset["input_RMSE_residual"]/subset["input_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -382,7 +411,7 @@ sns.lineplot(
 )
 sns.lineplot(
     x="k_true",
-    y=subset["output_RMSE_obs"]/subset["output_RMSE_total"],
+    y=subset["output_RMSE_residual"]/subset["output_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -393,7 +422,7 @@ sns.lineplot(
 subset = data_list[data_list["Uncertainty"] == "output"]
 sns.lineplot(
     x="k_true",
-    y=subset["input_RMSE_obs"]/subset["input_RMSE_total"],
+    y=subset["input_RMSE_residual"]/subset["input_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -403,7 +432,7 @@ sns.lineplot(
 )
 sns.lineplot(
     x="k_true",
-    y=subset["output_RMSE_obs"]/subset["output_RMSE_total"],
+    y=subset["output_RMSE_residual"]/subset["output_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -414,7 +443,7 @@ sns.lineplot(
 subset = data_list[data_list["Uncertainty"] == "both"]
 sns.lineplot(
     x="k_true",
-    y=subset["input_RMSE_obs"]/subset["input_RMSE_total"],
+    y=subset["input_RMSE_residual"]/subset["input_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -424,7 +453,7 @@ sns.lineplot(
 )
 sns.lineplot(
     x="k_true",
-    y=subset["output_RMSE_obs"]/subset["output_RMSE_total"],
+    y=subset["output_RMSE_residual"]/subset["output_RMSE_obs"],
     hue="Decimation",
     style="obs_mode",
     data=subset,
@@ -458,26 +487,28 @@ ax[0, 0].set_title("Uncertain input", fontsize=15)
 ax[0, 1].set_title("Uncertain output", fontsize=15)
 ax[0, 2].set_title("Uncertain both", fontsize=15)
 
-ax[0, 0].set_ylabel("Input obs/total RMSE", fontsize=14)
-ax[1, 0].set_ylabel("Output obs/total RMSE", fontsize=14)
+ax[0, 0].set_ylabel("Input RMSE ratio", fontsize=14)
+ax[1, 0].set_ylabel("Output RMSE ratio", fontsize=14)
 
 ax[1, 0].set_xlabel("True k", fontsize=14)
 ax[1, 1].set_xlabel("True k", fontsize=14)
 ax[1, 2].set_xlabel("True k", fontsize=14)
 
-handles, labels = ax[0, 0].get_legend_handles_labels()
-labels[0] = "Bulk interval"
-labels[4] = "type"
+handles, labels = ax[0, 1].get_legend_handles_labels()
+labels[0] = "Bulk obs"
+labels[4] = "Which obs"
+labels[1:4] = ['Every 2d', 'Every 4d', 'Every 7d']
+labels[5:] = ['Input', 'Output', 'Both']
 
-ax[0,0].legend(handles, labels, frameon=False, ncol = 2)
+ax[0, 1].legend(handles, labels, frameon=False, ncol=2)
 
-ax[0, 1].legend().remove()
+ax[0, 0].legend().remove()
 ax[0, 2].legend().remove()
 ax[1, 0].legend().remove()
 ax[1, 1].legend().remove()
 ax[1, 2].legend().remove()
 fig.savefig(f"{root_folder_name}/Bulk_traj/RMSE_obs_total_bulk.pdf")
-# %%
+
 # %%
 stn_i = 5
 N = 50
@@ -487,6 +518,8 @@ k_true = 0.01
 ipt_mean = 5.0
 ipt_std = 1.0
 le = 30
+
+
 # %%
 def get_plot_info(
     result_root,
@@ -502,7 +535,7 @@ def get_plot_info(
     obs_mode,
 ):
     #
-    
+
     path_str = f"{result_root}/{stn_i}_N_{num_input_scenarios}_D_{num_parameter_samples}_L_{len_parameter_MCMC}_k_{k_true}_mean_{ipt_mean}_std_{ipt_std}_length_{le}/{case_name}/{obs_mode}"
 
     model_run_times = []
@@ -564,7 +597,6 @@ def get_plot_info(
     real_end = truth_df["index"][truth_df["is_obs"]].iloc[-1] + 1
     img_start = truth_df["index"][truth_df["is_obs"]].iloc[0]
 
-
     return (
         estimation,
         truth_df,
@@ -578,16 +610,14 @@ def get_plot_info(
     )
 
 
-
-
 # %%
 # for k_true in [0.001, 0.01, 0.1, 1.]:
 #     for deci_num in [2, 4, 7]:
 stn_i = 3
 for k_true in [0.1]:
-    for deci_num in [2,4,7]:
-        case_names = [ f"Bulk every {deci_num}d_uncertain_both"]
-        obs_modes =  ["bulk input", "bulk output", "bulk both"]
+    for deci_num in [2, 4, 7]:
+        case_names = [f"Bulk every {deci_num}d_uncertain_both"]
+        obs_modes = ["bulk input", "bulk output", "bulk both"]
 
         fig, ax = plt.subplots(2, 3, figsize=(20, 10))
         for i in range(len(obs_modes)):
@@ -626,8 +656,8 @@ for k_true in [0.1]:
             if uncertain_input == "input" or uncertain_input == "both":
                 ax[0, i].fill_between(
                     truth_df["index"][real_start:real_end],
-                    truth_df["J_true"][real_start:real_end] - 1.96 * sig_input,
-                    truth_df["J_true"][real_start:real_end] + 1.96 * sig_input,
+                    truth_df["J_true_fine"][real_start:real_end] - 1.96 * sig_input,
+                    truth_df["J_true_fine"][real_start:real_end] + 1.96 * sig_input,
                     color="grey",
                     alpha=0.3,
                     label=r"95% theoretical uncertainty bounds",
@@ -635,8 +665,8 @@ for k_true in [0.1]:
             else:
                 ax[0, i].fill_between(
                     truth_df["index"][real_start:real_end],
-                    truth_df["J_true"][real_start:real_end],
-                    truth_df["J_true"][real_start:real_end],
+                    truth_df["J_true_fine"][real_start:real_end],
+                    truth_df["J_true_fine"][real_start:real_end],
                     color="grey",
                     alpha=0.3,
                     label=r"95% theoretical uncertainty bounds",
@@ -680,7 +710,7 @@ for k_true in [0.1]:
             # truth trajectory
             ax[0, i].plot(
                 truth_df["index"][real_start:real_end],
-                truth_df["J_true"][real_start:real_end],
+                truth_df["J_true_fine"][real_start:real_end],
                 color="k",
                 label="Truth",
                 linewidth=0.8,
@@ -691,7 +721,7 @@ for k_true in [0.1]:
                 if obs_mode == "bulk output":
                     ax[0, i].scatter(
                         truth_df["index"][1:real_end],
-                        truth_df["J_obs"][1:real_end],
+                        truth_df["J_obs_fine"][1:real_end],
                         marker="+",
                         c="k",
                         s=100,
@@ -699,6 +729,15 @@ for k_true in [0.1]:
                         label="Observations",
                     )
                 else:
+                    ax[0, i].scatter(
+                        truth_df["index"][1:real_end],
+                        truth_df["J_obs"][1:real_end],
+                        marker="_",
+                        c="k",
+                        s=100,
+                        linewidth=2,
+                        label="Observations",
+                    )
                     ax[0, i].scatter(
                         truth_df["index"][truth_df["is_obs"]][1:real_end],
                         truth_df["J_obs"][truth_df["is_obs"]][1:real_end],
@@ -736,8 +775,8 @@ for k_true in [0.1]:
             if uncertain_input == "output" or uncertain_input == "both":
                 ax[1, i].fill_between(
                     truth_df["index"][real_start:real_end],
-                    truth_df["Q_true"][real_start:real_end] - 1.96 * sig_output,
-                    truth_df["Q_true"][real_start:real_end] + 1.96 * sig_output,
+                    truth_df["Q_true_fine"][real_start:real_end] - 1.96 * sig_output,
+                    truth_df["Q_true_fine"][real_start:real_end] + 1.96 * sig_output,
                     color="grey",
                     alpha=0.3,
                     label=r"95% theoretical uncertainty",
@@ -745,8 +784,8 @@ for k_true in [0.1]:
             else:
                 ax[1, i].fill_between(
                     truth_df["index"][real_start:real_end],
-                    truth_df["Q_true"][real_start:real_end],
-                    truth_df["Q_true"][real_start:real_end],
+                    truth_df["Q_true_fine"][real_start:real_end],
+                    truth_df["Q_true_fine"][real_start:real_end],
                     color="grey",
                     alpha=0.3,
                     label=r"95% theoretical uncertainty",
@@ -788,7 +827,7 @@ for k_true in [0.1]:
             # truth trajectory
             ax[1, i].plot(
                 truth_df["index"][real_start:real_end],
-                truth_df["Q_true"][real_start:real_end],
+                truth_df["Q_true_fine"][real_start:real_end],
                 color="k",
                 label="Truth",
                 linewidth=0.8,
@@ -820,7 +859,7 @@ for k_true in [0.1]:
                 if obs_mode == "bulk input":
                     ax[1, i].scatter(
                         truth_df["index"][1:real_end],
-                        truth_df["Q_obs"][1:real_end],
+                        truth_df["Q_obs_fine"][1:real_end],
                         marker="+",
                         c="k",
                         s=100,
@@ -828,6 +867,15 @@ for k_true in [0.1]:
                         label="Observations",
                     )
                 else:
+                    ax[1, i].scatter(
+                        truth_df["index"][1:real_end],
+                        truth_df["Q_obs"][1:real_end],
+                        marker="_",
+                        c="k",
+                        s=100,
+                        linewidth=2,
+                        label="Observations",
+                    )
                     ax[1, i].scatter(
                         truth_df["index"][truth_df["is_obs"]][1:real_end],
                         truth_df["Q_obs"][truth_df["is_obs"]][1:real_end],
@@ -840,14 +888,14 @@ for k_true in [0.1]:
 
             ax[0, i].set_ylim(
                 [
-                    min(truth_df["J_true"] - 3 * sig_input),
-                    max(truth_df["J_true"]) + 3 * sig_input,
+                    min(truth_df["J_true"] - 5 * sig_input),
+                    max(truth_df["J_true"]) + 5 * sig_input,
                 ]
             )
             ax[1, i].set_ylim(
                 [
-                    min(truth_df["Q_true"] - 3 * sig_output),
-                    max(truth_df["Q_true"] + 3 * sig_output),
+                    min(truth_df["Q_true"] - 5 * sig_output),
+                    max(truth_df["Q_true"] + 5 * sig_output),
                 ]
             )
 
@@ -870,23 +918,37 @@ for k_true in [0.1]:
                 if line_mode:
                     (cyan_line,) = ax[1, i].plot([], [], "c-", label="Scenarios")
                     ax[1, i].legend(
-                        frameon=False, ncol=5, loc="upper center", bbox_to_anchor=(0.5, 1.1)
+                        frameon=False,
+                        ncol=5,
+                        loc="upper center",
+                        bbox_to_anchor=(0.5, 1.1),
                     )
                 else:
                     ax[1, i].legend(
-                        frameon=False, ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.1)
+                        frameon=False,
+                        ncol=4,
+                        loc="upper center",
+                        bbox_to_anchor=(0.5, 1.1),
                     )
             else:
                 ax[1, i].legend().remove()
 
-            ax[0,1].set_title(
-                f"Signal to noise ratio = {stn_i}, k = {k_true} for decimated {cn[0][-2]} days",
-                fontsize=20,
-            )
-            fig.subplots_adjust(wspace=0.1, hspace=0.1)
-            if not os.path.exists(f"{root_folder_name}/Bulk_traj"):
-                os.makedirs(f"{root_folder_name}/Bulk_traj")
-            fig.savefig(
-                f"{root_folder_name}/Bulk_traj/{uncertain_input}_stn_{stn_i}_k_{k_true}_deci_{cn[0][-2:]}.pdf")
+            if obs_mode == "bulk input":
+                ax[0, i].set_title("Bulk input", fontsize=20)
+            elif obs_mode == "bulk output":
+                ax[0, i].set_title("Bulk output", fontsize=20)
+            else:
+                ax[0, i].set_title("Bulk both", fontsize=20)
+
+        fig.suptitle(
+            f"Signal-to-noise ratio = {stn_i}, k = {k_true} for {cn[0][-2]}-day aggregated observations",
+            fontsize=20,
+        )
+        fig.subplots_adjust(wspace=0.1, hspace=0.1)
+        if not os.path.exists(f"{root_folder_name}/Bulk_traj"):
+            os.makedirs(f"{root_folder_name}/Bulk_traj")
+        fig.savefig(
+            f"{root_folder_name}/Bulk_traj/{uncertain_input}_stn_{stn_i}_k_{k_true}_bulk_{cn[0][-2:]}.pdf"
+        )
 
     # %%
