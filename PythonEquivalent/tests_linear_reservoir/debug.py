@@ -14,11 +14,12 @@ from tests_linear_reservoir.test_utils import *
 import pandas as pd
 from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulkFineInput
 
+
 # %%
 
-num_input_scenarios = 15
+num_input_scenarios = 5
 num_parameter_samples = 5
-len_parameter_MCMC = 5
+len_parameter_MCMC = 50
 k = 1.
 ipt_std = 1.0
 obs_mode = "bulk_7d"

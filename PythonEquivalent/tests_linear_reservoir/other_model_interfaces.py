@@ -32,6 +32,8 @@ class ModelInterfaceBulk(ModelInterface):
         # initialize the model interface
         super().__init__(df, customized_model, theta_init, config, num_input_scenarios)
 
+    
+    def _bulk_input_preprocess(self) -> None:
         input_obs = self.df['is_obs'].to_numpy()
 
         ipt_observed_ind_start = np.arange(self.T)[input_obs == True][:-1] + 1
@@ -74,6 +76,10 @@ class ModelInterfaceBulk(ModelInterface):
         Returns:
             np.ndarray: Rt
         """
+        # update input using new sig_r
+        if start_ind == 0 and end_ind == 1:
+            self._bulk_input_preprocess()
+
         R_prime = self.R_prime[:,start_ind:end_ind]
 
         return R_prime   
@@ -134,7 +140,7 @@ class ModelInterfaceDeci(ModelInterface):
         super().__init__(df, customized_model, theta_init, config, num_input_scenarios)
 
         # Decimation case: generate input scenarios based on all input values
-
+    def _deci_input_preprocess(self) -> None:
         not_obs_ipt_ind = np.arange(self.T)[self.df['is_obs'] == False]
 
         data = self.influx.to_numpy()
@@ -160,6 +166,10 @@ class ModelInterfaceDeci(ModelInterface):
         Returns:
             np.ndarray: Rt
         """
+        # update input for new scenarios
+        if start_ind == 0 and end_ind == 1:
+            self._deci_input_preprocess()
+            
 
         sig_r = self.theta.input_model # ipt obs uncertainty
         R_hat = self.deci_ipt[:,start_ind:end_ind] # actual ipt + guessed ipt
@@ -197,3 +207,4 @@ class ModelInterfaceDeciFineInput(ModelInterface):
             R_prime[n,:] = ss.norm(R_hat, scale=sig_r).rvs(end_ind - start_ind)
 
         return R_prime
+# %%

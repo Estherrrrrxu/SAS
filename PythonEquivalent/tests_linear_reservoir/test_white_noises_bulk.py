@@ -25,12 +25,12 @@ from tests_linear_reservoir.other_model_interfaces import ModelInterfaceBulk, Mo
 # interval = [0, int(sys.argv[7])]
 # uncertainty_mode = sys.argv[8]
 # %%
-num_input_scenarios = 15
+num_input_scenarios = 5
 num_parameter_samples = 5
-len_parameter_MCMC = 5
+len_parameter_MCMC = 25
 k = 0.1
 ipt_std = 1.0
-obs_mode = "bulk_7d"
+obs_mode = "bulk_4d"
 interval = [0, 30]
 uncertainty_mode = "input"  
 

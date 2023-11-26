@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional, List, Any
 
-from numba import vectorize
+# from numba import vectorize
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.stats as ss
@@ -125,7 +125,7 @@ def run_with_given_settings(
 
 # %%
 # %%
-@vectorize(["float64(float64, float64, float64, float64)"])
+# @vectorize(["float64(float64, float64, float64, float64)"])
 def cal_KL(sigma1, sigma2, mu1, mu2):
     return (
         np.log(sigma2 / sigma1)
