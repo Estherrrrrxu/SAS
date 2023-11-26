@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import scipy.stats as ss
 import pandas as pd
 from typing import Optional, Any, List
-from mesas.sas.model import Model
+from mesas.sas.model import Model as SAS_Model
 from functions.utils import normalize_over_interval
 
 # %%
@@ -110,7 +110,7 @@ class ModelInterfaceMesas:
     def __init__(
         self,
         df: pd.DataFrame,
-        customized_model: Optional[Any] = None,
+        customized_model: SAS_Model,
         theta_init: Optional[dict] = None,
         config: Optional[dict[str, Any]] = None,
         num_input_scenarios: Optional[int] = 10,
@@ -442,7 +442,6 @@ class ModelInterfaceMesas:
 
         return
     
-    # %%
     def _bulk_input_preprocess(self) -> np.ndarray:
         """Preprocess input data
 
@@ -456,13 +455,14 @@ class ModelInterfaceMesas:
         """
 
         input_obs = self.df['is_obs_input'].to_numpy()
+        is_filled = self.df['is_obs_input_filled'].to_numpy()
 
         ipt_observed_ind_start = np.arange(self.T)[input_obs == True][:-1] + 1
         ipt_observed_ind_start = np.insert(ipt_observed_ind_start, 0, 0)
         ipt_observed_ind_end = np.arange(self.T)[input_obs == True] +1
 
-        input_obs = self.influx['C_in'].to_numpy()
-        input_forcing = self.influx['J'].to_numpy()
+        input_obs = self.df[self.conc_pairs.keys()].to_numpy()
+        input_forcing = self.inflow.to_numpy()
 
         sig_r = input_obs.std(ddof=1)
 
@@ -477,7 +477,11 @@ class ModelInterfaceMesas:
             U_obs = input_obs[start_ind:end_ind]
             U_forcing = input_forcing[start_ind:end_ind]
 
-            sig_u = self.theta.input_model
+            # different input uncertainty for filled and observed
+            if is_filled[i]:
+                sig_u = self.theta.input_model[1]
+            else:
+                sig_u = self.theta.input_model[0]
 
             for n in range(self.N):
                 # R fluctuation is based on input fluctuation
@@ -507,11 +511,25 @@ class ModelInterfaceMesas:
 
         return R_prime
     
-    def initialize_measa_model(self, data: dict, config: dict, verbose: bool = False):
-        """Need to initialize self.N mesas model
+    def _run_sas_model_chunk(self, data: dict, start_ind: int, end_ind: int) -> None:
+        """Interface with SAS model corresponding to each time period
+
+        Args:
+            data (dict): data for each time period
         """
-        self.model = self.model(data, config, verbose=verbose)
-        return
+        
+        self.model(data.iloc[start_ind:end_ind],
+                config={
+                    "sas_specs": self.sas_specs,
+                    "solute_parameters": self.solute_parameters,
+                    "options": self.options,
+                },
+              verbose=False,
+              )
+        self.model.run()
+        self.solute_parameters['mT_init'] = self.model.get_mT(self.conc_pairs.keys(), timestep = -1)
+        self.options['ST_init'] = self.model.get_ST(timestep = -1)
+
 
     def transition_model(
         self, Xtm1: np.ndarray, Rt: Optional[np.ndarray] = None
@@ -623,12 +641,6 @@ class ModelInterfaceMesas:
 
 
 
-    def sas_model_chunk(self, data: dict, start_ind: int, end_ind: int) -> None:
-        """Interface with SAS model corresponding to each time period
 
-        Args:
-            data (dict): data for each time period
-        """
-        self.model = self.model(data, self.options, self.sas_specs, self.solute_parameters)
 
 # %%

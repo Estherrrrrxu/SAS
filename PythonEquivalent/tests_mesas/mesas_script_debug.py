@@ -141,7 +141,8 @@ fig.tight_layout()
 
 
 # %%
-from mesas.sas.model import Model
+from mesas.sas.model import Model as SAS_Model
+
 
 #%%
 # https://mesas.readthedocs.io/en/latest/sasspec.html#using-a-gamma-or-beta-distribution
@@ -155,12 +156,13 @@ from mesas_cases import *
 #               config=config_invariant_q_u_et_u,
 #               verbose=False
 #               )
-# model = Model(data,
-#               config=theta_storage_q_u_et_u,
-#               verbose=False,
-#               )
-# # Run the model
-# model.run()
+
+sas_specs = sas_specs_invariant_q_u_et_u
+solute_parameters = theta_invariant_q_u_et_u['solute_parameters']
+options = theta_invariant_q_u_et_u['options']
+
+# Run the model
+model.run()
 
 # # Extract results
 # data_df = model.data_df
