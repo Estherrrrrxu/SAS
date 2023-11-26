@@ -23,6 +23,8 @@ class ParamsProcessor:
     def __init__(self, distinct_str):
         self.params = {'to_estimate': {}, 'not_to_estimate': {}}
         self.distinct_str = distinct_str
+        self.transit_params = {"to_estimate": [], "not_to_estimate": []}
+        self.init_state_params = []
 
     def setup_prior_params(self, mode, flux, sas_name, param_key, sas_func):
         name = self.distinct_str.join([flux, sas_name, param_key])
@@ -30,20 +32,24 @@ class ParamsProcessor:
         # if this parameter is not to be estimated
         if mode == 'not_to_estimate':
             self.params['not_to_estimate'][name] = {sas_func['args'][param_key]}
+            self.transit_params['not_to_estimate'].append(name) 
         elif mode == 'to_estimate':
             is_C_old = param_key == 'C_old'
             is_prior_defined = 'prior' in sas_func.keys()
             if is_prior_defined:
+                self.transit_params['to_estimate'].append(name)
                 self.params['to_estimate'][name] = sas_func['prior']
                 del sas_func['prior']
             else:
                 if is_C_old:
+                    self.init_state_params.append(name)
                     self.params['to_estimate'][name] = {
                         'prior_dis': 'normal',
                         'prior_params': [sas_func[param_key], sas_func[param_key] / 5.],
                         'is_nonnegative': True,
                     }
                 else:
+                    self.transit_params['to_estimate'].append(name)
                     self.params['to_estimate'][name] = {
                         'prior_dis': 'normal',
                         'prior_params': [sas_func['args'][param_key], sas_func['args'][param_key] / 5.],
@@ -80,6 +86,7 @@ class ParamsProcessor:
     def set_obs_uncertainty(self, obs_uncertainty):
         for key, values in obs_uncertainty.items():
             self.params['to_estimate'][key] = values
+        
         
 #%%
 class ModelInterfaceMesas:
@@ -293,6 +300,8 @@ class ModelInterfaceMesas:
         params_processor.set_obs_uncertainty(self.obs_uncertainty)
         
         self._theta_init = params_processor.params
+        self._transit_params = params_processor.transit_params
+        self._init_state_params = params_processor.init_state_params
 
         self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
         self._num_theta_to_estimate = len(self._theta_to_estimate)
@@ -375,8 +384,7 @@ class ModelInterfaceMesas:
                 raise ValueError("This prior distribution is not implemented yet")
 
         return
-    
-    # TODO: return to this after defining the model
+
 
     def update_theta(self, theta_new: Optional[List[float]] = None) -> None:
         """Set/update the model object with a new parameter set
@@ -397,26 +405,32 @@ class ModelInterfaceMesas:
         for i, key in enumerate(self._theta_to_estimate):
             self._theta_init["to_estimate"][key]["current_value"] = theta_new[i]
 
-        # update parameters to be passed into the model
+        # need to unpack here to get sas params
+
 
         # transition model
-        transition_param = [
-            self._theta_init["to_estimate"]["k"][
-                "current_value"
-            ],  # param [0] is k to estimate
-            self.config["dt"],  # param [1] is delta_t (fixed)
-        ]
+        transition_param = []
+        for param_key in self._transit_params["to_estimate"]:
+            transition_param.append(self._theta_init["to_estimate"][param_key]["current_value"])
+        for param_key in self._transit_params["not_to_estimate"]:
+            transition_param.append(self._theta_init["not_to_estimate"][param_key])
+
 
         # observation model
-        obs_param = self._theta_init["to_estimate"]["obs_uncertainty"]["current_value"]
+        obs_param = [self._theta_init["to_estimate"]["sigma C out"]["current_value"],
+                     ]
+        
+        print(self._theta_init["to_estimate"].keys())
 
         # input uncertainty param is to estimate
-        input_param = self._theta_init["to_estimate"]["input_uncertainty"][
+        input_param = [self._theta_init["to_estimate"]["sigma observed C in"][
             "current_value"
-        ]
+        ],
+        self._theta_init["to_estimate"]["sigma filled C in"]["current_value"]]
 
         # initial state param is to estimate
-        init_state = self._theta_init["to_estimate"]["initial_state"]["current_value"]
+        for param_key in self._init_state_params:
+            init_state = self._theta_init["to_estimate"][param_key]["current_value"]
 
         # update model object theta
         self.theta = Parameter(
@@ -425,6 +439,7 @@ class ModelInterfaceMesas:
             observation_model=obs_param,
             initial_state=init_state,
         )
+
         return
     
     # %%

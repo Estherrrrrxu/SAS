@@ -243,8 +243,12 @@ model_interface = model_interface_class(
     config=config,
     theta_init=theta_invariant_q_u_et_u,
 )
-#%%
-# # %%
+# %%
+
+
+
+# %%
+
 # chain = Chain(model_interface=model_interface)
 # chain.run_particle_filter_SIR()
 # fig, ax = plot_MAP(chain.state, df_obs, chain.pre_ind, chain.post_ind)
