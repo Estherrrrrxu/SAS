@@ -16,6 +16,7 @@ import pandas as pd
 from tests_mesas.mesas_interface import ModelInterfaceMesas
 import matplotlib.pyplot as plt
 import numpy as np
+
 # %%
 # SET FOLDERS
 # ================================================================
@@ -29,112 +30,147 @@ if not os.path.exists(result_root):
 # ================================================================
 
 # Data from publicated paper
-df = pd.read_csv(f"{data_root}/data.csv", index_col=1, parse_dates=True) 
+df = pd.read_csv(f"{data_root}/data.csv", index_col=1, parse_dates=True)
 df.columns = ["timestep", "J", "C in", "Q", "ET", "C out", "S_scale"]
 
 # Orginal data
-check_file = pd.read_csv(f"{data_root}/weekly_rainfall.csv", index_col=5, parse_dates=True)
+check_file = pd.read_csv(
+    f"{data_root}/weekly_rainfall.csv", index_col=5, parse_dates=True
+)
 # Find where C in is observed
-df['is_obs_input'] = check_file['Cl mg/l']
-df['is_obs_input'] = df['is_obs_input'].notna()
-df['is_obs_input_filled'] = False
+df["is_obs_input"] = check_file["Cl mg/l"]
+df["is_obs_input"] = df["is_obs_input"].notna()
+df["is_obs_input_filled"] = False
 # Replace randomly generated cover data
-df['C in raw'] = df['C in'][df['is_obs_input']]
-df['C in raw'] = df['C in raw'].backfill()
-df['C in raw'][df['J'] == 0.] = 0.
+df["C in raw"] = df["C in"][df["is_obs_input"]]
+df["C in raw"] = df["C in raw"].backfill()
+df["C in raw"][df["J"] == 0.0] = 0.0
 
 # %%
 # Replace randomly sampled data with monthly mean
-ill_vals = df[['C in', 'J']][df['C in'] != df['C in raw']]
-monthly_means = ill_vals['C in'].groupby([ill_vals.index.month]).mean()
-ill_vals['C in'] = monthly_means[ill_vals.index.month].to_list()
+ill_vals = df[["C in", "J"]][df["C in"] != df["C in raw"]]
+monthly_means = ill_vals["C in"].groupby([ill_vals.index.month]).mean()
+ill_vals["C in"] = monthly_means[ill_vals.index.month].to_list()
 
 # define continuous time interval
 fake_obs = (ill_vals.index.to_series().diff().dt.days >= 6).to_list()[1:]
 fake_obs.append(True)
-ill_vals['is_obs'] = fake_obs
+ill_vals["is_obs"] = fake_obs
 
 # deal with across month condition
-ill_vals['group'] = ill_vals['is_obs'].cumsum()
-ill_vals['group'][ill_vals['is_obs'] == True] -= 1
-for i in range(ill_vals['group'].iloc[-1]+1):
-    if len((ill_vals['C in'][ill_vals['group'] == i]).unique()) > 1:
-        ill_vals['C in'][ill_vals['group'] == i] = (ill_vals['C in'][ill_vals['group'] == i]*ill_vals['J'][ill_vals['group'] == i]).sum()/ ill_vals['J'][ill_vals['group'] == i].sum()
+ill_vals["group"] = ill_vals["is_obs"].cumsum()
+ill_vals["group"][ill_vals["is_obs"] == True] -= 1
+for i in range(ill_vals["group"].iloc[-1] + 1):
+    if len((ill_vals["C in"][ill_vals["group"] == i]).unique()) > 1:
+        ill_vals["C in"][ill_vals["group"] == i] = (
+            ill_vals["C in"][ill_vals["group"] == i]
+            * ill_vals["J"][ill_vals["group"] == i]
+        ).sum() / ill_vals["J"][ill_vals["group"] == i].sum()
 
 # sanity check
 plt.figure()
-plt.plot(ill_vals['C in'], "_", label = 'Replaced ill values')
-plt.plot(ill_vals['C in'][ill_vals['is_obs']], 'x', label = 'Assume is observed')
+plt.plot(ill_vals["C in"], "_", label="Replaced ill values")
+plt.plot(ill_vals["C in"][ill_vals["is_obs"]], "x", label="Assume is observed")
 plt.xlim([ill_vals.index[20], ill_vals.index[100]])
-plt.legend(frameon = False)
-plt.ylabel('C in [mg/L]')
-plt.title('Replaced bulk mean and observed timestamp check')
+plt.legend(frameon=False)
+plt.ylabel("C in [mg/L]")
+plt.title("Replaced bulk mean and observed timestamp check")
 
 
 plt.figure()
-plt.plot((df['C in raw']*df['J']).cumsum(), label = 'Simple backfill raw data')
+plt.plot((df["C in raw"] * df["J"]).cumsum(), label="Simple backfill raw data")
 # replace the ill values under new condition
-df['C in raw'][df['C in'] != df['C in raw']] = ill_vals['C in']
-df['is_obs_input'][df['C in'] != df['C in raw']] = ill_vals['is_obs']
-df['is_obs_input_filled'][df['C in'] != df['C in raw']] = True
-plt.plot((df['C in raw']*df['J']).cumsum(), label = 'Recovered raw data')
-plt.plot((df['C in']*df['J']).cumsum(), label = 'Published data')
-plt.ylabel('Cumulative mass balance [mg]')
-plt.legend(frameon = False)
-plt.title('Cumulative mass balance check after replacement')
+df["C in raw"][df["C in"] != df["C in raw"]] = ill_vals["C in"]
+df["is_obs_input"][df["C in"] != df["C in raw"]] = ill_vals["is_obs"]
+df["is_obs_input_filled"][df["C in"] != df["C in raw"]] = True
+plt.plot((df["C in raw"] * df["J"]).cumsum(), label="Recovered raw data")
+plt.plot((df["C in"] * df["J"]).cumsum(), label="Published data")
+plt.ylabel("Cumulative mass balance [mg]")
+plt.legend(frameon=False)
+plt.title("Cumulative mass balance check after replacement")
 
 # %%
-df['is_obs_ouput'] = df['C out'].notna()
-df.columns = ["timestep", "J", "C in fake", "Q", "ET", "C out", "S_scale", "is_obs_input", "is_obs_input_filled", "C in", "is_obs_output"]
-# %% 
+df["is_obs_ouput"] = df["C out"].notna()
+df.columns = [
+    "timestep",
+    "J",
+    "C in fake",
+    "Q",
+    "ET",
+    "C out",
+    "S_scale",
+    "is_obs_input",
+    "is_obs_input_filled",
+    "C in",
+    "is_obs_output",
+]
+# %%
 data = df.iloc[:500]
-fig, ax = plt.subplots(4,1,figsize = (12,12))
+fig, ax = plt.subplots(4, 1, figsize=(12, 12))
 # precipitation
-J = ax[0].bar(data.index,data['J'], label = 'J')
+J = ax[0].bar(data.index, data["J"], label="J")
 
 ax0p = ax[0].twinx()
-CJ = ax0p.scatter(data.index[data['C in']>0], data['C in'][data['C in']>0], color = 'r', marker = 'x', label = r'$Observed\ bulk\ C_J$')
-temp_ind = np.logical_and(data['is_obs_input_filled'].values, data['C in'].values>0)
-CJ1 = ax0p.scatter(data.index[temp_ind], data['C in'][temp_ind], color = 'green', marker = 'x', label = r'$Filled\ C_J$')
+CJ = ax0p.scatter(
+    data.index[data["C in"] > 0],
+    data["C in"][data["C in"] > 0],
+    color="r",
+    marker="x",
+    label=r"$Observed\ bulk\ C_J$",
+)
+temp_ind = np.logical_and(data["is_obs_input_filled"].values, data["C in"].values > 0)
+CJ1 = ax0p.scatter(
+    data.index[temp_ind],
+    data["C in"][temp_ind],
+    color="green",
+    marker="x",
+    label=r"$Filled\ C_J$",
+)
 
 
 # discharge
-Q = ax[1].plot(data.index, data['Q'], label = 'Q')
+Q = ax[1].plot(data.index, data["Q"], label="Q")
 
 ax1p = ax[1].twinx()
-CQ = ax1p.scatter(data.index[data['C out']>0], data['C out'][data['C out']>0], color = 'r', marker = 'x', label = r'$C_Q$')
+CQ = ax1p.scatter(
+    data.index[data["C out"] > 0],
+    data["C out"][data["C out"] > 0],
+    color="r",
+    marker="x",
+    label=r"$C_Q$",
+)
 
 # evapotranspiration
-ax[2].plot(data['ET'])
+ax[2].plot(data["ET"])
 
 # storage
-ax[3].plot(data['S_scale'])
+ax[3].plot(data["S_scale"])
 
 # settings
-ax[0].set_title("Input - Precipitation", fontsize = 16)
-ax[1].set_title("Output 1 - Discharge", fontsize = 16)
-ax[2].set_title("Output 2 - Evapotranspiration (ET)", fontsize = 16)
-ax[3].set_title("State - Maximum storage", fontsize = 16)
+ax[0].set_title("Input - Precipitation", fontsize=16)
+ax[1].set_title("Output 1 - Discharge", fontsize=16)
+ax[2].set_title("Output 2 - Evapotranspiration (ET)", fontsize=16)
+ax[3].set_title("State - Maximum storage", fontsize=16)
 
-ax[0].set_ylabel("Precipitation [mm/d]", fontsize = 14)
-ax0p.set_ylabel("Concentration [mg/L]", fontsize = 14)
-ax[0].set_ylim([data['J'].max()*1.02, data['J'].min()])
-ax0p.set_ylim([data['C in'].max()*1.2, 0.])
+ax[0].set_ylabel("Precipitation [mm/d]", fontsize=14)
+ax0p.set_ylabel("Concentration [mg/L]", fontsize=14)
+ax[0].set_ylim([data["J"].max() * 1.02, data["J"].min()])
+ax0p.set_ylim([data["C in"].max() * 1.2, 0.0])
 
-ax[1].set_ylabel("Discharge [mm/d]", fontsize = 14)
-ax1p.set_ylabel("Concentration [mg/L]", fontsize = 14)
+ax[1].set_ylabel("Discharge [mm/d]", fontsize=14)
+ax1p.set_ylabel("Concentration [mg/L]", fontsize=14)
 
-ax[2].set_ylabel("ET [mm/h]", fontsize = 14)
-ax[3].set_ylabel("S max [mm]", fontsize = 14)
+ax[2].set_ylabel("ET [mm/h]", fontsize=14)
+ax[3].set_ylabel("S max [mm]", fontsize=14)
 
 
-lines = [J,CJ,CJ1]
+lines = [J, CJ, CJ1]
 labels = [line.get_label() for line in lines]
-ax[0].legend(lines, labels, frameon = False, loc = 'lower left', fontsize = 14)
+ax[0].legend(lines, labels, frameon=False, loc="lower left", fontsize=14)
 
 lines = [Q[0], CQ]
 labels = [line.get_label() for line in lines]
-ax[1].legend(lines, labels, frameon = False, loc = 'upper left', fontsize = 14)
+ax[1].legend(lines, labels, frameon=False, loc="upper left", fontsize=14)
 
 
 fig.tight_layout()
@@ -144,12 +180,13 @@ fig.tight_layout()
 from mesas.sas.model import Model as SAS_Model
 
 
-#%%
+# %%
 # https://mesas.readthedocs.io/en/latest/sasspec.html#using-a-gamma-or-beta-distribution
 
 from mesas_cases import *
 
-#%%
+
+# %%
 
 # Create the model
 # model = Model(data,
@@ -158,8 +195,8 @@ from mesas_cases import *
 #               )
 
 sas_specs = sas_specs_invariant_q_u_et_u
-solute_parameters = theta_invariant_q_u_et_u['solute_parameters']
-options = theta_invariant_q_u_et_u['options']
+solute_parameters = theta_invariant_q_u_et_u["solute_parameters"]
+options = theta_invariant_q_u_et_u["options"]
 
 # Run the model
 model.run()
@@ -212,20 +249,18 @@ model.run()
 # plt.plot(data_df['C in --> Q'].to_numpy(), ":", label = 'C_Q from model')
 
 
-
 # plt.legend(frameon = False)
 
 
-
-#%%
+# %%
 
 # RUN MODEL ================================================================
 # initialize model settings
-output_obs = data['C out'].notna().to_list()
+output_obs = data["C out"].notna().to_list()
 config = {
     "observed_made_each_step": output_obs,
-    "inflow": ['J'],
-    "outflow": ['Q', 'ET'],
+    "inflow": ["J"],
+    "outflow": ["Q", "ET"],
     "use_MAP_AS_weight": False,
     "use_MAP_ref_traj": False,
     "use_MAP_MCMC": False,
@@ -240,13 +275,12 @@ model_interface_class = ModelInterfaceMesas
 
 model_interface = model_interface_class(
     df=data,
-    customized_model=Model,
+    customized_model=SAS_Model,
     num_input_scenarios=num_input_scenarios,
     config=config,
     theta_init=theta_invariant_q_u_et_u,
 )
 # %%
-
 
 
 # %%
@@ -281,7 +315,6 @@ model_interface = model_interface_class(
 
 #     output_scenarios = model.output_record
 #     df = model_interface.df
-
 
 
 # # %%

@@ -37,6 +37,8 @@ class Chain:
         self.T = self.model_interface.T
         self.K = self.model_interface.K
 
+        self.num_states = self.model_interface.num_states
+
         # get observed indices
         self.observed_ind = self.model_interface.observed_ind
         # get observation
@@ -66,7 +68,7 @@ class Chain:
         # initialize variables
         R=np.ones((self.N, self.T))
         W=np.ones(self.N) / self.N
-        X=np.ones((self.N, self.T))
+        X=np.ones((self.N, self.T, self.num_states))
         Y=np.ones((self.N, self.T))
         A=np.zeros((self.N, self.K)).astype(int)
         A[:, 0] = Ak = np.arange(self.N)

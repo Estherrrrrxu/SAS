@@ -134,7 +134,6 @@ class ModelInterfaceMesas:
         """
         self.df = df
         self.N = num_input_scenarios
-        self.model = [customized_model for n in range(self.N)]  # pass your own model here
         self.T = len(self.df)  # set T to be the length of the dataframe
 
         # Set configurations according your own need here
@@ -144,6 +143,15 @@ class ModelInterfaceMesas:
         # Set initial values of parameters
         self._theta_init = None
         self._parse_theta_init(theta_init=theta_init)
+
+        # initialize sas_model
+        self.model = [customized_model(self.df, 
+                                       config={
+                                           "sas_specs": self.sas_specs,
+                                           "solute_parameters": self.solute_parameters,
+                                           "options": self.options},
+                                        verbose=False
+                                        ) for n in range(self.N)]
 
         # initialize theta
         self.update_theta()
@@ -306,6 +314,8 @@ class ModelInterfaceMesas:
         self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
         self._num_theta_to_estimate = len(self._theta_to_estimate)
 
+        self.num_states = len(self.conc_pairs.keys()) + 1 # +1 for storage
+
         # Set parameter constraints and distributions
         self._set_parameter_constraints()
         self._set_parameter_distribution()
@@ -419,8 +429,6 @@ class ModelInterfaceMesas:
         # observation model
         obs_param = [self._theta_init["to_estimate"]["sigma C out"]["current_value"],
                      ]
-        
-        print(self._theta_init["to_estimate"].keys())
 
         # input uncertainty param is to estimate
         input_param = [self._theta_init["to_estimate"]["sigma observed C in"][
@@ -439,6 +447,8 @@ class ModelInterfaceMesas:
             observation_model=obs_param,
             initial_state=init_state,
         )
+
+        self._init_sas_model()
 
         return
     
@@ -509,27 +519,33 @@ class ModelInterfaceMesas:
 
         R_prime = self.R_prime[:,start_ind:end_ind]
 
+        # record start and end ind for later use
+        self._start_ind, self._end_ind = start_ind, end_ind
+
         return R_prime
     
-    def _run_sas_model_chunk(self, data: dict, start_ind: int, end_ind: int) -> None:
-        """Interface with SAS model corresponding to each time period
-
-        Args:
-            data (dict): data for each time period
-        """
+    def _init_sas_model(self) -> None:
         
-        self.model(data.iloc[start_ind:end_ind],
-                config={
-                    "sas_specs": self.sas_specs,
-                    "solute_parameters": self.solute_parameters,
-                    "options": self.options,
-                },
-              verbose=False,
-              )
-        self.model.run()
-        self.solute_parameters['mT_init'] = self.model.get_mT(self.conc_pairs.keys(), timestep = -1)
-        self.options['ST_init'] = self.model.get_ST(timestep = -1)
+        # pass parameters to sas specs
+        len_to_estimate = len(self._transit_params["to_estimate"])
+        for i in range(len_to_estimate):
+            param_key = self._transit_params["to_estimate"][i]
+            flux, sas_name, param_name = param_key.split(self._distinct_str)
+            self.model[0].sas_specs[flux].components[sas_name]._spec['args'][param_name] = self.theta.transition_model[i]
+        
+        for i in range(len(self._transit_params["not_to_estimate"])):
+            param_key = self._transit_params["not_to_estimate"][i]
+            flux, sas_name, param_name = param_key.split(self._distinct_str)
+            self.model[0].sas_specs[flux].components[sas_name]._spec['args'][param_name] = self.theta.transition_model[i+len_to_estimate]
 
+        # pass parameters to solute parameters
+        for i in range(len(self._init_state_params)):
+            param_key = self._init_state_params[i]
+            sol_in, sol_out, sol_init = param_key.split(self._distinct_str)
+            if self.model[0].solute_parameters[sol_in]['observations'] == sol_out:
+                self.model[0].solute_parameters[sol_in] = self.theta.initial_state[i]
+        
+        # Note: update one, updates all
 
     def transition_model(
         self, Xtm1: np.ndarray, Rt: Optional[np.ndarray] = None
@@ -538,9 +554,8 @@ class ModelInterfaceMesas:
         This is where to call mesas model
 
        For mesas: state variables are:
-       M_in, M_out, S_T
-       
-
+            - age-ranked mass of solute in the reservoir (mT)
+            - age-ranked storage of the reservoir (ST)
 
         Args:
             Xtm1 (np.ndarray): state X at t = k-1
@@ -549,51 +564,42 @@ class ModelInterfaceMesas:
         Returns:
             np.ndarray: state X at t
         """
-        for n in self.N:
-            all_fluxes = pd.DataFrame(Rt[n], columns = self.config['all_fluxes'])
 
+        num_iter = Rt.shape[1]
+        
+        Xt = np.ones((self.N, num_iter + 1, Xtm1.shape[1]))
+        Xt[:, 0, :] = Xtm1
 
-            
-        # Get parameters
-        theta = self.theta.transition_model
-        temp_data = pd.DataFrame({})        # Create the model
-        model = Model(data,
-                    config=config_invariant_q_u_et_u,
-                    verbose=False
-                    )
+        # update input scenarios
+        for n in range(self.N):
+            # update state
+            for i in range(len(self.conc_pairs.keys())):
+                key = list(self.conc_pairs.keys())[i]
+                self.model[n].data_df[key] = Rt[n, :]
+                self.model[n].run()
+                Xt[n,1:,i] = self.model[n].get_mT(key, timestep = -1)[num_iter+1-self.model[n]._max_age:]
+                self.model[n].solute_parameters[key]['mT_init'] = self.model[n].get_mT(key, timestep = -1).copy()
+            Xt[n,:,-1] = self.model[n].get_ST(timestep = -1)[self.model[n]._max_age:]
+            self.model[n].options['ST_init'] = self.model[n].get_ST(timestep = -1)
 
-        # Run the model
-        model.run()
-
-        # Extract results
-        data_df = model.data_df
-        flux = model.fluxorder[0]
-
-
-        return Xt[:, 1:]  # return w/out initial state
+        return Xt[:, 1:, :]  # return w/out initial state
 
     def transition_model_probability(self, X_1toT: np.ndarray) -> np.ndarray:
         return 1.
 
     def observation_model(self, Xk: np.ndarray) -> np.ndarray:
-        """Observation probability g_theta
+        """Observation probability g_theta(Xt)
 
-        Current setup for linear reservoir:
-            y_hat(k) = x(k)
-
-        Current general model setting:
-            y(t) = y_hat(t) - N(0, theta_v),
-                            where y_hat(t) = x(t)
-
-        Args:
-            Xk (np.ndarray): state X at time k
-            yhk (np.ndarray): estimated y_hat at time k
 
         Returns:
             np.ndarray: y_hat at time k
         """
+        length = Xk.shape[1]
+        y_hat = np.zeros((self.N, length))
+        for n in range(self.N):
+            y_hat[n,:] = (self.model[n].results['C_Q'])[:,0]
 
-        return Xk
+        return y_hat[n,:]
 
     def observation_model_probability(
         self, yhk: np.ndarray, yk: np.ndarray
