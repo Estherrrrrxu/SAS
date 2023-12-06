@@ -16,6 +16,8 @@ import pandas as pd
 from tests_mesas.mesas_interface import ModelInterfaceMesas
 import matplotlib.pyplot as plt
 import numpy as np
+from model.utils_chain import Chain
+from functions.utils import plot_MAP
 
 # %%
 # SET FOLDERS
@@ -106,74 +108,74 @@ df.columns = [
 ]
 # %%
 data = df.iloc[:500]
-fig, ax = plt.subplots(4, 1, figsize=(12, 12))
-# precipitation
-J = ax[0].bar(data.index, data["J"], label="J")
+# fig, ax = plt.subplots(4, 1, figsize=(12, 12))
+# # precipitation
+# J = ax[0].bar(data.index, data["J"], label="J")
 
-ax0p = ax[0].twinx()
-CJ = ax0p.scatter(
-    data.index[data["C in"] > 0],
-    data["C in"][data["C in"] > 0],
-    color="r",
-    marker="x",
-    label=r"$Observed\ bulk\ C_J$",
-)
-temp_ind = np.logical_and(data["is_obs_input_filled"].values, data["C in"].values > 0)
-CJ1 = ax0p.scatter(
-    data.index[temp_ind],
-    data["C in"][temp_ind],
-    color="green",
-    marker="x",
-    label=r"$Filled\ C_J$",
-)
-
-
-# discharge
-Q = ax[1].plot(data.index, data["Q"], label="Q")
-
-ax1p = ax[1].twinx()
-CQ = ax1p.scatter(
-    data.index[data["C out"] > 0],
-    data["C out"][data["C out"] > 0],
-    color="r",
-    marker="x",
-    label=r"$C_Q$",
-)
-
-# evapotranspiration
-ax[2].plot(data["ET"])
-
-# storage
-ax[3].plot(data["S_scale"])
-
-# settings
-ax[0].set_title("Input - Precipitation", fontsize=16)
-ax[1].set_title("Output 1 - Discharge", fontsize=16)
-ax[2].set_title("Output 2 - Evapotranspiration (ET)", fontsize=16)
-ax[3].set_title("State - Maximum storage", fontsize=16)
-
-ax[0].set_ylabel("Precipitation [mm/d]", fontsize=14)
-ax0p.set_ylabel("Concentration [mg/L]", fontsize=14)
-ax[0].set_ylim([data["J"].max() * 1.02, data["J"].min()])
-ax0p.set_ylim([data["C in"].max() * 1.2, 0.0])
-
-ax[1].set_ylabel("Discharge [mm/d]", fontsize=14)
-ax1p.set_ylabel("Concentration [mg/L]", fontsize=14)
-
-ax[2].set_ylabel("ET [mm/h]", fontsize=14)
-ax[3].set_ylabel("S max [mm]", fontsize=14)
+# ax0p = ax[0].twinx()
+# CJ = ax0p.scatter(
+#     data.index[data["C in"] > 0],
+#     data["C in"][data["C in"] > 0],
+#     color="r",
+#     marker="x",
+#     label=r"$Observed\ bulk\ C_J$",
+# )
+# temp_ind = np.logical_and(data["is_obs_input_filled"].values, data["C in"].values > 0)
+# CJ1 = ax0p.scatter(
+#     data.index[temp_ind],
+#     data["C in"][temp_ind],
+#     color="green",
+#     marker="x",
+#     label=r"$Filled\ C_J$",
+# )
 
 
-lines = [J, CJ, CJ1]
-labels = [line.get_label() for line in lines]
-ax[0].legend(lines, labels, frameon=False, loc="lower left", fontsize=14)
+# # discharge
+# Q = ax[1].plot(data.index, data["Q"], label="Q")
 
-lines = [Q[0], CQ]
-labels = [line.get_label() for line in lines]
-ax[1].legend(lines, labels, frameon=False, loc="upper left", fontsize=14)
+# ax1p = ax[1].twinx()
+# CQ = ax1p.scatter(
+#     data.index[data["C out"] > 0],
+#     data["C out"][data["C out"] > 0],
+#     color="r",
+#     marker="x",
+#     label=r"$C_Q$",
+# )
+
+# # evapotranspiration
+# ax[2].plot(data["ET"])
+
+# # storage
+# ax[3].plot(data["S_scale"])
+
+# # settings
+# ax[0].set_title("Input - Precipitation", fontsize=16)
+# ax[1].set_title("Output 1 - Discharge", fontsize=16)
+# ax[2].set_title("Output 2 - Evapotranspiration (ET)", fontsize=16)
+# ax[3].set_title("State - Maximum storage", fontsize=16)
+
+# ax[0].set_ylabel("Precipitation [mm/d]", fontsize=14)
+# ax0p.set_ylabel("Concentration [mg/L]", fontsize=14)
+# ax[0].set_ylim([data["J"].max() * 1.02, data["J"].min()])
+# ax0p.set_ylim([data["C in"].max() * 1.2, 0.0])
+
+# ax[1].set_ylabel("Discharge [mm/d]", fontsize=14)
+# ax1p.set_ylabel("Concentration [mg/L]", fontsize=14)
+
+# ax[2].set_ylabel("ET [mm/h]", fontsize=14)
+# ax[3].set_ylabel("S max [mm]", fontsize=14)
 
 
-fig.tight_layout()
+# lines = [J, CJ, CJ1]
+# labels = [line.get_label() for line in lines]
+# ax[0].legend(lines, labels, frameon=False, loc="lower left", fontsize=14)
+
+# lines = [Q[0], CQ]
+# labels = [line.get_label() for line in lines]
+# ax[1].legend(lines, labels, frameon=False, loc="upper left", fontsize=14)
+
+
+# fig.tight_layout()
 
 
 # %%
@@ -194,12 +196,12 @@ from mesas_cases import *
 #               verbose=False
 #               )
 
-sas_specs = sas_specs_invariant_q_u_et_u
-solute_parameters = theta_invariant_q_u_et_u["solute_parameters"]
-options = theta_invariant_q_u_et_u["options"]
+# sas_specs = sas_specs_invariant_q_u_et_u
+# solute_parameters = theta_invariant_q_u_et_u["solute_parameters"]
+# options = theta_invariant_q_u_et_u["options"]
 
-# Run the model
-model.run()
+# # Run the model
+# model.run()
 
 # # Extract results
 # data_df = model.data_df
@@ -259,8 +261,8 @@ model.run()
 output_obs = data["C out"].notna().to_list()
 config = {
     "observed_made_each_step": output_obs,
-    "inflow": ["J"],
-    "outflow": ["Q", "ET"],
+    "influx": ["J"],
+    "outflux": ["Q", "ET"],
     "use_MAP_AS_weight": False,
     "use_MAP_ref_traj": False,
     "use_MAP_MCMC": False,
@@ -280,16 +282,31 @@ model_interface = model_interface_class(
     config=config,
     theta_init=theta_invariant_q_u_et_u,
 )
-# %%
-
 
 # %%
+# check input scenarios generation
+model_interface._bulk_input_preprocess()
+r = model_interface.R_prime
+for i in range(5):
+    plt.scatter(np.arange(r.shape[1]), r[i], marker=".", s=10)
+obs = model_interface.df[model_interface.in_sol].to_numpy()
+obs[model_interface.influx == 0.0] = 0.0
+plt.plot(obs, "_")
 
-# chain = Chain(model_interface=model_interface)
-# chain.run_particle_filter_SIR()
-# fig, ax = plot_MAP(chain.state, df_obs, chain.pre_ind, chain.post_ind)
-# ax[1].plot(chain.state.X.T, ".")
-# # %%
+# %%
+Rt = model_interface.input_model(0, 8)
+self = model_interface
+num_iter = Rt.shape[1]
+Xt = np.zeros((self.N, num_iter, self.num_states))
+
+
+# %%
+
+chain = Chain(model_interface=model_interface)
+chain.run_particle_filter_SIR()
+fig, ax = plot_MAP(chain.state, df_obs, chain.pre_ind, chain.post_ind)
+ax[1].plot(chain.state.X.T, ".")
+# %%
 
 #         chain.run_particle_filter_AS()
 #         fig, ax = plot_MAP(chain.state, df_obs, chain.pre_ind, chain.post_ind)

@@ -74,6 +74,9 @@ class ModelInterface:
         # initialize theta
         self.update_theta()
 
+        # initialize model
+        self.num_states, self.num_obs = None, None
+
     def _parse_config(self) -> None:
         """Parse config and set default values
 

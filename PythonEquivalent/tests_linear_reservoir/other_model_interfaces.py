@@ -59,7 +59,7 @@ class ModelInterfaceBulk(ModelInterface):
                     self.R_prime[n,start_ind:end_ind][self.R_prime[n,start_ind:end_ind] <= 0] = 10**(-8)
                 else:
                     self.R_prime[n,start_ind:end_ind][self.R_prime[n,start_ind:end_ind] <= 0] = min(10**(-8), min(self.R_prime[n,start_ind:end_ind][self.R_prime[n,start_ind:end_ind] > 0]))
-                U_prime = U[0] + ss.norm(0, sig_u).rvs()
+                U_prime = ss.norm(U[0], sig_u).rvs()
                 self.R_prime[n,start_ind:end_ind] = normalize_over_interval(self.R_prime[n,start_ind:end_ind], U_prime)
         
     def input_model(self, start_ind: int, end_ind: int) -> None:

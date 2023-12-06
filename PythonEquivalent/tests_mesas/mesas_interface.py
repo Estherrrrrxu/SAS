@@ -1,4 +1,3 @@
-
 # %%
 import numpy as np
 from dataclasses import dataclass
@@ -7,6 +6,7 @@ import pandas as pd
 from typing import Optional, Any, List
 from mesas.sas.model import Model as SAS_Model
 from functions.utils import normalize_over_interval
+
 
 # %%
 # a class to store parameters
@@ -21,7 +21,7 @@ class Parameter:
 # %%
 class ParamsProcessor:
     def __init__(self, distinct_str):
-        self.params = {'to_estimate': {}, 'not_to_estimate': {}}
+        self.params = {"to_estimate": {}, "not_to_estimate": {}}
         self.distinct_str = distinct_str
         self.transit_params = {"to_estimate": [], "not_to_estimate": []}
         self.init_state_params = []
@@ -30,65 +30,88 @@ class ParamsProcessor:
         name = self.distinct_str.join([flux, sas_name, param_key])
 
         # if this parameter is not to be estimated
-        if mode == 'not_to_estimate':
-            self.params['not_to_estimate'][name] = {sas_func['args'][param_key]}
-            self.transit_params['not_to_estimate'].append(name) 
-        elif mode == 'to_estimate':
-            is_C_old = param_key == 'C_old'
-            is_prior_defined = 'prior' in sas_func.keys()
+        if mode == "not_to_estimate":
+            self.params["not_to_estimate"][name] = {sas_func["args"][param_key]}
+            self.transit_params["not_to_estimate"].append(name)
+        elif mode == "to_estimate":
+            is_C_old = param_key == "C_old"
+            is_prior_defined = "prior" in sas_func.keys()
             if is_prior_defined:
-                self.transit_params['to_estimate'].append(name)
-                self.params['to_estimate'][name] = sas_func['prior']
-                del sas_func['prior']
+                self.transit_params["to_estimate"].append(name)
+                self.params["to_estimate"][name] = sas_func["prior"]
+                del sas_func["prior"]
             else:
                 if is_C_old:
                     self.init_state_params.append(name)
-                    self.params['to_estimate'][name] = {
-                        'prior_dis': 'normal',
-                        'prior_params': [sas_func[param_key], sas_func[param_key] / 5.],
-                        'is_nonnegative': True,
+                    self.params["to_estimate"][name] = {
+                        "prior_dis": "normal",
+                        "prior_params": [
+                            sas_func[param_key],
+                            sas_func[param_key] / 5.0,
+                        ],
+                        "is_nonnegative": True,
                     }
                 else:
-                    self.transit_params['to_estimate'].append(name)
-                    self.params['to_estimate'][name] = {
-                        'prior_dis': 'normal',
-                        'prior_params': [sas_func['args'][param_key], sas_func['args'][param_key] / 5.],
-                        'is_nonnegative': True,
+                    self.transit_params["to_estimate"].append(name)
+                    self.params["to_estimate"][name] = {
+                        "prior_dis": "normal",
+                        "prior_params": [
+                            sas_func["args"][param_key],
+                            sas_func["args"][param_key] / 5.0,
+                        ],
+                        "is_nonnegative": True,
                     }
 
     def process_distribution_params(self, flux, sas_name, sas_func):
-        dist = sas_func['func']
+        dist = sas_func["func"]
 
-        if dist == 'kumaraswamy':
-            if isinstance(sas_func['args']['scale'], str):
-                self.setup_prior_params('not_to_estimate', flux, sas_name, 'scale', sas_func)
+        if dist == "kumaraswamy":
+            if isinstance(sas_func["args"]["scale"], str):
+                self.setup_prior_params(
+                    "not_to_estimate", flux, sas_name, "scale", sas_func
+                )
             else:
-                self.setup_prior_params('to_estimate', flux, sas_name, 'scale', sas_func)
+                self.setup_prior_params(
+                    "to_estimate", flux, sas_name, "scale", sas_func
+                )
 
-        elif dist == 'gamma':
-
-            if isinstance(sas_func['args']['scale'], str):
-                if sas_func['args']['a'] == 1.:
-                    self.setup_prior_params('not_to_estimate', flux, sas_name, 'scale', sas_func)
-                    self.setup_prior_params('not_to_estimate', flux, sas_name, 'a', sas_func)
+        elif dist == "gamma":
+            if isinstance(sas_func["args"]["scale"], str):
+                if sas_func["args"]["a"] == 1.0:
+                    self.setup_prior_params(
+                        "not_to_estimate", flux, sas_name, "scale", sas_func
+                    )
+                    self.setup_prior_params(
+                        "not_to_estimate", flux, sas_name, "a", sas_func
+                    )
                 else:
-                    self.setup_prior_params('not_to_estimate', flux, sas_name, 'scale', sas_func)
-                    self.setup_prior_params('to_estimate', flux, sas_name, 'a', sas_func)
+                    self.setup_prior_params(
+                        "not_to_estimate", flux, sas_name, "scale", sas_func
+                    )
+                    self.setup_prior_params(
+                        "to_estimate", flux, sas_name, "a", sas_func
+                    )
 
-            elif sas_func['args']['a'] == 1.:
-                self.setup_prior_params('not_to_estimate', flux, sas_name, 'a', sas_func)
-                self.setup_prior_params('to_estimate', flux, sas_name, 'scale', sas_func)
+            elif sas_func["args"]["a"] == 1.0:
+                self.setup_prior_params(
+                    "not_to_estimate", flux, sas_name, "a", sas_func
+                )
+                self.setup_prior_params(
+                    "to_estimate", flux, sas_name, "scale", sas_func
+                )
 
             else:
-                self.setup_prior_params('to_estimate', flux, sas_name, 'a', sas_func)
-                self.setup_prior_params('to_estimate', flux, sas_name, 'scale', sas_func)
+                self.setup_prior_params("to_estimate", flux, sas_name, "a", sas_func)
+                self.setup_prior_params(
+                    "to_estimate", flux, sas_name, "scale", sas_func
+                )
 
     def set_obs_uncertainty(self, obs_uncertainty):
         for key, values in obs_uncertainty.items():
-            self.params['to_estimate'][key] = values
-        
-        
-#%%
+            self.params["to_estimate"][key] = values
+
+
+# %%
 class ModelInterfaceMesas:
     """Customize necessary model functionalities here
 
@@ -135,6 +158,8 @@ class ModelInterfaceMesas:
         self.df = df
         self.N = num_input_scenarios
         self.T = len(self.df)  # set T to be the length of the dataframe
+        self.R_prime = None
+        self.num_ipt, self.num_states, self.num_obs = None, None, None
 
         # Set configurations according your own need here
         self.config = config
@@ -145,13 +170,18 @@ class ModelInterfaceMesas:
         self._parse_theta_init(theta_init=theta_init)
 
         # initialize sas_model
-        self.model = [customized_model(self.df, 
-                                       config={
-                                           "sas_specs": self.sas_specs,
-                                           "solute_parameters": self.solute_parameters,
-                                           "options": self.options},
-                                        verbose=False
-                                        ) for n in range(self.N)]
+        self.model = [
+            customized_model(
+                self.df,
+                config={
+                    "sas_specs": self.sas_specs,
+                    "solute_parameters": self.solute_parameters,
+                    "options": self.options,
+                },
+                verbose=False,
+            )
+            for n in range(self.N)
+        ]
 
         # initialize theta
         self.update_theta()
@@ -166,8 +196,8 @@ class ModelInterfaceMesas:
 
         _default_config = {
             "dt": 1.0,
-            "inflow": ["J"],
-            "outflow": ["Q", "ET"],
+            "influx": ["J"],
+            "outflux": ["Q", "ET"],
             "observed_made_each_step": True,
             "use_MAP_ref_traj": False,
             "use_MAP_AS_weight": False,
@@ -197,7 +227,9 @@ class ModelInterfaceMesas:
         # get observation interval set
         self._set_observed_made_each_step()
         # get fluxes set
-        self._set_flowes()
+        self._set_fluxes()
+
+        self._start_ind, self._end_ind = None, None
 
         return
 
@@ -231,12 +263,12 @@ class ModelInterfaceMesas:
                 # if is all bool and all True
                 if all(isinstance(entry, bool) and entry for entry in obs_made):
                     self.K = self.T
-                
+
                     self.observed_ind = np.arange(self.T)
 
                 # if is all bool and some are not True
                 elif all(isinstance(entry, bool) for entry in obs_made):
-                    self.K = sum(obs_made) 
+                    self.K = sum(obs_made)
                     self.observed_ind = np.arange(self.T)[obs_made]
 
             else:
@@ -247,79 +279,83 @@ class ModelInterfaceMesas:
         # give observation interval as a int - how many timesteps
         elif isinstance(obs_made, int):
             # in this case K is still equal to T
-            
+
             if self.T % obs_made == 0:
-                self.K = int(self.T//obs_made)
+                self.K = int(self.T // obs_made)
             else:
-                self.K = int(self.T//obs_made)+1
+                self.K = int(self.T // obs_made) + 1
             self.observed_ind = np.arange(self.T, step=obs_made)
 
         else:
             raise ValueError("Error: Input format not supported!")
 
-    def _set_flowes(self) -> None:
-        """Set inflow and outflow based on config
+    def _set_fluxes(self) -> None:
+        """Set influx and outflux based on config
 
         Set:
-            inflow (np.ndarray): inflow data
-            outflow (np.ndarray): outflow data
+            influx (np.ndarray): influx data
+            outflux (np.ndarray): outflux data
         """
         # TODO: flexible way to insert multiple influx and outflux
-        if self.config["inflow"] is not None:
-            self.inflow = self.df[self.config["inflow"]]
+        if self.config["influx"] is not None:
+            self.influx = self.df[self.config["influx"]]
         else:
-            print("Warning: No inflow is given!")
+            print("Warning: No influx is given!")
 
-        if self.config["outflow"] is not None:
-            self.outflow = self.df[self.config["outflow"]]
+        if self.config["outflux"] is not None:
+            self.outflux = self.df[self.config["outflux"]]
         else:
-            print("Warning: No outflow is given!")
+            print("Warning: No outflux is given!")
 
         return
-    
+
     def _parse_theta_init(self, theta_init: Optional[dict] = None) -> None:
-        self.sas_specs = theta_init['sas_specs']
-        self.solute_parameters = theta_init['solute_parameters']
-        self.options = theta_init['options']
-        self.obs_uncertainty = theta_init['obs_uncertainty']
-        self._distinct_str = '#@#'
+        self.sas_specs = theta_init["sas_specs"]
+        self.solute_parameters = theta_init["solute_parameters"]
+        self.options = theta_init["options"]
+        self.obs_uncertainty = theta_init["obs_uncertainty"]
+        self._distinct_str = "#@#"
 
         # set _theta_init from sas_specs
         params_processor = ParamsProcessor(self._distinct_str)
         for flux, flux_sas in self.sas_specs.items():
             for sas_name, sas_func in flux_sas.items():
                 params_processor.process_distribution_params(flux, sas_name, sas_func)
-        
+
         # set _theta_init from solute_parameters
         self.conc_pairs = {}
         for in_conc, in_conc_params in self.solute_parameters.items():
-            
-            C_out = in_conc_params['observations']
-            
+            C_out = in_conc_params["observations"]
+
             if in_conc not in self.conc_pairs.keys():
                 self.conc_pairs[in_conc] = [C_out]
             else:
                 self.conc_pairs[in_conc].append(C_out)
 
-            params_processor.setup_prior_params('to_estimate', in_conc, C_out, 'C_old', in_conc_params)
+            params_processor.setup_prior_params(
+                "to_estimate", in_conc, C_out, "C_old", in_conc_params
+            )
 
+        self.in_sol = list(self.conc_pairs.keys())
 
         # set _theta_init from concentration pairs
         params_processor.set_obs_uncertainty(self.obs_uncertainty)
-        
+
         self._theta_init = params_processor.params
         self._transit_params = params_processor.transit_params
         self._init_state_params = params_processor.init_state_params
 
-        self._theta_to_estimate = list(self._theta_init['to_estimate'].keys())
+        self._theta_to_estimate = list(self._theta_init["to_estimate"].keys())
         self._num_theta_to_estimate = len(self._theta_to_estimate)
 
-        self.num_states = len(self.conc_pairs.keys()) + 1 # +1 for storage
+        self.num_ipt = len(self.in_sol)
+        self.num_states = len(self.in_sol) + 1  # +1 for ST
+        self.num_obs = 1  # only C_Q is observed
+        
 
         # Set parameter constraints and distributions
         self._set_parameter_constraints()
         self._set_parameter_distribution()
-
 
     def _set_parameter_constraints(self) -> None:
         """Get parameter constraints: nonnegative or not
@@ -367,12 +403,12 @@ class ModelInterfaceMesas:
 
                 else:
                     mean, std = theta_new[key]
-                    if std < mean/10.:
-                        std = mean/10.         
+                    if std < mean / 10.0:
+                        std = mean / 10.0
 
                 # truncate or not
                 if is_nonnegative:
-                    a = (10.e-6 - mean) / std 
+                    a = (10.0e-6 - mean) / std
                     self.dist_model[key] = ss.truncnorm(
                         a=a, b=np.inf, loc=mean, scale=std
                     )
@@ -395,7 +431,6 @@ class ModelInterfaceMesas:
 
         return
 
-
     def update_theta(self, theta_new: Optional[List[float]] = None) -> None:
         """Set/update the model object with a new parameter set
 
@@ -417,28 +452,32 @@ class ModelInterfaceMesas:
 
         # need to unpack here to get sas params
 
-
         # transition model
         transition_param = []
         for param_key in self._transit_params["to_estimate"]:
-            transition_param.append(self._theta_init["to_estimate"][param_key]["current_value"])
+            transition_param.append(
+                self._theta_init["to_estimate"][param_key]["current_value"]
+            )
         for param_key in self._transit_params["not_to_estimate"]:
             transition_param.append(self._theta_init["not_to_estimate"][param_key])
 
-
         # observation model
-        obs_param = [self._theta_init["to_estimate"]["sigma C out"]["current_value"],
-                     ]
+        obs_param = [
+            self._theta_init["to_estimate"]["sigma C out"]["current_value"],
+        ]
 
         # input uncertainty param is to estimate
-        input_param = [self._theta_init["to_estimate"]["sigma observed C in"][
-            "current_value"
-        ],
-        self._theta_init["to_estimate"]["sigma filled C in"]["current_value"]]
+        input_param = [
+            self._theta_init["to_estimate"]["sigma observed C in"]["current_value"],
+            self._theta_init["to_estimate"]["sigma filled C in"]["current_value"],
+        ]
 
         # initial state param is to estimate
+        init_state = []
         for param_key in self._init_state_params:
-            init_state = self._theta_init["to_estimate"][param_key]["current_value"]
+            init_state.append(
+                self._theta_init["to_estimate"][param_key]["current_value"]
+            )
 
         # update model object theta
         self.theta = Parameter(
@@ -448,10 +487,12 @@ class ModelInterfaceMesas:
             initial_state=init_state,
         )
 
+        # update bulk input and sas model every time theta is updated
+        self._bulk_input_preprocess()
         self._init_sas_model()
 
         return
-    
+
     def _bulk_input_preprocess(self) -> np.ndarray:
         """Preprocess input data
 
@@ -464,23 +505,24 @@ class ModelInterfaceMesas:
             np.ndarray: input data
         """
 
-        input_obs = self.df['is_obs_input'].to_numpy()
-        is_filled = self.df['is_obs_input_filled'].to_numpy()
+        is_input_obs = self.df["is_obs_input"].to_numpy()
+        is_filled = self.df["is_obs_input_filled"].to_numpy()
 
-        ipt_observed_ind_start = np.arange(self.T)[input_obs == True][:-1] + 1
+        ipt_observed_ind_start = np.arange(self.T)[is_input_obs == True][:-1] + 1
         ipt_observed_ind_start = np.insert(ipt_observed_ind_start, 0, 0)
-        ipt_observed_ind_end = np.arange(self.T)[input_obs == True] +1
+        ipt_observed_ind_end = np.arange(self.T)[is_input_obs == True] + 1
 
-        input_obs = self.df[self.conc_pairs.keys()].to_numpy()
-        input_forcing = self.inflow.to_numpy()
+        input_obs = self.df[self.in_sol].to_numpy()
+        input_forcing = self.influx.to_numpy()
 
-        sig_r = input_obs.std(ddof=1)
-
+        sig_r = input_obs.std(
+            ddof=1
+        )  # This is the input uncertainty to generate prediction scenarios
 
         # Bulk case: generate input scenarios based on observed input values
 
         self.R_prime = np.zeros((self.N, self.T))
-        for i in range(sum(input_obs)):
+        for i in range(sum(is_input_obs)):
             start_ind = ipt_observed_ind_start[i]
             end_ind = ipt_observed_ind_end[i]
 
@@ -495,18 +537,33 @@ class ModelInterfaceMesas:
 
             for n in range(self.N):
                 # R fluctuation is based on input fluctuation
-                R_temp = ss.norm(U_obs, scale=sig_r).rvs()
-                if R_temp[R_temp >0].size == 0:
-                    R_temp[R_temp <= 0] = 10**(-8)
-                else:
-                    R_temp[R_temp <= 0] = min(10**(-8), min(R_temp[R_temp > 0]))
-                
-                U_prime = (ss.norm(U_obs[0], sig_u).rvs()) * U_forcing
-                R_temp = R_temp * U_forcing
-                R_temp = normalize_over_interval(R_temp, U_prime)
-                
-                self.R_prime[n,start_ind:end_ind] = R_temp/U_forcing
+                a, b = (0.0 - U_obs) / sig_r, np.inf
+                R_temp = ss.truncnorm(a, b).rvs()
 
+                if isinstance(R_temp, float):
+                    R_temp = np.array([R_temp])
+                # re-sample if R_temp is negative
+                for r in range(len(R_temp)):
+                    while R_temp[r] <= 0:
+                        R_temp[r] = ss.truncnorm(a[r], b).rvs()
+
+                # now generate observation uncertainty
+                a = (0.0 - U_obs[0]) / sig_u
+                R_obs = -np.inf
+                while R_obs <= 0:
+                    R_obs = ss.truncnorm(a, b).rvs()
+
+                U_prime = R_obs * U_forcing
+                R_temp = R_temp * U_forcing
+
+                R_temp = normalize_over_interval(R_temp, U_prime) / U_forcing
+                R_temp = np.nan_to_num(R_temp, nan=0.0)
+
+                self.R_prime[n, start_ind:end_ind] = R_temp.ravel()
+        
+        # get dimension right        
+        self.R_prime = self.R_prime[:,:,np.newaxis]
+            
 
     def input_model(self, start_ind: int, end_ind: int) -> None:
         """Input model to unpack input forcing, observation and generate input scenarios
@@ -514,78 +571,92 @@ class ModelInterfaceMesas:
         Output R_prime is the input scenarios for C_in from start_ind to end_ind
 
         """
-        if start_ind == 0 and end_ind == 1:
-            self._bulk_input_preprocess()
 
-        R_prime = self.R_prime[:,start_ind:end_ind]
+        R_prime = self.R_prime[:, start_ind:end_ind,:]
 
         # record start and end ind for later use
         self._start_ind, self._end_ind = start_ind, end_ind
 
         return R_prime
-    
+
     def _init_sas_model(self) -> None:
-        
         # pass parameters to sas specs
         len_to_estimate = len(self._transit_params["to_estimate"])
         for i in range(len_to_estimate):
             param_key = self._transit_params["to_estimate"][i]
             flux, sas_name, param_name = param_key.split(self._distinct_str)
-            self.model[0].sas_specs[flux].components[sas_name]._spec['args'][param_name] = self.theta.transition_model[i]
-        
+            self.model[0].sas_specs[flux].components[sas_name]._spec["args"][
+                param_name
+            ] = self.theta.transition_model[i]
+
         for i in range(len(self._transit_params["not_to_estimate"])):
             param_key = self._transit_params["not_to_estimate"][i]
             flux, sas_name, param_name = param_key.split(self._distinct_str)
-            self.model[0].sas_specs[flux].components[sas_name]._spec['args'][param_name] = self.theta.transition_model[i+len_to_estimate]
+            self.model[0].sas_specs[flux].components[sas_name]._spec["args"][
+                param_name
+            ] = self.theta.transition_model[i + len_to_estimate]
 
         # pass parameters to solute parameters
         for i in range(len(self._init_state_params)):
             param_key = self._init_state_params[i]
             sol_in, sol_out, sol_init = param_key.split(self._distinct_str)
-            if self.model[0].solute_parameters[sol_in]['observations'] == sol_out:
-                self.model[0].solute_parameters[sol_in] = self.theta.initial_state[i]
-        
-        # Note: update one, updates all
+            if self.model[0].solute_parameters[sol_in]["observations"] == sol_out:
+                self.model[0].solute_parameters[sol_in][
+                    "C_old"
+                ] = self.theta.initial_state[i]
+
+        for n in range(1,self.N):
+            self.model[n].solute_parameters = self.model[0].solute_parameters
+            self.model[n].sas_specs = self.model[0].sas_specs
+
+
 
     def transition_model(
         self, Xtm1: np.ndarray, Rt: Optional[np.ndarray] = None
     ) -> np.ndarray:
         """State estimaton model f_theta(Xt-1, Rt)
-        This is where to call mesas model
+         This is where to call mesas model
 
-       For mesas: state variables are:
-            - age-ranked mass of solute in the reservoir (mT)
-            - age-ranked storage of the reservoir (ST)
+        For mesas: state variables are:
+             - age-ranked mass of solute in the reservoir (mT)
+             - age-ranked storage of the reservoir (ST)
 
-        Args:
-            Xtm1 (np.ndarray): state X at t = k-1
-            Rt (np.ndarray, Optional): input signal at t = k-1:k
+         Args:
+             Xtm1 (np.ndarray): state X at t = k-1 -> tracks mT and ST
+             Rt (np.ndarray, Optional): input signal at t = k-1:k
 
-        Returns:
-            np.ndarray: state X at t
+         Returns:
+             np.ndarray: state X at t
         """
 
         num_iter = Rt.shape[1]
-        
-        Xt = np.ones((self.N, num_iter + 1, Xtm1.shape[1]))
-        Xt[:, 0, :] = Xtm1
 
-        # update input scenarios
+        Xt = np.zeros((self.N, num_iter, self.num_states))
+
         for n in range(self.N):
-            # update state
-            for i in range(len(self.conc_pairs.keys())):
-                key = list(self.conc_pairs.keys())[i]
-                self.model[n].data_df[key] = Rt[n, :]
-                self.model[n].run()
-                Xt[n,1:,i] = self.model[n].get_mT(key, timestep = -1)[num_iter+1-self.model[n]._max_age:]
-                self.model[n].solute_parameters[key]['mT_init'] = self.model[n].get_mT(key, timestep = -1).copy()
-            Xt[n,:,-1] = self.model[n].get_ST(timestep = -1)[self.model[n]._max_age:]
-            self.model[n].options['ST_init'] = self.model[n].get_ST(timestep = -1)
+            # get partial mesas model
+            self.model[n].data_df = self.df.iloc[self._start_ind : self._end_ind]
+            self.model[n]._timeseries_length = num_iter
 
-        return Xt[:, 1:, :]  # return w/out initial state
+            for i in range(len(self.in_sol)):
+                key = self.in_sol[i]
+                # update input using Rt TODO: how to run partial update?
+                self.model[n].data_df[key] = Rt[n, :, i]
+                self.model[n].run()
+
+                Xt[n, :, i] = self.model[n].get_mT(key, timestep=-1)[
+                    : num_iter - self.model[n]._max_age
+                ]
+                self.model[n].solute_parameters[key]["mT_init"] = (
+                    self.model[n].get_mT(key, timestep=-1).copy()
+                )
+
+            self.model[n].options["ST_init"] = self.model[n].get_ST(timestep=-1)
+
+        return Xt  # return w/out initial state
 
     def transition_model_probability(self, X_1toT: np.ndarray) -> np.ndarray:
-        return 1.
+        return 1.0
 
     def observation_model(self, Xk: np.ndarray) -> np.ndarray:
         """Observation probability g_theta(Xt)
@@ -594,12 +665,20 @@ class ModelInterfaceMesas:
         Returns:
             np.ndarray: y_hat at time k
         """
+        if self._end_ind is None:
+            _start_ind = 0
+            _end_ind = 1
+        else:
+            _start_ind = self._start_ind
+            _end_ind = self._end_ind
+
         length = Xk.shape[1]
+
         y_hat = np.zeros((self.N, length))
         for n in range(self.N):
-            y_hat[n,:] = (self.model[n].results['C_Q'])[:,0]
+            y_hat[n, :] = (self.model[n].result["C_Q"])[_start_ind:_end_ind, 0]
 
-        return y_hat[n,:]
+        return y_hat.ravel()
 
     def observation_model_probability(
         self, yhk: np.ndarray, yk: np.ndarray
@@ -613,13 +692,13 @@ class ModelInterfaceMesas:
         Returns:
             np.ndarray: the likelihood of observation
         """
-
+        yk = yk["Q"]
         theta = self.theta.observation_model
         if len(yhk.shape) == 1:
             return ss.norm(yhk, theta).logpdf(yk)
         else:
             return ss.norm(yhk[:, -1], theta).logpdf(yk)
-    
+
     def initial_state_model(self, num: int) -> np.ndarray:
         """Initial state model
 
@@ -629,8 +708,11 @@ class ModelInterfaceMesas:
         Returns:
             np.ndarray: initial state
         """
+        state = np.zeros((num, len(self._init_state_params)))
+        for i, state_name in enumerate(self._init_state_params):
+            state[:, i] = self.dist_model[state_name].rvs(num)
 
-        return self.dist_model["initial_state"].rvs(num)
+        return state
 
     def state_as_probability(self, offset: np.ndarray, std: float):
         """State model probability p(xk'|xk)
@@ -644,9 +726,6 @@ class ModelInterfaceMesas:
         """
 
         return ss.norm(0, std).logpdf(offset)
-
-
-
 
 
 # %%

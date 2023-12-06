@@ -244,7 +244,7 @@ def normalize_over_interval(
     # sum all array values
     sum_val = sum(arr)
     if sum_val == 0:
-        raise ValueError("Sum of subarray is 0")
+        return arr
     multiplier = input / sum_val * len(arr)
 
     return arr * multiplier
