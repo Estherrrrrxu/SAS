@@ -1,4 +1,14 @@
 # %%
+import os
+
+current_path = os.getcwd()
+
+if current_path[-11:] != "tests_mesas":
+    os.chdir("tests_mesas")
+    print("Current working directory changed to 'tests_mesas'.")
+import sys
+
+sys.path.append("../")
 import numpy as np
 from dataclasses import dataclass
 import scipy.stats as ss
@@ -6,6 +16,7 @@ import pandas as pd
 from typing import Optional, Any, List
 from mesas.sas.model import Model as SAS_Model
 from functions.utils import normalize_over_interval
+from copy import deepcopy
 
 
 # %%
@@ -158,8 +169,9 @@ class ModelInterfaceMesas:
         self.df = df
         self.N = num_input_scenarios
         self.T = len(self.df)  # set T to be the length of the dataframe
-        self.R_prime = None
-        self.num_ipt, self.num_states, self.num_obs = None, None, None
+        self.R_prime = None  # preprocessed input scenarios
+        self.num_states, self.num_obs = None, None
+        self._start_ind, self._end_ind = None, None  # to track current time step
 
         # Set configurations according your own need here
         self.config = config
@@ -169,19 +181,16 @@ class ModelInterfaceMesas:
         self._theta_init = None
         self._parse_theta_init(theta_init=theta_init)
 
-        # initialize sas_model
-        self.model = [
-            customized_model(
-                self.df,
-                config={
-                    "sas_specs": self.sas_specs,
-                    "solute_parameters": self.solute_parameters,
-                    "options": self.options,
-                },
-                verbose=False,
-            )
-            for n in range(self.N)
-        ]
+        # initialize sas_model, given flux fixed, only need to initialize once
+        self.model = customized_model(
+            self.df,
+            config={
+                "sas_specs": self.sas_specs,
+                "solute_parameters": self.solute_parameters,
+                "options": self.options,
+            },
+            verbose=False,
+        )
 
         # initialize theta
         self.update_theta()
@@ -228,8 +237,6 @@ class ModelInterfaceMesas:
         self._set_observed_made_each_step()
         # get fluxes set
         self._set_fluxes()
-
-        self._start_ind, self._end_ind = None, None
 
         return
 
@@ -348,10 +355,8 @@ class ModelInterfaceMesas:
         self._theta_to_estimate = list(self._theta_init["to_estimate"].keys())
         self._num_theta_to_estimate = len(self._theta_to_estimate)
 
-        self.num_ipt = len(self.in_sol)
-        self.num_states = len(self.in_sol) + 1  # +1 for ST
+        self.num_states = len(self.in_sol)
         self.num_obs = 1  # only C_Q is observed
-        
 
         # Set parameter constraints and distributions
         self._set_parameter_constraints()
@@ -560,10 +565,9 @@ class ModelInterfaceMesas:
                 R_temp = np.nan_to_num(R_temp, nan=0.0)
 
                 self.R_prime[n, start_ind:end_ind] = R_temp.ravel()
-        
-        # get dimension right        
-        self.R_prime = self.R_prime[:,:,np.newaxis]
-            
+
+        # get dimension right
+        self.R_prime = self.R_prime[:, :, np.newaxis]
 
     def input_model(self, start_ind: int, end_ind: int) -> None:
         """Input model to unpack input forcing, observation and generate input scenarios
@@ -572,44 +576,78 @@ class ModelInterfaceMesas:
 
         """
 
-        R_prime = self.R_prime[:, start_ind:end_ind,:]
+        R_prime = self.R_prime[:, start_ind:end_ind, :]
 
-        # record start and end ind for later use
+        # record start and end ind for transition model
         self._start_ind, self._end_ind = start_ind, end_ind
 
         return R_prime
 
     def _init_sas_model(self) -> None:
+        # create a new variable to storage sas model
+        self._sas_funcs = {}
+        self._sol_factors = {}
+
         # pass parameters to sas specs
         len_to_estimate = len(self._transit_params["to_estimate"])
         for i in range(len_to_estimate):
             param_key = self._transit_params["to_estimate"][i]
             flux, sas_name, param_name = param_key.split(self._distinct_str)
-            self.model[0].sas_specs[flux].components[sas_name]._spec["args"][
+            self.model.sas_specs[flux].components[sas_name]._spec["args"][
                 param_name
             ] = self.theta.transition_model[i]
 
         for i in range(len(self._transit_params["not_to_estimate"])):
             param_key = self._transit_params["not_to_estimate"][i]
             flux, sas_name, param_name = param_key.split(self._distinct_str)
-            self.model[0].sas_specs[flux].components[sas_name]._spec["args"][
+            self.model.sas_specs[flux].components[sas_name]._spec["args"][
                 param_name
             ] = self.theta.transition_model[i + len_to_estimate]
+
+        temp_df = deepcopy(self.df)
 
         # pass parameters to solute parameters
         for i in range(len(self._init_state_params)):
             param_key = self._init_state_params[i]
             sol_in, sol_out, sol_init = param_key.split(self._distinct_str)
-            if self.model[0].solute_parameters[sol_in]["observations"] == sol_out:
-                self.model[0].solute_parameters[sol_in][
+            if self.model.solute_parameters[sol_in]["observations"] == sol_out:
+                self.model.solute_parameters[sol_in][
                     "C_old"
                 ] = self.theta.initial_state[i]
 
-        for n in range(1,self.N):
-            self.model[n].solute_parameters = self.model[0].solute_parameters
-            self.model[n].sas_specs = self.model[0].sas_specs
+            temp_df[sol_in] = 1.0
+            temp_sol_param = deepcopy(self.model.solute_parameters)
+            temp_sol_param[sol_in][sol_init] = 1.0
 
+        # Get SAS function according to flux and sas_name
+        self.model.run()
+        for flux in self.model.fluxorder:
+            self._sas_funcs[flux] = self.model.get_pQ(flux)
 
+        # Get solute factors for each solute
+        temp_model = self.model.copy_without_results()
+        temp_model._data_df = temp_df
+        temp_model.run()
+
+        for i in range(len(self._init_state_params)):
+            param_key = self._init_state_params[i]
+            sol_in, sol_out, sol_init = param_key.split(self._distinct_str)
+            self._sol_factors[sol_in] = self._get_col_factor(temp_model.get_CT("C in"))
+        
+    
+    def _get_col_factor(self, CT: np.ndarray) -> np.ndarray:
+
+        CT = np.nan_to_num(CT, nan=1.0)
+        # Create an averaged CT
+        new_CT = np.ones_like(CT)
+        new_CT[0] = (CT[0] + 1.0) / 2.0
+        # Update the remaining elements
+        for i in range(1, CT.shape[0]):
+            for j in range(i, CT.shape[1]):
+                new_CT[i, j] = (CT[i - 1, j - 1] + CT[i, j]) / 2.0
+        # Return the factor
+        return new_CT[:, 1:]
+        
 
     def transition_model(
         self, Xtm1: np.ndarray, Rt: Optional[np.ndarray] = None
@@ -622,7 +660,7 @@ class ModelInterfaceMesas:
              - age-ranked storage of the reservoir (ST)
 
          Args:
-             Xtm1 (np.ndarray): state X at t = k-1 -> tracks mT and ST
+             Xtm1 (np.ndarray): state X at t = k-1 -> tracks C_in at time t
              Rt (np.ndarray, Optional): input signal at t = k-1:k
 
          Returns:
@@ -633,27 +671,38 @@ class ModelInterfaceMesas:
 
         Xt = np.zeros((self.N, num_iter, self.num_states))
 
-        for n in range(self.N):
-            # get partial mesas model
-            self.model[n].data_df = self.df.iloc[self._start_ind : self._end_ind]
-            self.model[n]._timeseries_length = num_iter
+        # use input and output fluxes to get partial mesas model
+        self._start_ind
+        self._end_ind
 
-            for i in range(len(self.in_sol)):
-                key = self.in_sol[i]
-                # update input using Rt TODO: how to run partial update?
-                self.model[n].data_df[key] = Rt[n, :, i]
-                self.model[n].run()
 
-                Xt[n, :, i] = self.model[n].get_mT(key, timestep=-1)[
-                    : num_iter - self.model[n]._max_age
-                ]
-                self.model[n].solute_parameters[key]["mT_init"] = (
-                    self.model[n].get_mT(key, timestep=-1).copy()
-                )
+        # Get SAS function according to flux and sas_name  
+        for flux in self.model.fluxorder:  
+            pQ = self._sas_funcs[flux]
+            for i, sol in enumerate(self.in_sol):
+                C_J = self.model.data_df[sol].to_numpy()
+                C_Q = np.zeros(self.T)
+                # C_old is the state from last time step
+                C_old = Xtm1[:, i]
 
-            self.model[n].options["ST_init"] = self.model[n].get_ST(timestep=-1)
+                for n in range(self.N):
 
-        return Xt  # return w/out initial state
+
+
+
+                    for t in range(self.T):
+                        # the maximum age is t
+                        for T in range(t + 1):
+                            # the entry time is ti
+                            ti = t - T
+                            C_Q[t] += C_J[ti] * pQ[T, t] * self._sol_factors[sol][T, t] * self.dt
+
+                        C_Q[t] += C_old * (1 - pQ[: t + 1, t].sum() * self.dt)
+                    # save SAS function for each solute at each flux
+                    self._sas_funcs[flux][sol] = C_Q
+
+
+        return Xt
 
     def transition_model_probability(self, X_1toT: np.ndarray) -> np.ndarray:
         return 1.0
@@ -676,7 +725,7 @@ class ModelInterfaceMesas:
 
         y_hat = np.zeros((self.N, length))
         for n in range(self.N):
-            y_hat[n, :] = (self.model[n].result["C_Q"])[_start_ind:_end_ind, 0]
+            y_hat[n, :] = (self.model.result["C_Q"])[_start_ind:_end_ind, 0]
 
         return y_hat.ravel()
 

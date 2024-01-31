@@ -70,26 +70,27 @@ for i in range(ill_vals["group"].iloc[-1] + 1):
         ).sum() / ill_vals["J"][ill_vals["group"] == i].sum()
 
 # sanity check
-plt.figure()
-plt.plot(ill_vals["C in"], "_", label="Replaced ill values")
-plt.plot(ill_vals["C in"][ill_vals["is_obs"]], "x", label="Assume is observed")
-plt.xlim([ill_vals.index[20], ill_vals.index[100]])
-plt.legend(frameon=False)
-plt.ylabel("C in [mg/L]")
-plt.title("Replaced bulk mean and observed timestamp check")
+# plt.figure()
+# plt.plot(ill_vals["C in"], "_", label="Replaced ill values")
+# plt.plot(ill_vals["C in"][ill_vals["is_obs"]], "x", label="Assume is observed")
+# plt.xlim([ill_vals.index[20], ill_vals.index[100]])
+# plt.legend(frameon=False)
+# plt.ylabel("C in [mg/L]")
+# plt.title("Replaced bulk mean and observed timestamp check")
 
 
-plt.figure()
-plt.plot((df["C in raw"] * df["J"]).cumsum(), label="Simple backfill raw data")
-# replace the ill values under new condition
+# plt.figure()
+# plt.plot((df["C in raw"] * df["J"]).cumsum(), label="Simple backfill raw data")
+# # replace the ill values under new condition
 df["C in raw"][df["C in"] != df["C in raw"]] = ill_vals["C in"]
 df["is_obs_input"][df["C in"] != df["C in raw"]] = ill_vals["is_obs"]
 df["is_obs_input_filled"][df["C in"] != df["C in raw"]] = True
-plt.plot((df["C in raw"] * df["J"]).cumsum(), label="Recovered raw data")
-plt.plot((df["C in"] * df["J"]).cumsum(), label="Published data")
-plt.ylabel("Cumulative mass balance [mg]")
-plt.legend(frameon=False)
-plt.title("Cumulative mass balance check after replacement")
+# plt.plot((df["C in raw"] * df["J"]).cumsum(), label="Recovered raw data")
+# plt.plot((df["C in"] * df["J"]).cumsum(), label="Published data")
+# plt.ylabel("Cumulative mass balance [mg]")
+# plt.legend(frameon=False)
+# plt.title("Cumulative mass balance check after replacement")
+
 
 # %%
 df["is_obs_ouput"] = df["C out"].notna()
@@ -130,7 +131,7 @@ data = df.iloc[:500]
 # )
 
 
-# # discharge
+# discharge
 # Q = ax[1].plot(data.index, data["Q"], label="Q")
 
 # ax1p = ax[1].twinx()
@@ -180,11 +181,6 @@ data = df.iloc[:500]
 
 # %%
 from mesas.sas.model import Model as SAS_Model
-
-
-# %%
-# https://mesas.readthedocs.io/en/latest/sasspec.html#using-a-gamma-or-beta-distribution
-
 from mesas_cases import *
 
 
@@ -197,7 +193,7 @@ from mesas_cases import *
 #               )
 
 # sas_specs = sas_specs_invariant_q_u_et_u
-# solute_parameters = theta_invariant_q_u_et_u["solute_parameters"]
+# solute_parameters = theta_invariant_q_u_et_u["soluhttps://file+.vscode-resource.vscode-cdn.net/Users/esthersida/opt/anaconda3/envs/linear_system/lib/python3.10/site-packages/mesas/sas/model.py:557te_parameters"]
 # options = theta_invariant_q_u_et_u["options"]
 
 # # Run the model
@@ -285,13 +281,13 @@ model_interface = model_interface_class(
 
 # %%
 # check input scenarios generation
-model_interface._bulk_input_preprocess()
-r = model_interface.R_prime
-for i in range(5):
-    plt.scatter(np.arange(r.shape[1]), r[i], marker=".", s=10)
-obs = model_interface.df[model_interface.in_sol].to_numpy()
-obs[model_interface.influx == 0.0] = 0.0
-plt.plot(obs, "_")
+# model_interface._bulk_input_preprocess()
+# r = model_interface.R_prime
+# for i in range(5):
+#     plt.scatter(np.arange(r.shape[1]), r[i], marker=".", s=10)
+# obs = model_interface.df[model_interface.in_sol].to_numpy()
+# obs[model_interface.influx == 0.0] = 0.0
+# plt.plot(obs, "_")
 
 # %%
 Rt = model_interface.input_model(0, 8)
@@ -304,8 +300,8 @@ Xt = np.zeros((self.N, num_iter, self.num_states))
 
 chain = Chain(model_interface=model_interface)
 chain.run_particle_filter_SIR()
-fig, ax = plot_MAP(chain.state, df_obs, chain.pre_ind, chain.post_ind)
-ax[1].plot(chain.state.X.T, ".")
+# fig, ax = plot_MAP(chain.state, df_obs, chain.pre_ind, chain.post_ind)
+# ax[1].plot(chain.state.X.T, ".")
 # %%
 
 #         chain.run_particle_filter_AS()

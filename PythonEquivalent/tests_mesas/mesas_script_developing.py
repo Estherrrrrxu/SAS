@@ -117,13 +117,13 @@ config_invariant_q_u_et_u['solute_parameters'] = theta_invariant_q_u_et_u['solut
 config_invariant_q_u_et_u['sas_specs'] = theta_invariant_q_u_et_u['sas_specs']
 config_invariant_q_u_et_u['options'] = theta_invariant_q_u_et_u['options']
 config_invariant_q_u_et_u['options']['record_state'] = True
-#%%
+
+
+
+# %%
+
 fake_data = df.iloc[:500]
 data = fake_data.copy()
-
-
-
-
 
 # Create the model for getting C_Q
 model = SAS_Model(data,
@@ -148,6 +148,7 @@ timeseries_length = len(J)
 dt = model.options['dt']
 C_old = model.solute_parameters['C in']['C_old']
 # %%
+# this is the part creating fake data
 data_unit_C_J = data.copy()
 a = 1.
 data_unit_C_J['C in'] = a
@@ -159,91 +160,30 @@ model_conv = SAS_Model(data_unit_C_J,
                 )
 model_conv.run()
 
-#%%
-
-C_J = data_unit_C_J['C in'].to_numpy()
-C_Q = np.zeros(timeseries_length)
-C_old = a
-# pQback
-pQ = model_conv.get_pQ(flux='Q')
-evapoconc_factor = model_conv.get_CT('C in')
-evapoconc_factor[np.isnan(evapoconc_factor)] = 1.
-
-for t in range(timeseries_length):
-
-    # the maximum age is t
-    for T in range(t+1):
-        # the entry time is ti
-        ti = t-T
-        C_Q[t] += C_J[ti]*pQ[T,t]*evapoconc_factor[T,t]*dt
-
-    C_Q[t] += C_old * (1-pQ[:t+1,t].sum()*dt)
-
-plt.figure()
-plt.plot(C_Q, label = 'C_Q from convolution')
-plt.plot(model_conv.data_df['C in --> Q'].to_numpy(), label = 'C_Q from model')
-plt.legend(frameon = False)
-
-C_Q_fact = deepcopy(model_conv.data_df['C in --> Q'].to_numpy())
-
-
-
-# %%
-C_J = data_df['C in'].to_numpy()
-C_Q = np.zeros(timeseries_length)
-C_old = model.solute_parameters['C in']['C_old']
-# pQback
-pQ = model.get_pQ(flux='Q')
-evapoconc_factor = model_conv.get_CT('C in')
-evapoconc_factor[np.isnan(evapoconc_factor)] = 1.
-# evapoconc_factor = new_CT
-
-for t in range(timeseries_length):
-
-    # the maximum age is t
-    for T in range(t+1):
-        # the entry time is ti
-        ti = t-T
-        C_Q[t] += C_J[ti]*pQ[T,t]*evapoconc_factor[T,t]*dt
-
-    C_Q[t] += C_old * (1-pQ[:t+1,t].sum()*dt)
-
-plt.figure()
-plt.plot(C_Q, label = 'C_Q from convolution')
-plt.plot(data_df['C in --> Q'].to_numpy(), ":", label = 'C_Q from model')
-
-
-plt.legend(frameon = False)
-model_conv
-
-naiveC_Q = deepcopy(C_Q)
 
 # %%
 
 CT = model_conv.get_CT('C in')
 CT[np.isnan(CT)] = 1.
-print(CT[:6,:6])
-# %%
+
 # Create a new_CT array with the same shape and type as CT
 new_CT = np.ones_like(CT)
-
 # Update the first row of new_CT
 new_CT[0] = (CT[0] + 1.) / 2.
-
 # Update the remaining elements
 for i in range(1, CT.shape[0]):
     for j in range(i, CT.shape[1]):
         new_CT[i, j] = (CT[i-1, j-1] + CT[i, j]) / 2.
 
-
+evapoconc_factor = new_CT[:,1:]
+# evapoconc_factor = CT[:,1:]
+#%%
 C_J = data_df['C in'].to_numpy()
 C_Q = np.zeros(timeseries_length)
 C_old = model.solute_parameters['C in']['C_old']
 # pQback
 pQ = model.get_pQ(flux='Q')
-# evapoconc_factor = model_conv.get_CT('C in')
-# evapoconc_factor[np.isnan(evapoconc_factor)] = 1.
-evapoconc_factor = new_CT
+
 
 for t in range(timeseries_length):
 
@@ -258,41 +198,7 @@ for t in range(timeseries_length):
 plt.figure()
 plt.plot(C_Q, label = 'C_Q from convolution')
 plt.plot(data_df['C in --> Q'].to_numpy(), ":", label = 'C_Q from model')
-
-
 plt.legend(frameon = False)
-model_conv
-
-
-
-
-
-# %%
-fig,ax = plt.subplots(1,2, figsize = (10,5))
-ax[0].scatter(naiveC_Q,C_Q, s=5)
-ax[0].set_xlabel('C_Q calculated from raw C_T')
-ax[0].set_ylabel('C_Q calculated from averaged C_T')
-
-ax[1].scatter(naiveC_Q,data_df['C in --> Q'].to_numpy(), s=5)
-ax[1].set_xlabel('C_Q calculated from raw C_T')
-ax[1].set_ylabel('C_Q from model')
-
-
-C_Q_fact*C_Q
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+plt.figure()
+plt.plot(data_df['C in --> Q'].to_numpy() - C_Q, label = 'C_Q from model - C_Q from convolution')
 # %%

@@ -119,7 +119,7 @@ options = {
         "influx": "J",
         "verbose": True,
         "n_substeps": 1,
-        "record_state": False
+        "record_state": True
     }
 
 obs_uncertainty = {
@@ -167,10 +167,5 @@ theta_storage_q_g_et_u = {
     "options": options,
     "obs_uncertainty": obs_uncertainty
 }
-
-
-
-
-
 
 # %%
