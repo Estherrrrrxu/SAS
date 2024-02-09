@@ -290,7 +290,7 @@ model_interface = model_interface_class(
 # plt.plot(obs, "_")
 
 # %%
-Rt = model_interface.input_model(0, 8)
+Rt = model_interface.input_model(0, 16)
 self = model_interface
 num_iter = Rt.shape[1]
 Xt = np.zeros((self.N, num_iter, self.num_states))

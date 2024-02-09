@@ -195,6 +195,26 @@ for t in range(timeseries_length):
 
     C_Q[t] += C_old * (1-pQ[:t+1,t].sum()*dt)
 
+
+# test on partial intake
+time_stamp = np.linspace(0,timeseries_length,num=101, endpoint=True).astype(int)
+start_time = time_stamp[:-1] + 1
+start_time = np.insert(start_time, 0, 0)
+end_time = time_stamp + 1
+
+C_Q = np.zeros(timeseries_length)
+C_old = model.solute_parameters['C in']['C_old']
+for i in range(len(start_time)):
+    st, et = start_time[i], end_time[i]
+    for t in range(st, et):
+        for T in range(t+1):
+            ti = t-T
+            C_Q[t] = 
+
+
+
+
+
 plt.figure()
 plt.plot(C_Q, label = 'C_Q from convolution')
 plt.plot(data_df['C in --> Q'].to_numpy(), ":", label = 'C_Q from model')
@@ -202,3 +222,4 @@ plt.legend(frameon = False)
 plt.figure()
 plt.plot(data_df['C in --> Q'].to_numpy() - C_Q, label = 'C_Q from model - C_Q from convolution')
 # %%
+

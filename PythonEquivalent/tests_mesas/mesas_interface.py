@@ -171,7 +171,9 @@ class ModelInterfaceMesas:
         self.T = len(self.df)  # set T to be the length of the dataframe
         self.R_prime = None  # preprocessed input scenarios
         self.num_states, self.num_obs = None, None
-        self._start_ind, self._end_ind = None, None  # to track current time step
+        self._start_ind, self._end_ind = None, None  # to track current time interval
+        self._start_ind_p, self._end_ind_p = None, None # to track prev time interval
+        self.y_obs = None
 
         # Set configurations according your own need here
         self.config = config
@@ -344,6 +346,7 @@ class ModelInterfaceMesas:
             )
 
         self.in_sol = list(self.conc_pairs.keys())
+        self.CJ_archive = np.zeros((self.N, self.T, len(self.in_sol))) 
 
         # set _theta_init from concentration pairs
         params_processor.set_obs_uncertainty(self.obs_uncertainty)
@@ -507,7 +510,7 @@ class ModelInterfaceMesas:
         U_obs_true * U_forcing = (U_obs_observed + noise) * U_forcing
 
         Returns:
-            np.ndarray: input data
+            np.ndarray: input concentration
         """
 
         is_input_obs = self.df["is_obs_input"].to_numpy()
@@ -579,6 +582,7 @@ class ModelInterfaceMesas:
         R_prime = self.R_prime[:, start_ind:end_ind, :]
 
         # record start and end ind for transition model
+        self._start_ind_p, self._end_ind_p = deepcopy(self._start_ind), deepcopy(self._end_ind)
         self._start_ind, self._end_ind = start_ind, end_ind
 
         return R_prime
@@ -632,10 +636,19 @@ class ModelInterfaceMesas:
         for i in range(len(self._init_state_params)):
             param_key = self._init_state_params[i]
             sol_in, sol_out, sol_init = param_key.split(self._distinct_str)
-            self._sol_factors[sol_in] = self._get_col_factor(temp_model.get_CT("C in"))
+            # TODO: ad-hoc implementation for two outflows, Q and ET
+            self._sol_factors[sol_in] = self._get_sol_factor(temp_model.get_CT(sol_in))
         
     
-    def _get_col_factor(self, CT: np.ndarray) -> np.ndarray:
+    def _get_sol_factor(self, CT: np.ndarray) -> np.ndarray:
+        """The function to get solute redistribution factor
+
+        Args:
+            CT (np.ndarray): solute conc. matrix 
+
+        Returns:
+            np.ndarray: processed factor
+        """
 
         CT = np.nan_to_num(CT, nan=1.0)
         # Create an averaged CT
@@ -649,15 +662,20 @@ class ModelInterfaceMesas:
         return new_CT[:, 1:]
         
 
+    # self.CJ_archive dimension N x T x # in sol
     def transition_model(
-        self, Xtm1: np.ndarray, Rt: Optional[np.ndarray] = None
+        self, Xtm1: np.ndarray, Rt: Optional[np.ndarray] = None, Ak: Optional[np.ndarray] = None
     ) -> np.ndarray:
         """State estimaton model f_theta(Xt-1, Rt)
          This is where to call mesas model
 
         For mesas: state variables are:
              - age-ranked mass of solute in the reservoir (mT)
-             - age-ranked storage of the reservoir (ST)
+             - age-ranked storage of the reservoir (sT)
+        These are needed to calculated age-ranked concentration cT
+
+        However, cT is provided by mesas.py v1.0. Hence, cT is used as 
+        the tracked state for coding practice.
 
          Args:
              Xtm1 (np.ndarray): state X at t = k-1 -> tracks C_in at time t
@@ -667,42 +685,38 @@ class ModelInterfaceMesas:
              np.ndarray: state X at t
         """
 
-        num_iter = Rt.shape[1]
-
-        Xt = np.zeros((self.N, num_iter, self.num_states))
-
         # use input and output fluxes to get partial mesas model
-        self._start_ind
-        self._end_ind
-
-
-        # Get SAS function according to flux and sas_name  
+        C_Q = np.zeros((self.N, self.T, self.num_states))
+        # Get SAS function according to flux and sas_name 
         for flux in self.model.fluxorder:  
             pQ = self._sas_funcs[flux]
             for i, sol in enumerate(self.in_sol):
-                C_J = self.model.data_df[sol].to_numpy()
-                C_Q = np.zeros(self.T)
-                # C_old is the state from last time step
-                C_old = Xtm1[:, i]
+                # Update CJ_archive
+                self.CJ_archive[:, self._start_ind:self._end_ind, i] = Rt
 
+                # replace the CJ info from last time step
+                if self._start_ind != 0:
+                    self.CJ_archive[:, self._start_ind_p:self._end_ind_p, i] = self.CJ_archive[Ak, self._start_ind_p:self._end_ind_p, i]
+                
+                # do the convolution for each particle
                 for n in range(self.N):
+                    # get all CJs till the end of this time period
+                    C_J = self.CJ_archive[n, :self._end_ind]
+                    
+                    # C_old is the state from last time step
+                    C_old = Xtm1[:, i]
 
-
-
-
-                    for t in range(self.T):
+                    # TODO: I think this can be simplified
+                    for t in range(self._end_ind):
                         # the maximum age is t
                         for T in range(t + 1):
                             # the entry time is ti
                             ti = t - T
-                            C_Q[t] += C_J[ti] * pQ[T, t] * self._sol_factors[sol][T, t] * self.dt
+                            C_Q[n, t ,i] += C_J[n, ti] * pQ[T, t] * self._sol_factors[sol][T, t] * self.dt
 
-                        C_Q[t] += C_old * (1 - pQ[: t + 1, t].sum() * self.dt)
-                    # save SAS function for each solute at each flux
-                    self._sas_funcs[flux][sol] = C_Q
+                        C_Q[n, t, i] += C_old * (1 - pQ[: t + 1, t].sum() * self.dt)
 
-
-        return Xt
+        return C_Q[:, self._start_ind:self._end_ind, :]
 
     def transition_model_probability(self, X_1toT: np.ndarray) -> np.ndarray:
         return 1.0
@@ -710,24 +724,26 @@ class ModelInterfaceMesas:
     def observation_model(self, Xk: np.ndarray) -> np.ndarray:
         """Observation probability g_theta(Xt)
 
+        Xt is the instaneous concentration for last time period
+        And Yt is the instaneous concentration at the observation point
 
         Returns:
             np.ndarray: y_hat at time k
         """
-        if self._end_ind is None:
-            _start_ind = 0
-            _end_ind = 1
-        else:
-            _start_ind = self._start_ind
-            _end_ind = self._end_ind
-
-        length = Xk.shape[1]
-
-        y_hat = np.zeros((self.N, length))
-        for n in range(self.N):
-            y_hat[n, :] = (self.model.result["C_Q"])[_start_ind:_end_ind, 0]
+        # take the C_Q concentration at the last time step
+        y_hat = Xk[:,-1,:]
 
         return y_hat.ravel()
+    
+    def _find_y_obs(self):
+        """Self define y_obs
+        
+        """
+        for in_conc, in_conc_params in self.solute_parameters.items():
+            C_out = in_conc_params["observations"]
+            self.y_obs = self.df[C_out].to_numpy()
+        
+
 
     def observation_model_probability(
         self, yhk: np.ndarray, yk: np.ndarray
@@ -736,12 +752,16 @@ class ModelInterfaceMesas:
 
         Args:
             yhk (np.ndarray): estimated y_hat at time k
-            yk (np.ndarray): observation y at time k
+            yk (np.ndarray): outflux Q and ET, not used in this case
 
         Returns:
             np.ndarray: the likelihood of observation
         """
-        yk = yk["Q"]
+        if self.y_obs is None:
+            self._find_y_obs()
+
+        yk = self.y_obs[self._end_ind-1]
+
         theta = self.theta.observation_model
         if len(yhk.shape) == 1:
             return ss.norm(yhk, theta).logpdf(yk)

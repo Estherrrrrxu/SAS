@@ -101,7 +101,7 @@ class Chain:
             xkm1 = X[Ak, start_ind_k - 1]
 
             # propagate particles
-            xk = self.model_interface.transition_model(Xtm1=xkm1, Rt=Rt)
+            xk = self.model_interface.transition_model(Xtm1=xkm1, Rt=Rt, Ak=Ak)
             yk = self.model_interface.observation_model(Xk=xk)
 
             w_temp = self.model_interface.observation_model_probability(
