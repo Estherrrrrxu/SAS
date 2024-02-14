@@ -78,12 +78,18 @@ class Chain:
         # initialization at the first observation
         # TODO: in the future, let x be evolving with the input
         ind_init = self.pre_ind[0]
-        X[:, ind_init] = X[:, ind_init] * self.model_interface.initial_state_model(
+        aa = self.model_interface.initial_state_model(
             num=self.N
         )
-        Y[:, ind_init] = self.model_interface.observation_model(Xk=X[:, ind_init])
+
+        X[:, ind_init, :] = X[:, ind_init, :] * self.model_interface.initial_state_model(
+            num=self.N
+        )
+
+        Y[:, ind_init,:] = self.model_interface.observation_model(Xk=X[:, ind_init, :])
+
         W_init = self.model_interface.observation_model_probability(
-            yhk=Y[:, ind_init], yk=self.outflux[ind_init]
+            yhk=Y[:, ind_init,:], yk=self.outflux[ind_init]
         )
         W_init = np.exp(W_init - W_init.max())
         W = W_init / W_init.sum()
@@ -112,10 +118,10 @@ class Chain:
             W = w_temp / w_temp.sum()
 
             # This p1 takes account for initial condition
-            X[:, start_ind_k:end_ind_k] = xk
-            R[:, start_ind_k:end_ind_k] = Rt
-            Y[:, start_ind_k:end_ind_k] = yk
-            A[:, k] = Ak
+            X[:, start_ind_k:end_ind_k,:] = xk
+            R[:, start_ind_k:end_ind_k,:] = Rt
+            Y[:, start_ind_k:end_ind_k,:] = yk
+            A[:, k] = Ak.ravel()
 
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)
 

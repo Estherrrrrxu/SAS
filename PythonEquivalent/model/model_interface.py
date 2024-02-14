@@ -531,7 +531,7 @@ class ModelInterface:
             np.ndarray: initial state
         """
 
-        return self.dist_model["initial_state"].rvs(num)
+        return self.dist_model["initial_state"].rvs(num).reshape(-1, 1)
 
     def state_as_probability(self, offset: np.ndarray, std: float):
         """State model probability p(xk'|xk)

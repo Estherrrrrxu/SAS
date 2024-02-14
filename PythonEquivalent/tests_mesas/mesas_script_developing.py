@@ -209,7 +209,7 @@ for i in range(len(start_time)):
     for t in range(st, et):
         for T in range(t+1):
             ti = t-T
-            C_Q[t] = 
+
 
 
 

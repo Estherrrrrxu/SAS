@@ -258,7 +258,8 @@ output_obs = data["C out"].notna().to_list()
 config = {
     "observed_made_each_step": output_obs,
     "influx": ["J"],
-    "outflux": ["Q", "ET"],
+    # "outflux": ["Q", "ET"],
+    "outflux": ["C out"],
     "use_MAP_AS_weight": False,
     "use_MAP_ref_traj": False,
     "use_MAP_MCMC": False,
@@ -290,10 +291,10 @@ model_interface = model_interface_class(
 # plt.plot(obs, "_")
 
 # %%
-Rt = model_interface.input_model(0, 16)
-self = model_interface
-num_iter = Rt.shape[1]
-Xt = np.zeros((self.N, num_iter, self.num_states))
+# Rt = model_interface.input_model(0, 16)
+# self = model_interface
+# num_iter = Rt.shape[1]
+# Xt = np.zeros((self.N, num_iter, self.num_states))
 
 
 # %%

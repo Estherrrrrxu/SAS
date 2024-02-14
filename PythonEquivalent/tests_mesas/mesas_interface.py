@@ -312,8 +312,9 @@ class ModelInterfaceMesas:
             print("Warning: No influx is given!")
 
         if self.config["outflux"] is not None:
-            self.outflux = self.df[self.config["outflux"]]
+            self.outflux = self.df[self.config["outflux"]].values
         else:
+
             print("Warning: No outflux is given!")
 
         return
@@ -346,6 +347,7 @@ class ModelInterfaceMesas:
             )
 
         self.in_sol = list(self.conc_pairs.keys())
+        self.num_ipt = len(self.influx)
         self.CJ_archive = np.zeros((self.N, self.T, len(self.in_sol))) 
 
         # set _theta_init from concentration pairs
@@ -687,32 +689,35 @@ class ModelInterfaceMesas:
 
         # use input and output fluxes to get partial mesas model
         C_Q = np.zeros((self.N, self.T, self.num_states))
+        # self define C_old
+        C_old = self.model.solute_parameters["C in"]["C_old"]
+
         # Get SAS function according to flux and sas_name 
         for flux in self.model.fluxorder:  
             pQ = self._sas_funcs[flux]
             for i, sol in enumerate(self.in_sol):
                 # Update CJ_archive
-                self.CJ_archive[:, self._start_ind:self._end_ind, i] = Rt
+
+                self.CJ_archive[:, self._start_ind:self._end_ind, i] = Rt[:,:,i]
 
                 # replace the CJ info from last time step
                 if self._start_ind != 0:
-                    self.CJ_archive[:, self._start_ind_p:self._end_ind_p, i] = self.CJ_archive[Ak, self._start_ind_p:self._end_ind_p, i]
+                    self.CJ_archive[:, self._start_ind_p:self._end_ind_p, i] = self.CJ_archive[Ak.ravel(), self._start_ind_p:self._end_ind_p, i]
                 
                 # do the convolution for each particle
                 for n in range(self.N):
                     # get all CJs till the end of this time period
                     C_J = self.CJ_archive[n, :self._end_ind]
-                    
-                    # C_old is the state from last time step
-                    C_old = Xtm1[:, i]
 
+                    
                     # TODO: I think this can be simplified
                     for t in range(self._end_ind):
                         # the maximum age is t
                         for T in range(t + 1):
                             # the entry time is ti
                             ti = t - T
-                            C_Q[n, t ,i] += C_J[n, ti] * pQ[T, t] * self._sol_factors[sol][T, t] * self.dt
+
+                            C_Q[n, t ,i] += C_J[ti] * pQ[T, t] * self._sol_factors[sol][T, t] * self.dt
 
                         C_Q[n, t, i] += C_old * (1 - pQ[: t + 1, t].sum() * self.dt)
 
@@ -731,9 +736,8 @@ class ModelInterfaceMesas:
             np.ndarray: y_hat at time k
         """
         # take the C_Q concentration at the last time step
-        y_hat = Xk[:,-1,:]
 
-        return y_hat.ravel()
+        return Xk
     
     def _find_y_obs(self):
         """Self define y_obs
@@ -760,7 +764,15 @@ class ModelInterfaceMesas:
         if self.y_obs is None:
             self._find_y_obs()
 
-        yk = self.y_obs[self._end_ind-1]
+        if self._end_ind == None:
+            yk = self.y_obs[self.observed_ind[0]]
+        else:
+            yk = self.y_obs[self._end_ind-1]
+
+        if len(yhk.shape) == 2:
+            yhk = yhk[:, -1]
+        else:
+            yhk = yhk[:,-1,:]
 
         theta = self.theta.observation_model
         if len(yhk.shape) == 1:
