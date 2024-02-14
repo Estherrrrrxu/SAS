@@ -121,7 +121,7 @@ class Chain:
             X[:, start_ind_k:end_ind_k,:] = xk
             R[:, start_ind_k:end_ind_k,:] = Rt
             Y[:, start_ind_k:end_ind_k,:] = yk
-            A[:, k] = Ak.ravel()
+            A[:, k] = Ak
 
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)
 

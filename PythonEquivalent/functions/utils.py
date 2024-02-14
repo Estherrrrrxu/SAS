@@ -17,7 +17,7 @@ def _inverse_pmf(x: np.ndarray, pmf: np.ndarray, num: int) -> np.ndarray:
     """
     # Sort x and pmf together based on x
     sorted_indices = np.argsort(x)
-    x_sorted = x[sorted_indices]
+    # x_sorted = x[sorted_indices]
     pmf_sorted = pmf[sorted_indices]
 
     # Compute the cumulative sum of the sorted PMF
@@ -35,7 +35,7 @@ def _inverse_pmf(x: np.ndarray, pmf: np.ndarray, num: int) -> np.ndarray:
     # Map the sampled indices back to the original order
     original_indices = sorted_indices[ind_sample]
 
-    return original_indices
+    return original_indices.ravel()
 
 
 # use df['index'] to make the actual plot

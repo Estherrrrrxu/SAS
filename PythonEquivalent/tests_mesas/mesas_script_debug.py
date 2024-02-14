@@ -266,8 +266,8 @@ config = {
     "update_theta_dist": False,
 }
 
-num_input_scenarios = 5
-num_parameter_samples = 5
+num_input_scenarios = 30
+num_parameter_samples = 15
 len_parameter_MCMC = 5
 
 model_interface_class = ModelInterfaceMesas
@@ -279,7 +279,8 @@ model_interface = model_interface_class(
     config=config,
     theta_init=theta_invariant_q_u_et_u,
 )
-
+plt.plot(model_interface.R_prime[:,:,0].T, ".", alpha=0.5)
+plt.plot(df['C in fake'].values[:500], "k")
 # %%
 # check input scenarios generation
 # model_interface._bulk_input_preprocess()
@@ -301,8 +302,17 @@ model_interface = model_interface_class(
 
 chain = Chain(model_interface=model_interface)
 chain.run_particle_filter_SIR()
+
+df_obs = df["C out"].values
+# %%
+plt.plot(chain.state.R[:,:,0].T, ".", alpha=0.5)
+plt.plot(df['C in fake'].values[:500], "k")
+# plt.plot(df_obs[:500], "*")
+
+# plt.plot(df_obs[:500], "*")
 # fig, ax = plot_MAP(chain.state, df_obs, chain.pre_ind, chain.post_ind)
 # ax[1].plot(chain.state.X.T, ".")
+
 # %%
 
 #         chain.run_particle_filter_AS()
