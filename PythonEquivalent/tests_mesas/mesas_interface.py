@@ -568,9 +568,11 @@ class ModelInterfaceMesas:
                 U_prime = R_obs * U_forcing
                 R_temp = R_temp * U_forcing
 
+                print(R_temp, U_prime)
                 R_temp = normalize_over_interval(R_temp, U_prime) / U_forcing
 
                 R_temp = np.nan_to_num(R_temp, nan=0.0)
+
 
                 self.R_prime[n, start_ind:end_ind] = R_temp.ravel()
 
@@ -692,6 +694,8 @@ class ModelInterfaceMesas:
         # self define C_old
         C_old = self.model.solute_parameters["C in"]["C_old"]
 
+        # use input and output fluxes to get partial mesas model
+        C_Q = np.zeros((self.N, self._end_ind - self._start_ind, self.num_states))
         # Get SAS function according to flux and sas_name 
         for flux in self.model.fluxorder:  
             pQ = self._sas_funcs[flux]
@@ -708,23 +712,21 @@ class ModelInterfaceMesas:
                 for n in range(self.N):
                     # get all CJs till the end of this time period
                     C_J = self.CJ_archive[n, :self._end_ind]
-                    # use input and output fluxes to get partial mesas model
-                    C_Q = np.zeros((self.N, self._end_ind - self._start_ind, self.num_states))
-
-                    
+                                     
                     # TODO: I think this can be simplified
                     for tt in range(self._end_ind - self._start_ind):
+                        # actual time is t
                         t = tt + self._start_ind
                         # the maximum age is t
-                        for T in range(0, self._end_ind + 1):
+                        C_Q[n, tt, i] = 0                        
+                        for T in range(self._end_ind + 1):
                             # the entry time is ti
                             ti = t - T
-
                             C_Q[n, tt ,i] += C_J[ti] * pQ[T, t] * self._sol_factors[sol][T, t] * self.dt
 
                         C_Q[n, tt, i] += C_old * (1 - pQ[: t + 1, t].sum() * self.dt)
 
-        return C_Q[:, :, :]
+        return C_Q
 
     def transition_model_probability(self, X_1toT: np.ndarray) -> np.ndarray:
         return 1.0

@@ -195,30 +195,30 @@ for t in range(timeseries_length):
 
     C_Q[t] += C_old * (1-pQ[:t+1,t].sum()*dt)
 
+C_Q_test = np.zeros(timeseries_length)
+_start_ind = 0
+_end_ind = 1
 
-# test on partial intake
-time_stamp = np.linspace(0,timeseries_length,num=101, endpoint=True).astype(int)
-start_time = time_stamp[:-1] + 1
-start_time = np.insert(start_time, 0, 0)
-end_time = time_stamp + 1
+while _end_ind < timeseries_length:
+    # actual time is t
+    t = _start_ind
+    # the maximum age is t
+    for T in range(_end_ind + 1):
+        # the entry time is ti
+        ti = t - T
+        C_Q_test[t] += C_J[ti] * pQ[T, t] * evapoconc_factor[T, t] * dt
+    C_Q_test[t] += C_old * (1 - pQ[:t + 1, t].sum() * dt)
+    _start_ind += 1
+    _end_ind += 1
 
-C_Q = np.zeros(timeseries_length)
-C_old = model.solute_parameters['C in']['C_old']
-for i in range(len(start_time)):
-    st, et = start_time[i], end_time[i]
-    for t in range(st, et):
-        for T in range(t+1):
-            ti = t-T
-
-
-
-
-
-
+#%%
 plt.figure()
 plt.plot(C_Q, label = 'C_Q from convolution')
 plt.plot(data_df['C in --> Q'].to_numpy(), ":", label = 'C_Q from model')
+# plt.plot(C_Q_test, "--", label = 'C_Q test')
+plt.plot(data_df['C out'].to_numpy(), "*", label = 'Actual C_Q')
 plt.legend(frameon = False)
+plt.xlim([0,50])
 plt.figure()
 plt.plot(data_df['C in --> Q'].to_numpy() - C_Q, label = 'C_Q from model - C_Q from convolution')
 # %%

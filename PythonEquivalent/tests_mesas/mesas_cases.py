@@ -123,19 +123,21 @@ options = {
     }
 
 obs_uncertainty = {
+    # sig_u
     "sigma observed C in":{
         "prior_dis": "normal",
-        "prior_params": [10e-6, 0.1],
+        "prior_params": [10e-6, 0.000001],
         "is_nonnegative": True,
     },
     "sigma filled C in":{
         "prior_dis": "normal",
-        "prior_params": [10e-6, 5.],
+        "prior_params": [10e-6, 0.000005],
         "is_nonnegative": True,
     },
+    
     "sigma C out":{
         "prior_dis": "normal",
-        "prior_params": [10e-6, 0.1],
+        "prior_params": [10e-6, 0.000001],
         "is_nonnegative": True,
     }
 }

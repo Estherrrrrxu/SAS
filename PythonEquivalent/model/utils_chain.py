@@ -114,6 +114,10 @@ class Chain:
                 yhk=yk, yk=self.outflux[end_ind_k - 1]
             )
 
+            # print("yk", yk)
+            # print("outflux", self.outflux[end_ind_k - 1])
+            # print("w_temp", w_temp)
+
             w_temp = np.exp(w_temp - w_temp.max())
             W = w_temp / w_temp.sum()
 

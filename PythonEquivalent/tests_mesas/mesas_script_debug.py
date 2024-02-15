@@ -266,8 +266,8 @@ config = {
     "update_theta_dist": False,
 }
 
-num_input_scenarios = 30
-num_parameter_samples = 15
+num_input_scenarios = 5
+num_parameter_samples = 5
 len_parameter_MCMC = 5
 
 model_interface_class = ModelInterfaceMesas
@@ -279,23 +279,19 @@ model_interface = model_interface_class(
     config=config,
     theta_init=theta_invariant_q_u_et_u,
 )
-plt.plot(model_interface.R_prime[:,:,0].T, ".", alpha=0.5)
-plt.plot(df['C in fake'].values[:500], "k")
-# %%
-# check input scenarios generation
-# model_interface._bulk_input_preprocess()
-# r = model_interface.R_prime
-# for i in range(5):
-#     plt.scatter(np.arange(r.shape[1]), r[i], marker=".", s=10)
-# obs = model_interface.df[model_interface.in_sol].to_numpy()
-# obs[model_interface.influx == 0.0] = 0.0
-# plt.plot(obs, "_")
 
 # %%
-# Rt = model_interface.input_model(0, 16)
-# self = model_interface
-# num_iter = Rt.shape[1]
-# Xt = np.zeros((self.N, num_iter, self.num_states))
+# check input scenarios generation
+model_interface._bulk_input_preprocess()
+r = model_interface.R_prime
+for i in range(5):
+    plt.scatter(np.arange(r.shape[1]), r[i], marker=".", s=10)
+obs = model_interface.df[model_interface.in_sol].to_numpy()
+obs[model_interface.influx == 0.0] = 0.0
+plt.plot(obs, "_")
+plt.xlim([0, 50])
+
+
 
 
 # %%
@@ -303,16 +299,17 @@ plt.plot(df['C in fake'].values[:500], "k")
 chain = Chain(model_interface=model_interface)
 chain.run_particle_filter_SIR()
 
-df_obs = df["C out"].values
 # %%
-plt.plot(chain.state.R[:,:,0].T, ".", alpha=0.5)
-plt.plot(df['C in fake'].values[:500], "k")
+df_obs = df["C out"].values
+plt.plot(chain.state.Y[:,:500,0].T, ".")
+plt.plot(df['C out'].values[:500], "*")
+
 # plt.plot(df_obs[:500], "*")
 
 # plt.plot(df_obs[:500], "*")
 # fig, ax = plot_MAP(chain.state, df_obs, chain.pre_ind, chain.post_ind)
 # ax[1].plot(chain.state.X.T, ".")
-
+print('done')
 # %%
 
 #         chain.run_particle_filter_AS()
