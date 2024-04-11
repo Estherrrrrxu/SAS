@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from typing import Optional
 
 # %%
 def _inverse_pmf(x: np.ndarray, pmf: np.ndarray, num: int) -> np.ndarray:
@@ -35,7 +36,7 @@ def _inverse_pmf(x: np.ndarray, pmf: np.ndarray, num: int) -> np.ndarray:
     # Map the sampled indices back to the original order
     original_indices = sorted_indices[ind_sample]
 
-    return original_indices.ravel()
+    return original_indices
 
 
 # use df['index'] to make the actual plot
@@ -232,7 +233,7 @@ def create_bulk_sample(original: pd.DataFrame, n: int) -> pd.DataFrame:
 
 # %%
 def normalize_over_interval(
-    arr: np.ndarray, input: float
+    arr: np.ndarray, input: float, forcing: Optional[np.ndarray] = None
 ):
     """Normalize the values of the array over interval before making observation
 
@@ -242,10 +243,16 @@ def normalize_over_interval(
 
     """
     # sum all array values
-    sum_val = sum(arr)
-    if sum_val == 0:
-        return arr
-    multiplier = input / sum_val * len(arr)
+    if forcing is None:       
+        sum_val = sum(arr)
+        if sum_val == 0:
+            return arr
+        multiplier = input / sum_val * len(arr)
+    else:
+        sum_val = sum(arr*forcing)/forcing.sum()
+        if sum_val == 0:
+            return arr
+        multiplier = input / sum_val
 
     return arr * multiplier
 

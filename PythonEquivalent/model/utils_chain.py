@@ -102,8 +102,11 @@ class Chain:
             Rt = self.model_interface.input_model(
                 start_ind=start_ind_k, end_ind=end_ind_k
             )
+
             # the state at the last time step of the previous interval
-            Ak = _inverse_pmf(X[Ak, start_ind_k - 1], W, num=self.N)
+            # TODO: figure out inverse_pmf for multiple dimensions
+            Ak = _inverse_pmf(X[Ak, start_ind_k - 1,0], W, num=self.N)
+
             xkm1 = X[Ak, start_ind_k - 1]
 
             # propagate particles
@@ -113,19 +116,19 @@ class Chain:
             w_temp = self.model_interface.observation_model_probability(
                 yhk=yk, yk=self.outflux[end_ind_k - 1]
             )
-
-            # print("yk", yk)
-            # print("outflux", self.outflux[end_ind_k - 1])
-            # print("w_temp", w_temp)
-
+            print(f"y at {k}th step: {yk[:,-1, -1]}")
+            print(f"obs at {k}th step: {self.outflux[end_ind_k - 1]}")
+            print(f"Weight at {k}th step: {w_temp}")
             w_temp = np.exp(w_temp - w_temp.max())
             W = w_temp / w_temp.sum()
-
+            print(f"Weight at {k}th step: {W}")
+            print(Ak)
             # This p1 takes account for initial condition
             X[:, start_ind_k:end_ind_k,:] = xk
             R[:, start_ind_k:end_ind_k,:] = Rt
             Y[:, start_ind_k:end_ind_k,:] = yk
             A[:, k] = Ak
+            
 
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)
 

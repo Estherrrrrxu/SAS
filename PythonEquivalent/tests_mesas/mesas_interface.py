@@ -58,7 +58,7 @@ class ParamsProcessor:
                         "prior_dis": "normal",
                         "prior_params": [
                             sas_func[param_key],
-                            sas_func[param_key] / 5.0,
+                            sas_func[param_key] / 10.0,
                         ],
                         "is_nonnegative": True,
                     }
@@ -68,7 +68,7 @@ class ParamsProcessor:
                         "prior_dis": "normal",
                         "prior_params": [
                             sas_func["args"][param_key],
-                            sas_func["args"][param_key] / 5.0,
+                            sas_func["args"][param_key] / 10.0,
                         ],
                         "is_nonnegative": True,
                     }
@@ -172,7 +172,7 @@ class ModelInterfaceMesas:
         self.R_prime = None  # preprocessed input scenarios
         self.num_states, self.num_obs = None, None
         self._start_ind, self._end_ind = None, None  # to track current time interval
-        self._start_ind_p, self._end_ind_p = None, None # to track prev time interval
+        self._start_ind_p, self._end_ind_p = None, None  # to track prev time interval
         self.y_obs = None
 
         # Set configurations according your own need here
@@ -298,6 +298,9 @@ class ModelInterfaceMesas:
         else:
             raise ValueError("Error: Input format not supported!")
 
+        # set the start and end ind for the first time
+        self._start_ind, self._end_ind = 0, self.observed_ind[0] + 1
+
     def _set_fluxes(self) -> None:
         """Set influx and outflux based on config
 
@@ -348,7 +351,7 @@ class ModelInterfaceMesas:
 
         self.in_sol = list(self.conc_pairs.keys())
         self.num_ipt = len(self.in_sol)
-        self.CJ_archive = np.zeros((self.N, self.T, len(self.in_sol))) 
+        self.CJ_archive = np.zeros((self.N, self.T, len(self.in_sol)))
 
         # set _theta_init from concentration pairs
         params_processor.set_obs_uncertainty(self.obs_uncertainty)
@@ -514,30 +517,44 @@ class ModelInterfaceMesas:
         Returns:
             np.ndarray: input concentration
         """
-
+        # get the observation index
         is_input_obs = self.df["is_obs_input"].to_numpy()
         is_filled = self.df["is_obs_input_filled"].to_numpy()
 
+        # get the start and end index for each input interval
         ipt_observed_ind_start = np.arange(self.T)[is_input_obs == True][:-1] + 1
         ipt_observed_ind_start = np.insert(ipt_observed_ind_start, 0, 0)
         ipt_observed_ind_end = np.arange(self.T)[is_input_obs == True] + 1
 
+        # get input observation and forcing
         input_obs = self.df[self.in_sol].to_numpy()
         input_forcing = self.influx.to_numpy()
 
-        sig_r = input_obs.std(
-            ddof=1
+        # get the subset of input that are not filled and are observed
+        valid_input_ind = np.logical_and(is_input_obs, ~is_filled).astype(bool)
+        valid_input = input_obs[valid_input_ind]
+        valid_input = valid_input[valid_input > 0]
+
+        # This is the input uncertainty to generate prediction scenarios
+        sig_r = valid_input.std(ddof=1) / np.sqrt(
+            self.T #len(valid_input)
         )  # This is the input uncertainty to generate prediction scenarios
 
         # Bulk case: generate input scenarios based on observed input values
-
         self.R_prime = np.zeros((self.N, self.T))
+
         for i in range(sum(is_input_obs)):
+
             start_ind = ipt_observed_ind_start[i]
             end_ind = ipt_observed_ind_end[i]
 
             U_obs = input_obs[start_ind:end_ind]
             U_forcing = input_forcing[start_ind:end_ind]
+
+            U_bar = next((u for u in U_obs if u != 0), 0.)
+
+            U_obs_p = U_obs.copy()
+            U_obs_p[U_forcing == 0] = 0.
 
             # different input uncertainty for filled and observed
             if is_filled[i]:
@@ -547,33 +564,29 @@ class ModelInterfaceMesas:
 
             for n in range(self.N):
                 # R fluctuation is based on input fluctuation
-                a, b = (0.0 - U_obs) / sig_r, np.inf
-                R_temp = ss.truncnorm(a, b).rvs()
+                R_temp = ss.norm(U_obs, sig_r).rvs()
 
                 if isinstance(R_temp, float):
                     R_temp = np.array([R_temp])
-                
+
                 # TODO: add this to linear case
                 # re-sample if R_temp is negative
                 for r in range(len(R_temp)):
-                    while R_temp[r] <= 0:
-                        R_temp[r] = ss.truncnorm(a[r], b).rvs()
+                    if U_forcing[r] == 0:
+                        R_temp[r] = 0.0
+                    else:
+                        while R_temp[r] < 0:
+                            R_temp[r] = ss.norm(U_obs[r], sig_r).rvs()
 
                 # now generate observation uncertainty
-                a = (0.0 - U_obs[0]) / sig_u
-                R_obs = -np.inf
-                while R_obs <= 0:
-                    R_obs = ss.truncnorm(a, b).rvs()
+                R_obs = ss.norm(U_bar, sig_u).rvs()
+                while R_obs < 0:
+                    R_obs = ss.norm(U_obs[0], sig_u).rvs()
 
-                U_prime = R_obs * U_forcing
-                R_temp = R_temp * U_forcing
 
-                print(R_temp, U_prime)
-                R_temp = normalize_over_interval(R_temp, U_prime) / U_forcing
-
+                R_temp = normalize_over_interval(R_temp, R_obs, U_forcing)
                 R_temp = np.nan_to_num(R_temp, nan=0.0)
-
-
+                R_temp[R_temp < 0] = 0.0
                 self.R_prime[n, start_ind:end_ind] = R_temp.ravel()
 
         # get dimension right
@@ -589,7 +602,9 @@ class ModelInterfaceMesas:
         R_prime = self.R_prime[:, start_ind:end_ind, :]
 
         # record start and end ind for transition model
-        self._start_ind_p, self._end_ind_p = deepcopy(self._start_ind), deepcopy(self._end_ind)
+        self._start_ind_p, self._end_ind_p = deepcopy(self._start_ind), deepcopy(
+            self._end_ind
+        )
         self._start_ind, self._end_ind = start_ind, end_ind
 
         return R_prime
@@ -622,9 +637,9 @@ class ModelInterfaceMesas:
             param_key = self._init_state_params[i]
             sol_in, sol_out, sol_init = param_key.split(self._distinct_str)
             if self.model.solute_parameters[sol_in]["observations"] == sol_out:
-                self.model.solute_parameters[sol_in][
-                    "C_old"
-                ] = self.theta.initial_state[i]
+                self.model.solute_parameters[sol_in]["C_old"] = (
+                    self.theta.initial_state[i]
+                )
 
             temp_df[sol_in] = 1.0
             temp_sol_param = deepcopy(self.model.solute_parameters)
@@ -645,13 +660,12 @@ class ModelInterfaceMesas:
             sol_in, sol_out, sol_init = param_key.split(self._distinct_str)
             # TODO: ad-hoc implementation for two outflows, Q and ET
             self._sol_factors[sol_in] = self._get_sol_factor(temp_model.get_CT(sol_in))
-        
-    
+
     def _get_sol_factor(self, CT: np.ndarray) -> np.ndarray:
         """The function to get solute redistribution factor
 
         Args:
-            CT (np.ndarray): solute conc. matrix 
+            CT (np.ndarray): solute conc. matrix
 
         Returns:
             np.ndarray: processed factor
@@ -667,11 +681,13 @@ class ModelInterfaceMesas:
                 new_CT[i, j] = (CT[i - 1, j - 1] + CT[i, j]) / 2.0
         # Return the factor
         return new_CT[:, 1:]
-        
 
     # self.CJ_archive dimension N x T x # in sol
     def transition_model(
-        self, Xtm1: np.ndarray, Rt: Optional[np.ndarray] = None, Ak: Optional[np.ndarray] = None
+        self,
+        Xtm1: np.ndarray,
+        Rt: Optional[np.ndarray] = None,
+        Ak: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         """State estimaton model f_theta(Xt-1, Rt)
          This is where to call mesas model
@@ -681,7 +697,7 @@ class ModelInterfaceMesas:
              - age-ranked storage of the reservoir (sT)
         These are needed to calculated age-ranked concentration cT
 
-        However, cT is provided by mesas.py v1.0. Hence, cT is used as 
+        However, cT is provided by mesas.py v1.0. Hence, cT is used as
         the tracked state for coding practice.
 
          Args:
@@ -696,33 +712,42 @@ class ModelInterfaceMesas:
 
         # use input and output fluxes to get partial mesas model
         C_Q = np.zeros((self.N, self._end_ind - self._start_ind, self.num_states))
-        # Get SAS function according to flux and sas_name 
-        for flux in self.model.fluxorder:  
+        # Get SAS function according to flux and sas_name
+        for flux in self.model.fluxorder:
             pQ = self._sas_funcs[flux]
+
             for i, sol in enumerate(self.in_sol):
                 # Update CJ_archive
-
-                self.CJ_archive[:, self._start_ind:self._end_ind, i] = Rt[:,:,i]
+                self.CJ_archive[:, self._start_ind : self._end_ind, i] = Rt[:, :, i]
 
                 # replace the CJ info from last time step
                 if self._start_ind != 0:
-                    self.CJ_archive[:, self._start_ind_p:self._end_ind_p, i] = self.CJ_archive[Ak.ravel(), self._start_ind_p:self._end_ind_p, i]
-                
+                    self.CJ_archive[:, self._start_ind_p : self._end_ind_p, i] = (
+                        self.CJ_archive[
+                            Ak.ravel(), self._start_ind_p : self._end_ind_p, i
+                        ]
+                    )
+
                 # do the convolution for each particle
                 for n in range(self.N):
-                    # get all CJs till the end of this time period
-                    C_J = self.CJ_archive[n, :self._end_ind]
-                                     
+                    # get all CJs till the end of this time period for given solute
+                    C_J = self.CJ_archive[n, : self._end_ind, i]
+
                     # TODO: I think this can be simplified
                     for tt in range(self._end_ind - self._start_ind):
                         # actual time is t
                         t = tt + self._start_ind
                         # the maximum age is t
-                        C_Q[n, tt, i] = 0                        
+                        C_Q[n, tt, i] = 0
                         for T in range(self._end_ind + 1):
                             # the entry time is ti
                             ti = t - T
-                            C_Q[n, tt ,i] += C_J[ti] * pQ[T, t] * self._sol_factors[sol][T, t] * self.dt
+                            C_Q[n, tt, i] += (
+                                C_J[ti]
+                                * pQ[T, t]
+                                * self._sol_factors[sol][T, t]
+                                * self.dt
+                            )
 
                         C_Q[n, tt, i] += C_old * (1 - pQ[: t + 1, t].sum() * self.dt)
 
@@ -743,16 +768,12 @@ class ModelInterfaceMesas:
         # take the C_Q concentration at the last time step
 
         return Xk
-    
+
     def _find_y_obs(self):
-        """Self define y_obs
-        
-        """
+        """Self define y_obs"""
         for in_conc, in_conc_params in self.solute_parameters.items():
             C_out = in_conc_params["observations"]
             self.y_obs = self.df[C_out].to_numpy()
-        
-
 
     def observation_model_probability(
         self, yhk: np.ndarray, yk: np.ndarray
@@ -772,12 +793,12 @@ class ModelInterfaceMesas:
         if self._end_ind == None:
             yk = self.y_obs[self.observed_ind[0]]
         else:
-            yk = self.y_obs[self._end_ind-1]
+            yk = self.y_obs[self._end_ind - 1]
 
         if len(yhk.shape) == 2:
             yhk = yhk[:, -1]
         else:
-            yhk = yhk[:,-1,:]
+            yhk = yhk[:, -1, :]
 
         theta = self.theta.observation_model
         if len(yhk.shape) == 1:

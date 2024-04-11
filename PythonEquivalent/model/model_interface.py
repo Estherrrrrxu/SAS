@@ -441,6 +441,7 @@ class ModelInterface:
 
         # update from last observation
         num_iter = Rt.shape[1]
+
         Xt = np.ones((self.N, num_iter + 1)) * Xtm1.reshape(-1, 1)
 
         for i in range(1, num_iter + 1):

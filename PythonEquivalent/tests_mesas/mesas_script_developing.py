@@ -179,6 +179,7 @@ evapoconc_factor = new_CT[:,1:]
 # evapoconc_factor = CT[:,1:]
 #%%
 C_J = data_df['C in'].to_numpy()
+#%%
 C_Q = np.zeros(timeseries_length)
 C_old = model.solute_parameters['C in']['C_old']
 # pQback
@@ -215,10 +216,10 @@ while _end_ind < timeseries_length:
 plt.figure()
 plt.plot(C_Q, label = 'C_Q from convolution')
 plt.plot(data_df['C in --> Q'].to_numpy(), ":", label = 'C_Q from model')
-# plt.plot(C_Q_test, "--", label = 'C_Q test')
+plt.plot(C_Q_test, "--", label = 'C_Q test')
 plt.plot(data_df['C out'].to_numpy(), "*", label = 'Actual C_Q')
 plt.legend(frameon = False)
-plt.xlim([0,50])
+plt.xlim([0,500])
 plt.figure()
 plt.plot(data_df['C in --> Q'].to_numpy() - C_Q, label = 'C_Q from model - C_Q from convolution')
 # %%

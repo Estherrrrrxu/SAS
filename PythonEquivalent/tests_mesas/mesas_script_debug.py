@@ -284,12 +284,13 @@ model_interface = model_interface_class(
 # check input scenarios generation
 model_interface._bulk_input_preprocess()
 r = model_interface.R_prime
-for i in range(5):
-    plt.scatter(np.arange(r.shape[1]), r[i], marker=".", s=10)
-obs = model_interface.df[model_interface.in_sol].to_numpy()
-obs[model_interface.influx == 0.0] = 0.0
-plt.plot(obs, "_")
-plt.xlim([0, 50])
+# for i in range(5):
+#     plt.scatter(np.arange(r.shape[1]), r[i], marker=".", s=10)
+# obs = model_interface.df[model_interface.in_sol].to_numpy()
+# obs[model_interface.influx == 0.0] = 0.0
+# plt.plot(obs, "_")
+# plt.xlim([0, 500])
+
 
 
 
@@ -346,4 +347,46 @@ print('done')
 # plt.plot(model_interface.df["Q_true"], "k", linewidth=10)
 # plt.plot(output_scenarios[:, :].T, marker='.')
 # plt.ylim([4, 5.5])
+# %%
+self = model_interface
+
+#%%
+self._start_ind, self._end_ind = 0, 134
+Rt = self.R_prime[:,self._start_ind:self._end_ind, :]
+# self define C_old
+C_old = self.model.solute_parameters["C in"]["C_old"]
+
+# use input and output fluxes to get partial mesas model
+C_Q = np.zeros((self.N, self._end_ind - self._start_ind, self.num_states))
+# Get SAS function according to flux and sas_name 
+for flux in self.model.fluxorder:  
+    pQ = self._sas_funcs[flux]
+
+    for i, sol in enumerate(self.in_sol):
+        # Update CJ_archive
+        self.CJ_archive[:, self._start_ind:self._end_ind, i] = Rt[:,:,i]
+
+        # replace the CJ info from last time step
+        if self._start_ind != 0:
+            self.CJ_archive[:, self._start_ind_p:self._end_ind_p, i] = self.CJ_archive[Ak.ravel(), self._start_ind_p:self._end_ind_p, i]
+        
+        # do the convolution for each particle
+        for n in range(self.N):
+            # get all CJs till the end of this time period for given solute
+            C_J = self.CJ_archive[n, :self._end_ind, i]
+
+            # TODO: I think this can be simplified
+            for tt in range(self._end_ind - self._start_ind):
+                # actual time is t
+                t = tt + self._start_ind
+                # the maximum age is t
+                C_Q[n, tt, i] = 0                        
+                for T in range(self._end_ind+1):
+                    # the entry time is ti
+                    ti = t - T
+                    C_Q[n, tt ,i] += C_J[ti] * pQ[T, t] * self._sol_factors[sol][T, t] * self.dt
+                    
+                C_Q[n, tt, i] += C_old * (1 - pQ[: t + 1, t].sum() * self.dt)
+plt.plot(C_Q[:,:,0].T)
+
 # %%
