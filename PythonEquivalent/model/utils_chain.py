@@ -78,19 +78,17 @@ class Chain:
         # initialization at the first observation
         # TODO: in the future, let x be evolving with the input
         ind_init = self.pre_ind[0]
-        aa = self.model_interface.initial_state_model(
-            num=self.N
-        )
 
-        X[:, ind_init, :] = X[:, ind_init, :] * self.model_interface.initial_state_model(
-            num=self.N
-        )
+        X[:, ind_init, :] = X[
+            :, ind_init, :
+        ] * self.model_interface.initial_state_model(num=self.N)
 
-        Y[:, ind_init,:] = self.model_interface.observation_model(Xk=X[:, ind_init, :])
+        Y[:, ind_init, :] = self.model_interface.observation_model(Xk=X[:, ind_init, :])
 
         W_init = self.model_interface.observation_model_probability(
-            yhk=Y[:, ind_init,:], yk=self.outflux[ind_init]
+            yhk=Y[:, ind_init, :], yk=self.outflux[ind_init]
         )
+
         W_init = np.exp(W_init - W_init.max())
         W = W_init / W_init.sum()
 
@@ -104,31 +102,30 @@ class Chain:
             )
 
             # the state at the last time step of the previous interval
-            # TODO: figure out inverse_pmf for multiple dimensions
-            Ak = _inverse_pmf(X[Ak, start_ind_k - 1,0], W, num=self.N)
+            # TODO: figure out inverse_pmf for multiple dimensions [!!]
+            Ak = _inverse_pmf(X[Ak, start_ind_k - 1, 0], W, num=self.N)
 
             xkm1 = X[Ak, start_ind_k - 1]
 
             # propagate particles
-            xk = self.model_interface.transition_model(Xtm1=xkm1, Rt=Rt, Ak=Ak)
+            xk = self.model_interface.transition_model(Xtm1=xkm1, Rt=Rt, Ak=Ak, X_init=X[:, ind_init, :])
             yk = self.model_interface.observation_model(Xk=xk)
 
             w_temp = self.model_interface.observation_model_probability(
                 yhk=yk, yk=self.outflux[end_ind_k - 1]
             )
-            print(f"y at {k}th step: {yk[:,-1, -1]}")
-            print(f"obs at {k}th step: {self.outflux[end_ind_k - 1]}")
-            print(f"Weight at {k}th step: {w_temp}")
+            # print(f"y hat at {k}th step: {yk[:,-1, -1]}")
+            # print(f"y at {k}th step: {self.outflux[end_ind_k - 1]}")
+            # print(f"Weight at {k}th step: {w_temp}")
             w_temp = np.exp(w_temp - w_temp.max())
             W = w_temp / w_temp.sum()
-            print(f"Weight at {k}th step: {W}")
-            print(Ak)
+            # print(f"Weight at {k}th step: {W}")
+            # print(Ak)
             # This p1 takes account for initial condition
-            X[:, start_ind_k:end_ind_k,:] = xk
-            R[:, start_ind_k:end_ind_k,:] = Rt
-            Y[:, start_ind_k:end_ind_k,:] = yk
+            X[:, start_ind_k:end_ind_k, :] = xk
+            R[:, start_ind_k:end_ind_k, :] = Rt
+            Y[:, start_ind_k:end_ind_k, :] = yk
             A[:, k] = Ak
-            
 
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)
 
@@ -152,12 +149,13 @@ class Chain:
         nB = np.arange(self.N) != B[0]
 
         ind_init = self.pre_ind[0]
+
         # resample states that are not reference trajectory
-        X[nB, ind_init] = self.model_interface.initial_state_model(num=self.N - 1)
-        Y[:, ind_init] = self.model_interface.observation_model(Xk=X[:, ind_init])
+        X[nB, ind_init, :] = self.model_interface.initial_state_model(num=self.N - 1)
+        Y[:, ind_init,:] = self.model_interface.observation_model(Xk=X[:, ind_init,:])
 
         W_init = self.model_interface.observation_model_probability(
-            yhk=Y[:, ind_init], yk=self.outflux[ind_init]
+            yhk=Y[:, ind_init,:], yk=self.outflux[ind_init]
         )
         W_init = np.exp(W_init - W_init.max())
         W = W_init / W_init.sum()
@@ -168,16 +166,21 @@ class Chain:
             end_ind_k = self.post_ind[k]
 
             # propagate the all particles
-            xkm1 = X[:, start_ind_k - 1]  # the last one in the previous interval
+            # TODO: also figure out how to do this for multiple dimensions [!!]
+            xkm1 = X[:, start_ind_k - 1, 0]  # the last one in the previous interval
             Rk = self.model_interface.input_model(
                 start_ind=start_ind_k, end_ind=end_ind_k
             )
-            xk = self.model_interface.transition_model(Xtm1=xkm1, Rt=Rk)
+            Ak = A[:, k - 1]
+
+
+            xk = self.model_interface.transition_model(Xtm1=xkm1, Rt=Rk, Ak=Ak, X_init=X[:, ind_init, :])
 
             # reference traj in this trajectory
             Bk = B[k]
-            x_prime = X[Bk, end_ind_k - 1]
-            offset = xk[:, -1] - x_prime
+            # TODO: [!!]
+            x_prime = X[Bk, end_ind_k - 1, 0]
+            offset = xk[:, -1, 0] - x_prime # TODO: [!!]
             sd = offset.mean()
 
             W_tilde = self.model_interface.state_as_probability(
@@ -218,9 +221,10 @@ class Chain:
             W = wkp1 / wkp1.sum()
 
             # updates everything
-            X[:, start_ind_k:end_ind_k] = xk
-            R[:, start_ind_k:end_ind_k] = Rk
-            Y[:, start_ind_k:end_ind_k] = yk
+            X[:, start_ind_k:end_ind_k,:] = xk
+            R[:, start_ind_k:end_ind_k,:] = Rk
+            Y[:, start_ind_k:end_ind_k,:] = yk
+
 
         self.state = State(X=X, A=A, W=W, R=R, Y=Y)
         return
@@ -262,8 +266,8 @@ class Chain:
         traj_X = np.ones(self.T)
         for i in range(self.K):
             traj_X[self.pre_ind[i] : self.post_ind[i]] = X[
-                B[i], self.pre_ind[i] : self.post_ind[i]
-            ]
+                B[i], self.pre_ind[i] : self.post_ind[i], 0
+            ] # TODO: [!!]
         return traj_X
 
     def _get_Y_traj(self, Y: np.ndarray, B: np.ndarray) -> np.ndarray:
@@ -280,7 +284,7 @@ class Chain:
 
         for i in range(self.K):
             traj_Y[self.pre_ind[i] : self.post_ind[i]] = Y[
-                B[i], self.pre_ind[i] : self.post_ind[i]
+                B[i], self.pre_ind[i] : self.post_ind[i], 0 #TODO: [!!]
             ]
         return traj_Y
 
@@ -298,8 +302,9 @@ class Chain:
         traj_R = np.zeros(self.T)
 
         for i in range(1, self.K):
+
             traj_R[self.pre_ind[i] : self.post_ind[i]] = R[
-                B[i], self.pre_ind[i] : self.post_ind[i]
+                B[i], self.pre_ind[i] : self.post_ind[i], 0 #TODO: [!!]
             ]
 
         return traj_R

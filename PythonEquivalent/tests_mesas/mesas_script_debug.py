@@ -19,6 +19,12 @@ import numpy as np
 from model.utils_chain import Chain
 from functions.utils import plot_MAP
 
+from model.ssm_model import SSModel
+from mesas.sas.model import Model as SAS_Model
+import argparse
+
+from mesas_cases import *
+
 # %%
 # SET FOLDERS
 # ================================================================
@@ -26,6 +32,11 @@ data_root = "/Users/esthersida/pMESAS/mesas"
 result_root = "/Users/esthersida/pMESAS/mesas/Results"
 if not os.path.exists(result_root):
     os.makedirs(result_root)
+
+parser = argparse.ArgumentParser(allow_abbrev=False)
+parser.add_argument("-c","--case-name", default="invariant_q_u_et_u", help="identify theta case")
+args, unknown_args = parser.parse_known_args()
+case_name = args.case_name  # "invariant_q_u_et_u"
 
 # %%
 # READ DATA AND PREPROCESS
@@ -69,30 +80,10 @@ for i in range(ill_vals["group"].iloc[-1] + 1):
             * ill_vals["J"][ill_vals["group"] == i]
         ).sum() / ill_vals["J"][ill_vals["group"] == i].sum()
 
-# sanity check
-# plt.figure()
-# plt.plot(ill_vals["C in"], "_", label="Replaced ill values")
-# plt.plot(ill_vals["C in"][ill_vals["is_obs"]], "x", label="Assume is observed")
-# plt.xlim([ill_vals.index[20], ill_vals.index[100]])
-# plt.legend(frameon=False)
-# plt.ylabel("C in [mg/L]")
-# plt.title("Replaced bulk mean and observed timestamp check")
-
-
-# plt.figure()
-# plt.plot((df["C in raw"] * df["J"]).cumsum(), label="Simple backfill raw data")
-# # replace the ill values under new condition
 df["C in raw"][df["C in"] != df["C in raw"]] = ill_vals["C in"]
 df["is_obs_input"][df["C in"] != df["C in raw"]] = ill_vals["is_obs"]
 df["is_obs_input_filled"][df["C in"] != df["C in raw"]] = True
-# plt.plot((df["C in raw"] * df["J"]).cumsum(), label="Recovered raw data")
-# plt.plot((df["C in"] * df["J"]).cumsum(), label="Published data")
-# plt.ylabel("Cumulative mass balance [mg]")
-# plt.legend(frameon=False)
-# plt.title("Cumulative mass balance check after replacement")
 
-
-# %%
 df["is_obs_ouput"] = df["C out"].notna()
 df.columns = [
     "timestep",
@@ -108,7 +99,10 @@ df.columns = [
     "is_obs_output",
 ]
 # %%
-data = df.iloc[:500]
+start_ind, end_ind = 0, 600
+data = df.iloc[start_ind:end_ind]
+# reset df index
+data = data.reset_index(drop=True)
 # fig, ax = plt.subplots(4, 1, figsize=(12, 12))
 # # precipitation
 # J = ax[0].bar(data.index, data["J"], label="J")
@@ -131,7 +125,6 @@ data = df.iloc[:500]
 # )
 
 
-# discharge
 # Q = ax[1].plot(data.index, data["Q"], label="Q")
 
 # ax1p = ax[1].twinx()
@@ -179,76 +172,6 @@ data = df.iloc[:500]
 # fig.tight_layout()
 
 
-# %%
-from mesas.sas.model import Model as SAS_Model
-from mesas_cases import *
-
-
-# %%
-
-# Create the model
-# model = Model(data,
-#               config=config_invariant_q_u_et_u,
-#               verbose=False
-#               )
-
-# sas_specs = sas_specs_invariant_q_u_et_u
-# solute_parameters = theta_invariant_q_u_et_u["soluhttps://file+.vscode-resource.vscode-cdn.net/Users/esthersida/opt/anaconda3/envs/linear_system/lib/python3.10/site-packages/mesas/sas/model.py:557te_parameters"]
-# options = theta_invariant_q_u_et_u["options"]
-
-# # Run the model
-# model.run()
-
-# # Extract results
-# data_df = model.data_df
-# flux = model.fluxorder[0]
-
-# #%%
-# data_unit_C_J = data.copy()
-# a = 1.
-# data_unit_C_J['C in'] = a
-# config_invariant_q_u_et_u_conv = theta_invariant_q_u_et_u.copy()
-# config_invariant_q_u_et_u_conv['solute_parameters']['C in']['C_old'] = a
-# model_conv = Model(data_unit_C_J,
-#                 config=config_invariant_q_u_et_u_conv,
-#                 verbose=False,
-#                 )
-# model_conv.run()
-
-# # %%
-# # Check convolution
-# # data
-# C_J = data_df['C in'].to_numpy()
-# timeseries_length = len(C_J)
-# dt = model.options['dt']
-# C_old = model.solute_parameters['C in']['C_old']
-# Q = data_df['Q'].to_numpy()
-# J = data_df['J'].to_numpy()
-
-# #%%
-# C_Q = np.zeros(timeseries_length)
-# # pQback
-# pQ = model.get_pQ(flux='Q')
-# evapoconc_factor = model_conv.get_CT('C in')
-# evapoconc_factor[np.isnan(evapoconc_factor)] = 1.
-
-# for t in range(timeseries_length):
-
-#     # the maximum age is t
-#     for T in range(t+1):
-#         # the entry time is ti
-#         ti = t-T
-#         C_Q[t] += C_J[ti]*pQ[T,t]*evapoconc_factor[T,t]*dt
-
-#     C_Q[t] += C_old * (1-pQ[:t+1,t].sum()*dt)
-
-# plt.figure()
-# plt.plot(C_Q, label = 'C_Q from convolution')
-# plt.plot(data_df['C in --> Q'].to_numpy(), ":", label = 'C_Q from model')
-
-
-# plt.legend(frameon = False)
-
 
 # %%
 
@@ -266,127 +189,144 @@ config = {
     "update_theta_dist": False,
 }
 
+
 num_input_scenarios = 5
 num_parameter_samples = 5
 len_parameter_MCMC = 5
 
 model_interface_class = ModelInterfaceMesas
 
-model_interface = model_interface_class(
-    df=data,
-    customized_model=SAS_Model,
-    num_input_scenarios=num_input_scenarios,
-    config=config,
-    theta_init=theta_invariant_q_u_et_u,
-)
-
+if case_name == "invariant_q_u_et_u":
+    model_interface = model_interface_class(
+        df=data,
+        customized_model=SAS_Model,
+        num_input_scenarios=num_input_scenarios,
+        config=config,
+        theta_init=theta_invariant_q_u_et_u,
+    )
+elif case_name == "invariant_q_g_et_u":
+    model_interface = model_interface_class(
+        df=data,
+        customized_model=SAS_Model,
+        num_input_scenarios=num_input_scenarios,
+        config=config,
+        theta_init=theta_invariant_q_g_et_u,
+    )
+elif case_name == "invariant_q_g_et_e":
+    model_interface = model_interface_class(
+        df=data,
+        customized_model=SAS_Model,
+        num_input_scenarios=num_input_scenarios,
+        config=config,
+        theta_init=theta_invariant_q_g_et_e,
+    )
+elif case_name == "storage_q_g_et_u":
+    model_interface = model_interface_class(
+        df=data,
+        customized_model=SAS_Model,
+        num_input_scenarios=num_input_scenarios,
+        config=config,
+        theta_init=theta_storage_q_g_et_u,
+    )
+else:
+    raise ValueError("Case name not found.")
 # %%
+
 # check input scenarios generation
 model_interface._bulk_input_preprocess()
-r = model_interface.R_prime
+# plt.figure()
+# r = model_interface.R_prime
 # for i in range(5):
 #     plt.scatter(np.arange(r.shape[1]), r[i], marker=".", s=10)
 # obs = model_interface.df[model_interface.in_sol].to_numpy()
-# obs[model_interface.influx == 0.0] = 0.0
+
 # plt.plot(obs, "_")
-# plt.xlim([0, 500])
-
-
-
 
 
 # %%
 
 chain = Chain(model_interface=model_interface)
 chain.run_particle_filter_SIR()
+#%%
 
+plt.figure()
+plt.plot(model_interface.df.index, chain.state.R[:,:,0].T, ".", markersize=0.5)
+plt.plot(model_interface.df['C in'], "*")
+
+
+plt.figure()
+plt.plot(model_interface.df.index, chain.state.Y[:,:,0].T, ".", markersize=0.7)
+plt.plot(model_interface.df['C out'], "*")
+
+print('done SIR check')
 # %%
-df_obs = df["C out"].values
-plt.plot(chain.state.Y[:,:500,0].T, ".")
-plt.plot(df['C out'].values[:500], "*")
 
-# plt.plot(df_obs[:500], "*")
+chain.run_particle_filter_AS()
 
-# plt.plot(df_obs[:500], "*")
+plt.figure()
+plt.plot(model_interface.df['C out'], "*")
+
+
 # fig, ax = plot_MAP(chain.state, df_obs, chain.pre_ind, chain.post_ind)
 # ax[1].plot(chain.state.X.T, ".")
-print('done')
-# %%
-
-#         chain.run_particle_filter_AS()
-#         fig, ax = plot_MAP(chain.state, df_obs, chain.pre_ind, chain.post_ind)
-#         ax[1].plot(chain.state.X.T, ".")
-#     #%%
-#     # run actual particle Gibbs
-#     model = SSModel(
-#         model_interface=model_interface,
-#         num_parameter_samples=num_parameter_samples,
-#         len_parameter_MCMC=len_parameter_MCMC,
-#     )
-#     st = time.time()
-#     model.run_particle_Gibbs()
-#     model_run_time = time.time() - st
-
-#     # SAVE RESULTS ================================================================
-#     # get estimated parameters
-#     k = model.theta_record[:, 0]
-#     initial_state = model.theta_record[:, 1]
-#     input_uncertainty = model.theta_record[:, 2]
-#     obs_uncertainty = model.theta_record[:, 3]
-#     input_scenarios = model.input_record
-
-#     output_scenarios = model.output_record
-#     df = model_interface.df
 
 
-# # %%
-# obs_ind = np.where(df['is_obs'])[0]
-# plt.plot(model_interface.df["J_true"], "k", linewidth=10)
-# plt.plot(input_scenarios[:, :].T, marker='.')
-# # %%
-# plt.plot(model_interface.df["Q_true"], "k", linewidth=10)
-# plt.plot(output_scenarios[:, :].T, marker='.')
-# plt.ylim([4, 5.5])
-# %%
-self = model_interface
 
+
+
+# print('done AS check')
 #%%
-self._start_ind, self._end_ind = 0, 134
-Rt = self.R_prime[:,self._start_ind:self._end_ind, :]
-# self define C_old
-C_old = self.model.solute_parameters["C in"]["C_old"]
+# run actual particle Gibbs
+model = SSModel(
+    model_interface=model_interface,
+    num_parameter_samples=num_parameter_samples,
+    len_parameter_MCMC=len_parameter_MCMC,
+)
 
-# use input and output fluxes to get partial mesas model
-C_Q = np.zeros((self.N, self._end_ind - self._start_ind, self.num_states))
-# Get SAS function according to flux and sas_name 
-for flux in self.model.fluxorder:  
-    pQ = self._sas_funcs[flux]
+model.run_particle_Gibbs()
 
-    for i, sol in enumerate(self.in_sol):
-        # Update CJ_archive
-        self.CJ_archive[:, self._start_ind:self._end_ind, i] = Rt[:,:,i]
 
-        # replace the CJ info from last time step
-        if self._start_ind != 0:
-            self.CJ_archive[:, self._start_ind_p:self._end_ind_p, i] = self.CJ_archive[Ak.ravel(), self._start_ind_p:self._end_ind_p, i]
-        
-        # do the convolution for each particle
-        for n in range(self.N):
-            # get all CJs till the end of this time period for given solute
-            C_J = self.CJ_archive[n, :self._end_ind, i]
+# SAVE RESULTS ================================================================
+# get estimated parameters
+qscale = model.theta_record[:, 0]
+etscale = model.theta_record[:, 1]
+c_old = model.theta_record[:, 2]
+sigma_observed = model.theta_record[:, 3]
+sigma_filled = model.theta_record[:, 4]
+sigma_output = model.theta_record[:, 5]
 
-            # TODO: I think this can be simplified
-            for tt in range(self._end_ind - self._start_ind):
-                # actual time is t
-                t = tt + self._start_ind
-                # the maximum age is t
-                C_Q[n, tt, i] = 0                        
-                for T in range(self._end_ind+1):
-                    # the entry time is ti
-                    ti = t - T
-                    C_Q[n, tt ,i] += C_J[ti] * pQ[T, t] * self._sol_factors[sol][T, t] * self.dt
-                    
-                C_Q[n, tt, i] += C_old * (1 - pQ[: t + 1, t].sum() * self.dt)
-plt.plot(C_Q[:,:,0].T)
+input_scenarios = model.input_record
+output_scenarios = model.output_record
+df = model_interface.df
+
+
+# %%
+# obs_ind = np.where(df['is_obs'])[0]
+plt.figure()
+# plt.plot(model_interface.df["J_true"], "k", linewidth=10)
+# plt.plot(model_interface.df["J"], "grey", linewidth=1)
+plt.plot(model_interface.df.index,input_scenarios[:, :].T, '.')
+plt.plot(model_interface.df["C in"], "k_", linewidth=10)
+
+plt.figure()
+# plt.plot(model_interface.df["Q"], "grey")
+plt.plot(model_interface.df["C out"], "*", label= "observed")
+for i in range(6):
+    plt.scatter(model_interface.df.index, output_scenarios[i, :].T, marker='.', label=f"output {i}", s=1)
+plt.legend(frameon=False)
+
+# %%
+# # save data as csv files
+# np.savetxt(f"{result_root}/qscale_{case_name}.csv", qscale, delimiter=",")
+# np.savetxt(f"{result_root}/etscale_{case_name}.csv", etscale, delimiter=",")
+# np.savetxt(f"{result_root}/c_old_{case_name}.csv", c_old, delimiter=",")
+# np.savetxt(f"{result_root}/sigma_observed_{case_name}.csv", sigma_observed, delimiter=",")
+# np.savetxt(f"{result_root}/sigma_filled_{case_name}.csv", sigma_filled, delimiter=",")
+# np.savetxt(f"{result_root}/sigma_output_{case_name}.csv", sigma_output, delimiter=",")
+# np.savetxt(f"{result_root}/input_scenarios_{case_name}.csv", input_scenarios, delimiter=",")
+# np.savetxt(f"{result_root}/output_scenarios_{case_name}.csv", output_scenarios, delimiter=",")
+
+
+
 
 # %%

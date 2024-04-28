@@ -18,7 +18,7 @@ from mesas.sas.model import Model as SAS_Model
 from functions.utils import normalize_over_interval
 from copy import deepcopy
 
-
+import matplotlib.pyplot as plt
 # %%
 # a class to store parameters
 @dataclass
@@ -299,7 +299,8 @@ class ModelInterfaceMesas:
             raise ValueError("Error: Input format not supported!")
 
         # set the start and end ind for the first time
-        self._start_ind, self._end_ind = 0, self.observed_ind[0] + 1
+        self.init_step = self.observed_ind[0]
+        self._start_ind, self._end_ind = 0, self.init_step + 1
 
     def _set_fluxes(self) -> None:
         """Set influx and outflux based on config
@@ -416,8 +417,8 @@ class ModelInterfaceMesas:
 
                 else:
                     mean, std = theta_new[key]
-                    if std < mean / 10.0:
-                        std = mean / 10.0
+                    if std < mean / 3.0:
+                        std = mean / 3.0
 
                 # truncate or not
                 if is_nonnegative:
@@ -537,7 +538,7 @@ class ModelInterfaceMesas:
 
         # This is the input uncertainty to generate prediction scenarios
         sig_r = valid_input.std(ddof=1) / np.sqrt(
-            self.T #len(valid_input)
+            self.T /len(valid_input)
         )  # This is the input uncertainty to generate prediction scenarios
 
         # Bulk case: generate input scenarios based on observed input values
@@ -688,6 +689,7 @@ class ModelInterfaceMesas:
         Xtm1: np.ndarray,
         Rt: Optional[np.ndarray] = None,
         Ak: Optional[np.ndarray] = None,
+        X_init: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         """State estimaton model f_theta(Xt-1, Rt)
          This is where to call mesas model
@@ -708,20 +710,23 @@ class ModelInterfaceMesas:
              np.ndarray: state X at t
         """
         # self define C_old
-        C_old = self.model.solute_parameters["C in"]["C_old"]
+        C_old = X_init
 
         # use input and output fluxes to get partial mesas model
         C_Q = np.zeros((self.N, self._end_ind - self._start_ind, self.num_states))
+
         # Get SAS function according to flux and sas_name
         for flux in self.model.fluxorder:
-            pQ = self._sas_funcs[flux]
+            pQ = self._sas_funcs[flux]        
 
             for i, sol in enumerate(self.in_sol):
                 # Update CJ_archive
                 self.CJ_archive[:, self._start_ind : self._end_ind, i] = Rt[:, :, i]
 
+
+
                 # replace the CJ info from last time step
-                if self._start_ind != 0:
+                if self._start_ind != self.init_step:
                     self.CJ_archive[:, self._start_ind_p : self._end_ind_p, i] = (
                         self.CJ_archive[
                             Ak.ravel(), self._start_ind_p : self._end_ind_p, i
@@ -732,6 +737,8 @@ class ModelInterfaceMesas:
                 for n in range(self.N):
                     # get all CJs till the end of this time period for given solute
                     C_J = self.CJ_archive[n, : self._end_ind, i]
+                    # plt.figure()
+                    # plt.plot(C_J, ".")
 
                     # TODO: I think this can be simplified
                     for tt in range(self._end_ind - self._start_ind):
@@ -749,7 +756,10 @@ class ModelInterfaceMesas:
                                 * self.dt
                             )
 
-                        C_Q[n, tt, i] += C_old * (1 - pQ[: t + 1, t].sum() * self.dt)
+                        C_Q[n, tt, i] += C_old[n] * (1 - pQ[: t + 1, t].sum() * self.dt)
+                    # plt.plot(C_Q[n, :, i], "*")
+                    # plt.figure()
+                    # plt.plot(C_Q[n, :, i] - C_old, "k")
 
         return C_Q
 
@@ -791,7 +801,7 @@ class ModelInterfaceMesas:
             self._find_y_obs()
 
         if self._end_ind == None:
-            yk = self.y_obs[self.observed_ind[0]]
+            yk = self.y_obs[self.init_step]
         else:
             yk = self.y_obs[self._end_ind - 1]
 

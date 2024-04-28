@@ -122,7 +122,7 @@ config_invariant_q_u_et_u['options']['record_state'] = True
 
 # %%
 
-fake_data = df.iloc[:500]
+fake_data = df.iloc[:600]
 data = fake_data.copy()
 
 # Create the model for getting C_Q
@@ -179,48 +179,53 @@ evapoconc_factor = new_CT[:,1:]
 # evapoconc_factor = CT[:,1:]
 #%%
 C_J = data_df['C in'].to_numpy()
-#%%
-C_Q = np.zeros(timeseries_length)
-C_old = model.solute_parameters['C in']['C_old']
-# pQback
-pQ = model.get_pQ(flux='Q')
-
-
-for t in range(timeseries_length):
-
-    # the maximum age is t
-    for T in range(t+1):
-        # the entry time is ti
-        ti = t-T
-        C_Q[t] += C_J[ti]*pQ[T,t]*evapoconc_factor[T,t]*dt
-
-    C_Q[t] += C_old * (1-pQ[:t+1,t].sum()*dt)
-
-C_Q_test = np.zeros(timeseries_length)
-_start_ind = 0
-_end_ind = 1
-
-while _end_ind < timeseries_length:
-    # actual time is t
-    t = _start_ind
-    # the maximum age is t
-    for T in range(_end_ind + 1):
-        # the entry time is ti
-        ti = t - T
-        C_Q_test[t] += C_J[ti] * pQ[T, t] * evapoconc_factor[T, t] * dt
-    C_Q_test[t] += C_old * (1 - pQ[:t + 1, t].sum() * dt)
-    _start_ind += 1
-    _end_ind += 1
-
-#%%
-plt.figure()
-plt.plot(C_Q, label = 'C_Q from convolution')
-plt.plot(data_df['C in --> Q'].to_numpy(), ":", label = 'C_Q from model')
-plt.plot(C_Q_test, "--", label = 'C_Q test')
-plt.plot(data_df['C out'].to_numpy(), "*", label = 'Actual C_Q')
-plt.legend(frameon = False)
-plt.xlim([0,500])
-plt.figure()
-plt.plot(data_df['C in --> Q'].to_numpy() - C_Q, label = 'C_Q from model - C_Q from convolution')
+C_OLD = [6.76939686, 7.27912459, 7.54937156, 6.87936551, 5.94900662]
 # %%
+for i in range(5):
+    C_J = r[:,i]
+    #
+    C_Q = np.zeros(timeseries_length)
+    # C_old = model.solute_parameters['C in']['C_old']
+    C_old = C_OLD[i]
+    # pQback
+    pQ = model.get_pQ(flux='Q')
+
+
+    for t in range(timeseries_length):
+
+        # the maximum age is t
+        for T in range(t+1):
+            # the entry time is ti
+            ti = t-T
+            C_Q[t] += C_J[ti]*pQ[T,t]*evapoconc_factor[T,t]*dt
+
+        C_Q[t] += C_old * (1-pQ[:t+1,t].sum()*dt)
+
+    C_Q_test = np.zeros(timeseries_length)
+    _start_ind = 0
+    _end_ind = 1
+
+    while _end_ind < timeseries_length:
+        # actual time is t
+        t = _start_ind
+        # the maximum age is t
+        for T in range(_end_ind + 1):
+            # the entry time is ti
+            ti = t - T
+            C_Q_test[t] += C_J[ti] * pQ[T, t] * evapoconc_factor[T, t] * dt
+        C_Q_test[t] += C_old * (1 - pQ[:t + 1, t].sum() * dt)
+        _start_ind += 1
+        _end_ind += 1
+
+    #
+    plt.figure()
+    plt.plot(C_Q, label = 'C_Q from convolution')
+    plt.plot(data_df['C in --> Q'].to_numpy(), ":", label = 'C_Q from model')
+    plt.plot(C_Q_test, "--", label = 'C_Q test')
+    plt.plot(data_df['C out'].to_numpy(), "*", label = 'Actual C_Q')
+    plt.legend(frameon = False)
+    plt.xlim([0,500])
+    plt.figure()
+    plt.plot(data_df['C in --> Q'].to_numpy() - C_Q, label = 'C_Q from model - C_Q from convolution')
+    # %%
 
