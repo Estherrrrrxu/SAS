@@ -107,9 +107,9 @@ df.columns = [
     "is_obs_output",
 ]
 # %%
-data = df.iloc[:500]
+data = df.iloc[:200]
 from mesas.sas.model import Model as SAS_Model
-from mesas_cases import theta_invariant_q_u_et_u
+from mesas_cases import theta_invariant_q_u_et_u, theta_storage_q_g_et_u
 from copy import deepcopy
 # %%
 config_invariant_q_u_et_u = {}
@@ -117,23 +117,31 @@ config_invariant_q_u_et_u['solute_parameters'] = theta_invariant_q_u_et_u['solut
 config_invariant_q_u_et_u['sas_specs'] = theta_invariant_q_u_et_u['sas_specs']
 config_invariant_q_u_et_u['options'] = theta_invariant_q_u_et_u['options']
 config_invariant_q_u_et_u['options']['record_state'] = True
+# 
+config_storage_q_g_et_u = {}
+config_storage_q_g_et_u['solute_parameters'] = theta_storage_q_g_et_u['solute_parameters']
+config_storage_q_g_et_u['sas_specs'] = theta_storage_q_g_et_u['sas_specs']
+config_storage_q_g_et_u['options'] = theta_storage_q_g_et_u['options']
+config_storage_q_g_et_u['options']['record_state'] = True
 
 
 
+config = config_storage_q_g_et_u
+# config = config_invariant_q_u_et_u
 # %%
 
-fake_data = df.iloc[:600]
+fake_data = df.iloc[:200]
 data = fake_data.copy()
 
 # Create the model for getting C_Q
 model = SAS_Model(data,
-              config=deepcopy(config_invariant_q_u_et_u),
+              config=deepcopy(config),
               verbose=False
               )
 
-sas_specs = theta_invariant_q_u_et_u["sas_specs"]
-solute_parameters = theta_invariant_q_u_et_u["solute_parameters"]
-options = theta_invariant_q_u_et_u["options"]
+sas_specs = config["sas_specs"]
+solute_parameters = config["solute_parameters"]
+options = config["options"]
 
 # Run the model
 model.run()
@@ -152,7 +160,7 @@ C_old = model.solute_parameters['C in']['C_old']
 data_unit_C_J = data.copy()
 a = 1.
 data_unit_C_J['C in'] = a
-config_invariant_q_u_et_u_conv = deepcopy(config_invariant_q_u_et_u)
+config_invariant_q_u_et_u_conv = deepcopy(config)
 config_invariant_q_u_et_u_conv['solute_parameters']['C in']['C_old'] = a
 model_conv = SAS_Model(data_unit_C_J,
                 config=deepcopy(config_invariant_q_u_et_u_conv),
@@ -180,7 +188,10 @@ evapoconc_factor = new_CT[:,1:]
 #%%
 C_J = data_df['C in'].to_numpy()
 C_OLD = [6.76939686, 7.27912459, 7.54937156, 6.87936551, 5.94900662]
-# %%
+# C_OLD = [7.11]*5
+#%%
+
+plt.figure()
 for i in range(5):
     C_J = r[:,i]
     #
@@ -189,7 +200,6 @@ for i in range(5):
     C_old = C_OLD[i]
     # pQback
     pQ = model.get_pQ(flux='Q')
-
 
     for t in range(timeseries_length):
 
@@ -211,21 +221,25 @@ for i in range(5):
         # the maximum age is t
         for T in range(_end_ind + 1):
             # the entry time is ti
-            ti = t - T
+            ti = t-T
             C_Q_test[t] += C_J[ti] * pQ[T, t] * evapoconc_factor[T, t] * dt
         C_Q_test[t] += C_old * (1 - pQ[:t + 1, t].sum() * dt)
         _start_ind += 1
         _end_ind += 1
 
     #
+    
+
+    # plt.plot(C_Q_test, "--", color = f"C{i}", label = 'C_Q from pgas precip')
+    # plt.plot(q[:,i], ":", color = f"C{i}", label = 'C_Q from pgas model')
     plt.figure()
     plt.plot(C_Q, label = 'C_Q from convolution')
+    plt.plot(C_Q_test, ":" ,label = 'C_Q using another method')
     plt.plot(data_df['C in --> Q'].to_numpy(), ":", label = 'C_Q from model')
-    plt.plot(C_Q_test, "--", label = 'C_Q test')
     plt.plot(data_df['C out'].to_numpy(), "*", label = 'Actual C_Q')
     plt.legend(frameon = False)
-    plt.xlim([0,500])
-    plt.figure()
-    plt.plot(data_df['C in --> Q'].to_numpy() - C_Q, label = 'C_Q from model - C_Q from convolution')
-    # %%
+    plt.xlim([0,200])
+    # plt.figure()
+    # plt.plot(data_df['C in --> Q'].to_numpy() - C_Q, label = 'C_Q from model - C_Q from convolution')
+# %%
 

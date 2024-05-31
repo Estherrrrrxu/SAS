@@ -19,6 +19,7 @@ from functions.utils import normalize_over_interval
 from copy import deepcopy
 
 import matplotlib.pyplot as plt
+from math import log
 # %%
 # a class to store parameters
 @dataclass
@@ -51,27 +52,33 @@ class ParamsProcessor:
                 self.transit_params["to_estimate"].append(name)
                 self.params["to_estimate"][name] = sas_func["prior"]
                 del sas_func["prior"]
-            else:
+            else:  
                 if is_C_old:
+                    val = sas_func[param_key]
                     self.init_state_params.append(name)
-                    self.params["to_estimate"][name] = {
-                        "prior_dis": "normal",
-                        "prior_params": [
-                            sas_func[param_key],
-                            sas_func[param_key] / 10.0,
-                        ],
-                        "is_nonnegative": True,
-                    }
                 else:
-                    self.transit_params["to_estimate"].append(name)
-                    self.params["to_estimate"][name] = {
-                        "prior_dis": "normal",
-                        "prior_params": [
-                            sas_func["args"][param_key],
-                            sas_func["args"][param_key] / 10.0,
-                        ],
-                        "is_nonnegative": True,
-                    }
+                    val = sas_func["args"][param_key]
+
+                # # TODO: ad-hoc lognormal for input model
+                # if name == 
+                # self.params["to_estimate"][name] = {
+                #     "prior_dis": "lognormal",
+                #     "prior_params": [
+                #         val,
+                #         val / 10.0,
+                #     ],
+                #     "is_nonnegative": True, # TODO: always non-negative for now
+                # }    
+            
+                self.params["to_estimate"][name] = {
+                    "prior_dis": "normal",
+                    "prior_params": [
+                        val,
+                        val / 10.0,
+                    ],
+                    "is_nonnegative": True, # TODO: always non-negative for now
+                }
+
 
     def process_distribution_params(self, flux, sas_name, sas_func):
         dist = sas_func["func"]
@@ -339,6 +346,7 @@ class ModelInterfaceMesas:
         # set _theta_init from solute_parameters
         self.conc_pairs = {}
         for in_conc, in_conc_params in self.solute_parameters.items():
+
             C_out = in_conc_params["observations"]
 
             if in_conc not in self.conc_pairs.keys():
@@ -360,6 +368,8 @@ class ModelInterfaceMesas:
         self._theta_init = params_processor.params
         self._transit_params = params_processor.transit_params
         self._init_state_params = params_processor.init_state_params
+
+        # print(self._theta_init, self._transit_params, self._init_state_params)
 
         self._theta_to_estimate = list(self._theta_init["to_estimate"].keys())
         self._num_theta_to_estimate = len(self._theta_to_estimate)
@@ -536,10 +546,7 @@ class ModelInterfaceMesas:
         valid_input = input_obs[valid_input_ind]
         valid_input = valid_input[valid_input > 0]
 
-        # This is the input uncertainty to generate prediction scenarios
-        sig_r = valid_input.std(ddof=1) / np.sqrt(
-            self.T /len(valid_input)
-        )  # This is the input uncertainty to generate prediction scenarios
+        shape, loc, scale = ss.lognorm.fit(valid_input,floc=0)
 
         # Bulk case: generate input scenarios based on observed input values
         self.R_prime = np.zeros((self.N, self.T))
@@ -550,7 +557,7 @@ class ModelInterfaceMesas:
             end_ind = ipt_observed_ind_end[i]
 
             U_obs = input_obs[start_ind:end_ind]
-            U_forcing = input_forcing[start_ind:end_ind]
+            U_forcing = input_forcing[start_ind:end_ind].ravel()
 
             U_bar = next((u for u in U_obs if u != 0), 0.)
 
@@ -562,10 +569,11 @@ class ModelInterfaceMesas:
                 sig_u = self.theta.input_model[1]
             else:
                 sig_u = self.theta.input_model[0]
-
+            
             for n in range(self.N):
                 # R fluctuation is based on input fluctuation
-                R_temp = ss.norm(U_obs, sig_r).rvs()
+                # R_temp = ss.norm(U_obs, scale=0.0000001).rvs()
+                R_temp = ss.lognorm.rvs(shape, loc, scale, len(U_obs))
 
                 if isinstance(R_temp, float):
                     R_temp = np.array([R_temp])
@@ -576,19 +584,35 @@ class ModelInterfaceMesas:
                     if U_forcing[r] == 0:
                         R_temp[r] = 0.0
                     else:
-                        while R_temp[r] < 0:
-                            R_temp[r] = ss.norm(U_obs[r], sig_r).rvs()
+                        if R_temp[r] < 0:
+                            R_temp[r] = 0.
+                        # while R_temp[r] < 0:
+                        #     R_temp[r] = ss.norm(U_obs[r], sig_r).rvs()
 
                 # now generate observation uncertainty
                 R_obs = ss.norm(U_bar, sig_u).rvs()
                 while R_obs < 0:
-                    R_obs = ss.norm(U_obs[0], sig_u).rvs()
+                    R_obs = ss.norm(U_bar, sig_u).rvs()
 
+                # plt.figure()
+                # plt.plot(U_obs, "_",label="observation")
+                # plt.plot(R_temp, label="before normalization")
+                # plt.plot([0, len(R_temp)],[R_obs, R_obs], label="estiamted truth")
 
-                R_temp = normalize_over_interval(R_temp, R_obs, U_forcing)
+                # R_temp = normalize_over_interval(R_temp, R_obs, U_forcing)
+
+                R_temp = normalize_over_interval(R_temp*U_forcing, R_obs*U_forcing.sum())/U_forcing
                 R_temp = np.nan_to_num(R_temp, nan=0.0)
                 R_temp[R_temp < 0] = 0.0
                 self.R_prime[n, start_ind:end_ind] = R_temp.ravel()
+                
+                # plt.plot(R_temp, label="after normalization")
+                # plt.legend()
+                
+
+
+                # print(f"start_ind: {start_ind}, end_ind: {end_ind}")
+
 
         # get dimension right
         self.R_prime = self.R_prime[:, :, np.newaxis]
@@ -715,15 +739,19 @@ class ModelInterfaceMesas:
         # use input and output fluxes to get partial mesas model
         C_Q = np.zeros((self.N, self._end_ind - self._start_ind, self.num_states))
 
+        # self._start_ind = self.init_step
+        # self._end_ind = self.T
+        # Rt = self.R_prime[:, self._start_ind : self._end_ind, :]
+        # C_Q = np.zeros((self.N, self._end_ind - self._start_ind, self.num_states))
+
         # Get SAS function according to flux and sas_name
-        for flux in self.model.fluxorder:
-            pQ = self._sas_funcs[flux]        
+        # for flux in self.model.fluxorder:
+        for flux in ['Q']: # TODO
+            pQ = self._sas_funcs[flux]
 
             for i, sol in enumerate(self.in_sol):
                 # Update CJ_archive
                 self.CJ_archive[:, self._start_ind : self._end_ind, i] = Rt[:, :, i]
-
-
 
                 # replace the CJ info from last time step
                 if self._start_ind != self.init_step:
@@ -737,15 +765,15 @@ class ModelInterfaceMesas:
                 for n in range(self.N):
                     # get all CJs till the end of this time period for given solute
                     C_J = self.CJ_archive[n, : self._end_ind, i]
-                    # plt.figure()
-                    # plt.plot(C_J, ".")
+                    # C_J = self.R_prime[n,  : self._end_ind, i]
 
                     # TODO: I think this can be simplified
-                    for tt in range(self._end_ind - self._start_ind):
+                    for tt in range(self._end_ind - self._start_ind): # for given time period
                         # actual time is t
                         t = tt + self._start_ind
                         # the maximum age is t
                         C_Q[n, tt, i] = 0
+
                         for T in range(self._end_ind + 1):
                             # the entry time is ti
                             ti = t - T
@@ -757,9 +785,6 @@ class ModelInterfaceMesas:
                             )
 
                         C_Q[n, tt, i] += C_old[n] * (1 - pQ[: t + 1, t].sum() * self.dt)
-                    # plt.plot(C_Q[n, :, i], "*")
-                    # plt.figure()
-                    # plt.plot(C_Q[n, :, i] - C_old, "k")
 
         return C_Q
 

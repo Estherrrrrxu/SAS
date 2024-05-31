@@ -233,7 +233,7 @@ def create_bulk_sample(original: pd.DataFrame, n: int) -> pd.DataFrame:
 
 # %%
 def normalize_over_interval(
-    arr: np.ndarray, input: float, forcing: Optional[np.ndarray] = None
+    arr: np.ndarray, target: float, forcing: Optional[np.ndarray] = None
 ):
     """Normalize the values of the array over interval before making observation
 
@@ -247,12 +247,12 @@ def normalize_over_interval(
         sum_val = sum(arr)
         if sum_val == 0:
             return arr
-        multiplier = input / sum_val * len(arr)
+        multiplier = target / sum_val #* len(arr)
     else:
         sum_val = sum(arr*forcing)/forcing.sum()
         if sum_val == 0:
             return arr
-        multiplier = input / sum_val
+        multiplier = target / sum_val
 
     return arr * multiplier
 

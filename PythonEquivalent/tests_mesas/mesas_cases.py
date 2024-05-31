@@ -85,12 +85,13 @@ sas_specs_storage_q_g_et_u={
     "Q":{
         "Q SAS function":{
             "func": "gamma",
+            "use": "scipy.stats",
             "args": {
                 "loc": 0.0,
                 "scale": "S_scale", 
                 "a": 0.69,
-
-            }
+            },
+            "nsegment": 50
         }
     },
 
@@ -126,18 +127,18 @@ obs_uncertainty = {
     # sig_u
     "sigma observed C in":{
         "prior_dis": "normal",
-        "prior_params": [0.05, 0.02],
+        "prior_params": [0.05, 0.02], #[0.05, 0.02],
         "is_nonnegative": True,
     },
     "sigma filled C in":{
         "prior_dis": "normal",
-        "prior_params": [1., 0.5],
+        "prior_params": [2.,1.], #[1., 0.5]
         "is_nonnegative": True,
     },
     
     "sigma C out":{
         "prior_dis": "normal",
-        "prior_params": [1., 0.2],
+        "prior_params": [5., 2.],# [2., 1.],
         "is_nonnegative": True,
     }
 }

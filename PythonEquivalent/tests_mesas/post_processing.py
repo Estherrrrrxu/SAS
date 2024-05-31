@@ -49,22 +49,26 @@ df["C in raw"][df["C in"] != df["C in raw"]] = ill_vals["C in"]
 df["is_obs_input"][df["C in"] != df["C in raw"]] = ill_vals["is_obs"]
 df["is_obs_input_filled"][df["C in"] != df["C in raw"]] = True
 
-df = df.iloc[:500]
+df = df.iloc[:600]
 
 
 # %%
 # Load data
+# result_root = "/Users/esthersida/pMESAS/mesas/Results/rockfish"
 result_root = "/Users/esthersida/pMESAS/mesas/Results"
-case_names = ["invariant_q_u_et_u", "invariant_q_g_et_u", "invariant_q_g_et_e", "storage_q_g_et_u"]
+# case_names = ["invariant_q_u_et_u",  "storage_q_g_et_u"]
 
-case_names = ["invariant_q_u_et_u"]
+case_names = ["invariant_q_g_et_u"]
 for case_name in case_names:
     qscale = f"{result_root}/qscale_{case_name}.csv"
     etscale = f"{result_root}/etscale_{case_name}.csv"
     c_old = f"{result_root}/c_old_{case_name}.csv"
     sigma_observed = f"{result_root}/sigma_observed_{case_name}.csv"
     sigma_filled = f"{result_root}/sigma_filled_{case_name}.csv"
-    sigma_output = f"{result_root}/sigma_output_{case_name}.csv"
+    try:
+        sigma_output = f"{result_root}/sigma_output_{case_name}.csv"
+    except:
+        print(case_name)
     input_scenarios = f"{result_root}/input_scenarios_{case_name}.csv"
     output_scenarios = f"{result_root}/output_scenarios_{case_name}.csv"
 
@@ -79,42 +83,74 @@ for case_name in case_names:
 
     # make the plot
     valid_ind_out = output_scenarios.loc[:, (output_scenarios != 0).any(axis=0)].columns
-    valid_ind_in = input_scenarios.loc[:, (input_scenarios != 0).any(axis=0)].columns
+    valid_ind_in = df['J'].values != 0
+    burn_in = 0
+    # 
+    # clean up raw output
+    t = df.index
+    C_in_hat = input_scenarios.values.T
+    obs = df[df["is_obs_input"] == True].index
 
-    fig, ax = plt.subplots(2, 1,figsize=(10, 10))
-    ax[0].plot(df.iloc[valid_ind_in,:].index, input_scenarios.iloc[:,valid_ind_in].values.T, ".", color = "gray", alpha = 0.01)
-    ax[0].plot(df["C in"], "_", label="C in")
-    ax[0].plot(df.index[df['is_obs_input'] & (- df['is_obs_input_filled'])], df["C in"][df['is_obs_input'] & (- df['is_obs_input_filled'])], "x", label="Observed C in")
-    ax[0].plot(df.index[df['is_obs_input_filled']], df["C in"][df['is_obs_input_filled']], ".", label="Filled C in")
+    # 
+    #
+    import seaborn as sns
+
+    fig, ax = plt.subplots(2, 1, figsize=(10, 10))
+    ax0_1 = ax[0].twinx()
+    ax0_1.bar(df.index,df["J"], color="C0", alpha=0.3, label="Precipitation")
+    ax0_1.set_ylim(100, 0)
+    ax[0].plot(t[valid_ind_in], C_in_hat[valid_ind_in,burn_in:], '.',markersize = 1.,color="gray", alpha=0.1)
+    ax[0].plot(df["C in raw"].iloc[valid_ind_in], "_", color = "red", markersize=1)
+    # ax[0].plot(df.index[df['is_obs_input'] & (- df['is_obs_input_filled'])], df["C in"][df['is_obs_input'] & (- df['is_obs_input_filled'])], "x", label="Observed C in")
+    # ax[0].plot(df.index[df['is_obs_input_filled']], df["C in"][df['is_obs_input_filled']], ".", label="Filled C in")
     ax[0].set_ylim(50, -5)
+    ax[0].set_xlim(obs[0], obs[-1])
 
 
-    ax[1].plot(df.iloc[valid_ind_out,:].index, output_scenarios.iloc[:,valid_ind_out].values.T, color = "gray", alpha = 0.1)
-    ax[1].plot(df["C out"], "x", label="Observed C out")
+    ax1_1 = ax[1].twinx()
+    ax1_1.plot(df.index, df["Q"], color="C0", alpha=0.3, label="Flow rate")
+    ax[1].plot(df.iloc[valid_ind_out,burn_in:].index, output_scenarios.iloc[burn_in:,valid_ind_out].values.T,".", color = "gray", alpha = 0.01)
+    ax[1].plot(df["C out"], "x", color="red", label = 'Data')
 
     ax[0].set_ylabel("Concentration (mg/l)", fontsize=16)
     ax[1].set_ylabel("Concentration (mg/l)", fontsize=16)
     ax[0].set_title("Input", fontsize=18)
     ax[1].set_title("Output", fontsize=18)
+    ax0_1.set_ylabel("Precipitation (mm/day)", fontsize=16)
+    ax1_1.set_ylabel("Discharge (mm/day)", fontsize=16)
 
     # Get existing legend handles and labels
     handles, labels = ax[0].get_legend_handles_labels()
+    handles.extend([plt.Line2D([0], [0], color='C0', lw =2, alpha = 0.5)])
+    labels.extend(['Flow rate'])
     handles.extend([plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='grey', markersize=5)])
-    labels.extend(['Generated inputs'])
-    ax[0].legend(handles, labels, frameon=False, loc="lower right")
+    labels.extend(['Prediction'])
+    handles.extend([plt.Line2D([0], [0], color='red', lw =2)])
+    labels.extend(['Data'])
+
+    orders = [1,0,2]
+    h = [handles[i-1] for i in orders]
+    l = [labels[i-1] for i in orders]
+    ax[0].legend(h, l, frameon=False, loc="lower left")
 
     # Get existing legend handles and labels
     handles, labels = ax[1].get_legend_handles_labels()
-    handles.extend([plt.Line2D([0], [0], color='grey', lw =2)])
-    labels.extend(['Generated outputs'])
-    ax[1].legend(handles, labels, frameon=False, loc="upper right")
+    handles.extend([plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='grey', markersize=5)])
+    labels.extend(['Prediction'])
+    handles.extend([plt.Line2D([0], [0], color='C0', lw =2, alpha = 0.5)])
+    labels.extend(['Flow rate'])
+
+    h = [handles[i-1] for i in [0,1,2]]
+    l = [labels[i-1] for i in [0,1,2]]
+
+    ax[1].legend(h, l, frameon=False, loc="upper left")
 
     fig.tight_layout()
     fig.savefig(f"{result_root}/input_output_{case_name}.pdf")
 
 
 # %%
-case_name = case_names[0]
+case_name = case_names[3]
 if case_name == "invariant_q_u_et_u":
     config = theta_invariant_q_u_et_u
 elif case_name == "invariant_q_g_et_u":
@@ -136,7 +172,7 @@ import numpy as np
 
 fig, ax = plt.subplots(1, 3, figsize=(15, 5))
 
-x = np.linspace(0., 0.2, 100)
+x = np.linspace(0., 1.5, 100)
 loc, scale = sigma_filled_paper[0], sigma_filled_paper[1]
 pdf = norm(loc, scale).pdf(x)
 pdf[pdf<0] = 0.
@@ -148,7 +184,7 @@ ax[0].set_ylabel("Density")
 loc, scale = sigma_observed_paper[0], sigma_observed_paper[1]
 
 
-x = np.linspace(0., 0.05, 100)
+x = np.linspace(0., 0.2, 100)
 pdf = norm(loc, scale).pdf(x)
 pdf[pdf<0] = 0.
 ax[1].plot(x, pdf, label="Prior")
