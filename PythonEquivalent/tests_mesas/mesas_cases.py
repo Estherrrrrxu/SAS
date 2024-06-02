@@ -132,13 +132,13 @@ obs_uncertainty = {
     },
     "sigma filled C in":{
         "prior_dis": "normal",
-        "prior_params": [2.,1.], #[1., 0.5]
+        "prior_params": [1.,0.5], #[1., 0.5]
         "is_nonnegative": True,
     },
     
     "sigma C out":{
         "prior_dis": "normal",
-        "prior_params": [5., 2.],# [2., 1.],
+        "prior_params": [5., 5.],# [2., 1.],
         "is_nonnegative": True,
     }
 }

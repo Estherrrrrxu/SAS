@@ -24,6 +24,7 @@ from mesas.sas.model import Model as SAS_Model
 import argparse
 
 from mesas_cases import *
+import seaborn as sns
 
 # %%
 # SET FOLDERS
@@ -43,7 +44,7 @@ case_name = args.case_name
 
 case_name = "storage_q_g_et_u"
 
-start_ind, end_ind = 2250, 3380
+start_ind, end_ind = 2250, 3383
 
 num_input_scenarios = 5
 num_parameter_samples = 5
@@ -138,13 +139,11 @@ plt.savefig(f"{result_root}/input_scenarios_{case_name}.pdf")
 chain = Chain(model_interface=model_interface)
 chain.run_particle_filter_SIR()
 # %%
-import seaborn as sns
 
 plt.figure()
-sns.boxplot(chain.state.R[:, :, 0])
 plt.plot(model_interface.df["C in"], "*")
-r = chain.state.R[:, :, 0].T
-q = chain.state.Y[:, :, 0].T
+plt.plot(model_interface.df.index, chain.state.R[:, :, 0].T, ".", markersize=0.7)
+
 # %%
 # for i in range(25):
 #     plt.figure()
@@ -157,7 +156,7 @@ plt.plot(
     model_interface.df.index,
     chain.state.Y[np.argmax(chain.state.W), :, 0].T,
     ".",
-    markersize=20,
+    markersize=10,
 )
 print("done SIR check")
 # %%
@@ -223,7 +222,7 @@ time = model_interface.df.index
 # plt.step(time[st:et], model_interface.df["C out"].backfill().iloc[st:et], label= "observed")
 # plt.plot(time[st:et],model_interface.df["C out"].iloc[st:et], "*", label= "observed")
 for i in range(len_parameter_MCMC + 1):
-    # plt.figure(figsize=(12, 4))
+    plt.figure(figsize=(12, 4))
 
     plt.step(
         time[st:et],
