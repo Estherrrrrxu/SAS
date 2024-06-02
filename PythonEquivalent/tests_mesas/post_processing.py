@@ -11,14 +11,15 @@ import numpy as np
 data_root = "/Users/esthersida/pMESAS/mesas"
 # Data from publicated paper
 df = pd.read_csv(f"{data_root}/data_preprocessed.csv", index_col=1, parse_dates=True)
-df = df.iloc[2250:3380]
+df = df.iloc[2250:3383]
 df
 
 
 # %%
 # Load data
 # result_root = "/Users/esthersida/pMESAS/mesas/Results/rockfish"
-result_root = "/Users/esthersida/pMESAS/mesas/Results"
+result_root = "/Users/esthersida/pMESAS/mesas/Results/Results"
+# case_names = ["invariant_q_u_et_u",  "storage_q_g_et_u", "invariant_q_u_et_u_5", "storage_q_g_et_u_5"]
 case_names = ["invariant_q_u_et_u",  "storage_q_g_et_u"]
 
 for case_name in case_names:
@@ -27,12 +28,19 @@ for case_name in case_names:
     c_old = f"{result_root}/c_old_{case_name}.csv"
     sigma_observed = f"{result_root}/sigma_observed_{case_name}.csv"
     sigma_filled = f"{result_root}/sigma_filled_{case_name}.csv"
+
     try:
         sigma_output = f"{result_root}/sigma_output_{case_name}.csv"
     except:
         print(case_name)
+
     input_scenarios = f"{result_root}/input_scenarios_{case_name}.csv"
     output_scenarios = f"{result_root}/output_scenarios_{case_name}.csv"
+
+    if case_name[-1] == "5":
+        convolved = f"{result_root}/C_Q_conv_{case_name[:-2]}.csv"
+    else:
+        convolved = f"{result_root}/C_Q_conv_{case_name}.csv"
 
     qscale = pd.read_csv(qscale, header=None)
     etscale = pd.read_csv(etscale, header=None)
@@ -42,16 +50,21 @@ for case_name in case_names:
     sigma_output = pd.read_csv(sigma_output, header=None)
     input_scenarios = pd.read_csv(input_scenarios, header=None)
     output_scenarios = pd.read_csv(output_scenarios, header=None)
+    convolved = pd.read_csv(convolved, header=None).values.flatten()
 
     # make the plot
     valid_ind_out = output_scenarios.loc[:, (output_scenarios != 0).any(axis=0)].columns
     valid_ind_in = df['J'].values != 0
     burn_in = 10
+
+
     # 
     # clean up raw output
     t = df.datetime
     C_in_hat = input_scenarios.values.T
     obs = df[df["is_obs_input"] == True].index
+    color_data = "#D62728"
+    color_convol = "#FF9896"
 
     # =============================================================================
     # Plot input and output
@@ -63,7 +76,7 @@ for case_name in case_names:
     ax0_1.set_ylim(100, 0)
     ax[0].plot(t[valid_ind_in], C_in_hat[valid_ind_in,burn_in:], '.',markersize = 1.,color="gray", alpha=0.1)
     ax[0].plot(t[valid_ind_in], C_in_hat[valid_ind_in,:].mean(axis=1), '.',markersize = 1., color = "black")
-    ax[0].plot(t[valid_ind_in], df["C in"].iloc[valid_ind_in], "_", color = "red", markersize=1)
+    ax[0].plot(t[valid_ind_in], df["C in"].iloc[valid_ind_in], "_", color = color_data, markersize=1)
     # ax[0].plot(df.index[df['is_obs_input'] & (- df['is_obs_input_filled'])], df["C in"][df['is_obs_input'] & (- df['is_obs_input_filled'])], "x", label="Observed C in")
     # ax[0].plot(df.index[df['is_obs_input_filled']], df["C in"][df['is_obs_input_filled']], ".", label="Filled C in")
     ax[0].set_ylim(-0.5, 50)
@@ -72,8 +85,9 @@ for case_name in case_names:
     ax1_1 = ax[1].twinx()
     ax1_1.plot(t, df["Q"], color="C0", alpha=0.3, label="Flow rate")
     ax[1].plot(t.values[valid_ind_out], output_scenarios.iloc[burn_in:,valid_ind_out].values.T,".", color = "gray", alpha = 0.01)
-    ax[1].plot(t.values[valid_ind_out], output_scenarios.iloc[burn_in:,valid_ind_out].mean(axis=0), linewidth=1., color = "black", label = 'Prediction mean')
-    ax[1].plot(t, df["C out"], "x", color="red", label = 'Data')
+    ax[1].plot(t.values[valid_ind_out],convolved[valid_ind_out], color = color_convol, markersize=1, label= "Convolution")
+    ax[1].plot(t.values[valid_ind_out], output_scenarios.iloc[burn_in:,valid_ind_out].mean(axis=0),"--" ,linewidth=1., color = "black", label = 'Prediction mean')
+    ax[1].plot(t, df["C out"], "x", color=color_data, label = 'Data', markersize=5.)
 
     ax[0].set_ylabel("Concentration (mg/l)", fontsize=16)
     ax[1].set_ylabel("Concentration (mg/l)", fontsize=16)
@@ -91,7 +105,7 @@ for case_name in case_names:
     labels.extend(['Prediction mean'])
     handles.extend([plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='grey', markersize=5)])
     labels.extend(['Prediction ensemble'])
-    handles.extend([plt.Line2D([0], [0], color='red', lw =2)])
+    handles.extend([plt.Line2D([0], [0], color=color_data, lw =1.5)])
     labels.extend(['Data'])
 
 
@@ -104,8 +118,8 @@ for case_name in case_names:
     handles.extend([plt.Line2D([0], [0], color='C0', lw =2, alpha = 0.5)])
     labels.extend(['Flow rate'])
 
-    h = [handles[i-1] for i in [0,1,3,2]]
-    l = [labels[i-1] for i in [0,1,3,2]]
+    h = [handles[i] for i in [4,1,3,0,2]]
+    l = [labels[i] for i in [4,1,3,0,2]]
 
     ax[1].legend(h, l, loc="upper right")
     ax[1].set_xticks(t[obs[::10]])
@@ -115,7 +129,18 @@ for case_name in case_names:
     fig.tight_layout()
     fig.savefig(f"{result_root}/input_output_{case_name}.pdf")
 
+    obs_ind = ~np.isnan(df["C out"].values[valid_ind_out])
+    observation = df["C out"].values[valid_ind_out]
+    observation = observation[obs_ind]
 
+    mse_conv = np.mean((convolved[valid_ind_out][obs_ind] - observation)**2)
+    mse_mean = np.mean((output_scenarios.iloc[burn_in:,valid_ind_out].mean(axis=0)[obs_ind] - observation)**2)
+
+    print(f"Mean squared error of convolution: {mse_conv}")
+    print(f"Mean squared error of mean: {mse_mean}")
+
+
+    #
     # =============================================================================
     # Parameter posterior uncertainty
     # =============================================================================

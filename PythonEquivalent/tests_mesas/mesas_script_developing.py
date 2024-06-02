@@ -107,7 +107,7 @@ df.columns = [
     "is_obs_output",
 ]
 # %%
-data = df.iloc[:200]
+data = df.iloc[2250:3383]
 from mesas.sas.model import Model as SAS_Model
 from mesas_cases import theta_invariant_q_u_et_u, theta_storage_q_g_et_u
 from copy import deepcopy
@@ -193,7 +193,7 @@ C_OLD = [6.76939686, 7.27912459, 7.54937156, 6.87936551, 5.94900662]
 
 plt.figure()
 for i in range(5):
-    C_J = r[:,i]
+    # C_J = r[:,i]
     #
     C_Q = np.zeros(timeseries_length)
     # C_old = model.solute_parameters['C in']['C_old']
