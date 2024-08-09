@@ -114,6 +114,7 @@ else:
         color="r",
         marker=".",
         label=r"$Observed\ C_J$",
+        s=8,
     )
     temp_ind = np.logical_and(data["is_obs_input_filled"].values, data["C in"].values > 0)
     CJ1 = ax0p.scatter(
@@ -122,7 +123,9 @@ else:
         color="k",
         marker=".",
         label=r"$Filled\ C_J$",
+        s=8,
     )
+
 
 
     Q = ax[1].plot(data.index, data["Q"], label="Q")
@@ -134,6 +137,7 @@ else:
         color="r",
         marker=".",
         label=r"$C_Q$",
+        s=8,
     )
 
     # evapotranspiration
@@ -146,7 +150,7 @@ else:
     ax[0].set_title("Input - Precipitation", fontsize=16)
     ax[1].set_title("Output 1 - Discharge", fontsize=16)
     ax[2].set_title("Output 2 - Evapotranspiration (ET)", fontsize=16)
-    ax[3].set_title("Maximum storage", fontsize=16)
+    ax[3].set_title("Dynamic storage", fontsize=16)
 
     ax[0].set_ylabel("Precipitation [mm/d]", fontsize=14)
     ax0p.set_ylabel("Concentration [mg/L]", fontsize=14)
@@ -157,7 +161,7 @@ else:
     ax1p.set_ylabel("Concentration [mg/L]", fontsize=14)
 
     ax[2].set_ylabel("ET [mm/h]", fontsize=14)
-    ax[3].set_ylabel("S max [mm]", fontsize=14)
+    ax[3].set_ylabel(r"$\Delta$S [mm]", fontsize=14)
 
 
     lines = [J, CJ, CJ1]

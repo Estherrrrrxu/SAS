@@ -20,6 +20,8 @@ from copy import deepcopy
 
 import matplotlib.pyplot as plt
 from math import log
+
+
 # %%
 # a class to store parameters
 @dataclass
@@ -47,20 +49,34 @@ class ParamsProcessor:
             self.transit_params["not_to_estimate"].append(name)
         elif mode == "to_estimate":
             is_C_old = param_key == "C_old"
-            is_prior_defined = "prior" in sas_func.keys()
+            is_prior_defined = (
+                "prior" in sas_func.keys() or "prior_dis" in sas_func.keys()
+            )
+
             if is_prior_defined:
+
                 self.transit_params["to_estimate"].append(name)
-                self.params["to_estimate"][name] = sas_func["prior"]
-                del sas_func["prior"]
-            else:  
+
+                if "prior" in sas_func.keys():
+                    self.params["to_estimate"][name] = sas_func["prior"]
+                    del sas_func["prior"]
+                else:
+                    self.params["to_estimate"][name] = {
+                        "prior_dis": sas_func["prior_dis"],
+                        "prior_params": sas_func["prior_params"],
+                        "is_nonnegative": sas_func["is_nonnegative"],
+                    }
+
+            else:
                 if is_C_old:
                     val = sas_func[param_key]
                     self.init_state_params.append(name)
                 else:
+                    self.transit_params["to_estimate"].append(name)
                     val = sas_func["args"][param_key]
 
                 # # TODO: ad-hoc lognormal for input model
-                # if name == 
+                # if name ==
                 # self.params["to_estimate"][name] = {
                 #     "prior_dis": "lognormal",
                 #     "prior_params": [
@@ -68,25 +84,32 @@ class ParamsProcessor:
                 #         val / 10.0,
                 #     ],
                 #     "is_nonnegative": True, # TODO: always non-negative for now
-                # }    
-            
+                # }
+
                 self.params["to_estimate"][name] = {
                     "prior_dis": "normal",
                     "prior_params": [
                         val,
                         val / 10.0,
                     ],
-                    "is_nonnegative": True, # TODO: always non-negative for now
+                    "is_nonnegative": True,  # TODO: always non-negative for now
                 }
 
-
-    def process_distribution_params(self, flux, sas_name, sas_func):
+    def process_distribution_params(
+        self, flux, sas_name, sas_func, scale_parameters: None
+    ):
         dist = sas_func["func"]
 
         if dist == "kumaraswamy":
             if isinstance(sas_func["args"]["scale"], str):
+                # self.setup_prior_params(
+                #     "not_to_estimate", flux, sas_name, "scale", sas_func
+                # )
                 self.setup_prior_params(
-                    "not_to_estimate", flux, sas_name, "scale", sas_func
+                    "to_estimate", flux, sas_name, "lambda", scale_parameters["lambda"]
+                )
+                self.setup_prior_params(
+                    "to_estimate", flux, sas_name, "S_c", scale_parameters["S_c"]
                 )
             else:
                 self.setup_prior_params(
@@ -96,16 +119,48 @@ class ParamsProcessor:
         elif dist == "gamma":
             if isinstance(sas_func["args"]["scale"], str):
                 if sas_func["args"]["a"] == 1.0:
-                    self.setup_prior_params(
-                        "not_to_estimate", flux, sas_name, "scale", sas_func
-                    )
+                    # self.setup_prior_params(
+                    #     "not_to_estimate", flux, sas_name, "scale", sas_func
+                    # )
+                    if scale_parameters:
+                        self.setup_prior_params(
+                            "to_estimate",
+                            flux,
+                            sas_name,
+                            "lambda",
+                            scale_parameters["lambda"],
+                        )
+                        self.setup_prior_params(
+                            "to_estimate",
+                            flux,
+                            sas_name,
+                            "S_c",
+                            scale_parameters["S_c"],
+                        )
+
                     self.setup_prior_params(
                         "not_to_estimate", flux, sas_name, "a", sas_func
                     )
                 else:
-                    self.setup_prior_params(
-                        "not_to_estimate", flux, sas_name, "scale", sas_func
-                    )
+                    # self.setup_prior_params(
+                    #     "not_to_estimate", flux, sas_name, "scale", sas_func
+                    # )
+                    if scale_parameters:
+                        self.setup_prior_params(
+                            "to_estimate",
+                            flux,
+                            sas_name,
+                            "lambda",
+                            scale_parameters["lambda"],
+                        )
+                        self.setup_prior_params(
+                            "to_estimate",
+                            flux,
+                            sas_name,
+                            "S_c",
+                            scale_parameters["S_c"],
+                        )
+
                     self.setup_prior_params(
                         "to_estimate", flux, sas_name, "a", sas_func
                     )
@@ -191,15 +246,8 @@ class ModelInterfaceMesas:
         self._parse_theta_init(theta_init=theta_init)
 
         # initialize sas_model, given flux fixed, only need to initialize once
-        self.model = customized_model(
-            self.df,
-            config={
-                "sas_specs": self.sas_specs,
-                "solute_parameters": self.solute_parameters,
-                "options": self.options,
-            },
-            verbose=False,
-        )
+        self.model = None
+        self.model_type = customized_model
 
         # initialize theta
         self.update_theta()
@@ -330,18 +378,25 @@ class ModelInterfaceMesas:
 
         return
 
-    def _parse_theta_init(self, theta_init: Optional[dict] = None) -> None:
+    def _parse_theta_init(
+        self, theta_init: Optional[dict] = None, distinct_str: Optional[str] = "#@#"
+    ) -> None:
         self.sas_specs = theta_init["sas_specs"]
         self.solute_parameters = theta_init["solute_parameters"]
         self.options = theta_init["options"]
         self.obs_uncertainty = theta_init["obs_uncertainty"]
-        self._distinct_str = "#@#"
+        self.scale_parameters = None
+        if "scale_parameters" in theta_init.keys():
+            self.scale_parameters = theta_init["scale_parameters"]
+        self._distinct_str = distinct_str
 
         # set _theta_init from sas_specs
         params_processor = ParamsProcessor(self._distinct_str)
         for flux, flux_sas in self.sas_specs.items():
             for sas_name, sas_func in flux_sas.items():
-                params_processor.process_distribution_params(flux, sas_name, sas_func)
+                params_processor.process_distribution_params(
+                    flux, sas_name, sas_func, self.scale_parameters
+                )
 
         # set _theta_init from solute_parameters
         self.conc_pairs = {}
@@ -474,8 +529,6 @@ class ModelInterfaceMesas:
         for i, key in enumerate(self._theta_to_estimate):
             self._theta_init["to_estimate"][key]["current_value"] = theta_new[i]
 
-        # need to unpack here to get sas params
-
         # transition model
         transition_param = []
         for param_key in self._transit_params["to_estimate"]:
@@ -546,7 +599,7 @@ class ModelInterfaceMesas:
         valid_input = input_obs[valid_input_ind]
         valid_input = valid_input[valid_input > 0]
 
-        shape, loc, scale = ss.lognorm.fit(valid_input,floc=0)
+        shape, loc, scale = ss.lognorm.fit(valid_input, floc=0)
 
         # Bulk case: generate input scenarios based on observed input values
         self.R_prime = np.zeros((self.N, self.T))
@@ -559,17 +612,17 @@ class ModelInterfaceMesas:
             U_obs = input_obs[start_ind:end_ind]
             U_forcing = input_forcing[start_ind:end_ind].ravel()
 
-            U_bar = next((u for u in U_obs if u != 0), 0.)
+            U_bar = next((u for u in U_obs if u != 0), 0.0)
 
             U_obs_p = U_obs.copy()
-            U_obs_p[U_forcing == 0] = 0.
+            U_obs_p[U_forcing == 0] = 0.0
 
             # different input uncertainty for filled and observed
             if is_filled[i]:
                 sig_u = self.theta.input_model[1]
             else:
                 sig_u = self.theta.input_model[0]
-            
+
             for n in range(self.N):
                 # R fluctuation is based on input fluctuation
                 # R_temp = ss.norm(U_obs, scale=0.0000001).rvs()
@@ -585,7 +638,7 @@ class ModelInterfaceMesas:
                         R_temp[r] = 0.0
                     else:
                         if R_temp[r] < 0:
-                            R_temp[r] = 0.
+                            R_temp[r] = 0.0
                         # while R_temp[r] < 0:
                         #     R_temp[r] = ss.norm(U_obs[r], sig_r).rvs()
 
@@ -601,18 +654,18 @@ class ModelInterfaceMesas:
 
                 # R_temp = normalize_over_interval(R_temp, R_obs, U_forcing)
 
-                R_temp = normalize_over_interval(R_temp*U_forcing, R_obs*U_forcing.sum())/U_forcing
+                R_temp = (
+                    normalize_over_interval(R_temp * U_forcing, R_obs * U_forcing.sum())
+                    / U_forcing
+                )
                 R_temp = np.nan_to_num(R_temp, nan=0.0)
                 R_temp[R_temp < 0] = 0.0
                 self.R_prime[n, start_ind:end_ind] = R_temp.ravel()
-                
+
                 # plt.plot(R_temp, label="after normalization")
                 # plt.legend()
-                
-
 
                 # print(f"start_ind: {start_ind}, end_ind: {end_ind}")
-
 
         # get dimension right
         self.R_prime = self.R_prime[:, :, np.newaxis]
@@ -634,6 +687,21 @@ class ModelInterfaceMesas:
 
         return R_prime
 
+    def _update_df_scale(self, scale_param: dict) -> None:
+        # flux = 'Q'
+        # scale_param={}
+        # scale_param[flux]={}
+        # scale_param[flux]['lambda'] = -103.
+        # scale_param[flux]['S_c'] = 48.
+
+        for flux in scale_param.keys():
+
+            delta_S = self.df["S_scale_factor"].values
+            self.df["S_scale"] = scale_param[flux]["lambda"] * (
+                delta_S - scale_param[flux]["S_c"]
+            )
+            self.sas_specs[flux][f"{flux} SAS function"]["args"]["scale"] = "S_scale"
+
     def _init_sas_model(self) -> None:
         # create a new variable to storage sas model
         self._sas_funcs = {}
@@ -641,19 +709,29 @@ class ModelInterfaceMesas:
 
         # pass parameters to sas specs
         len_to_estimate = len(self._transit_params["to_estimate"])
+        scale_param = {}
         for i in range(len_to_estimate):
             param_key = self._transit_params["to_estimate"][i]
             flux, sas_name, param_name = param_key.split(self._distinct_str)
-            self.model.sas_specs[flux].components[sas_name]._spec["args"][
-                param_name
-            ] = self.theta.transition_model[i]
+            if param_name == "lambda" or param_name == "S_c":
+                if flux not in scale_param.keys():
+                    scale_param[flux] = {}
+                scale_param[flux][param_name] = self.theta.transition_model[i]
+            else:
+                self.sas_specs[flux][sas_name]["args"][param_name] = (
+                    self.theta.transition_model[i]
+                )
+
+        # TODO: why is this not working?
+        if scale_param:
+            self._update_df_scale(scale_param)
 
         for i in range(len(self._transit_params["not_to_estimate"])):
             param_key = self._transit_params["not_to_estimate"][i]
             flux, sas_name, param_name = param_key.split(self._distinct_str)
-            self.model.sas_specs[flux].components[sas_name]._spec["args"][
-                param_name
-            ] = self.theta.transition_model[i + len_to_estimate]
+            self.sas_specs[flux][sas_name]["args"][param_name] = (
+                self.theta.transition_model[i + len_to_estimate]
+            )
 
         temp_df = deepcopy(self.df)
 
@@ -661,14 +739,28 @@ class ModelInterfaceMesas:
         for i in range(len(self._init_state_params)):
             param_key = self._init_state_params[i]
             sol_in, sol_out, sol_init = param_key.split(self._distinct_str)
-            if self.model.solute_parameters[sol_in]["observations"] == sol_out:
-                self.model.solute_parameters[sol_in]["C_old"] = (
-                    self.theta.initial_state[i]
-                )
+
+            if self.solute_parameters[sol_in]["observations"] == sol_out:
+                self.solute_parameters[sol_in]["C_old"] = self.theta.initial_state[i]
 
             temp_df[sol_in] = 1.0
-            temp_sol_param = deepcopy(self.model.solute_parameters)
+            temp_sol_param = deepcopy(self.solute_parameters)
             temp_sol_param[sol_in][sol_init] = 1.0
+
+        # TODO: raise an issue for Ciaran's model
+        sas_specs = deepcopy(self.sas_specs)
+        solute_parameters = deepcopy(self.solute_parameters)
+        options = deepcopy(self.options)    
+
+        self.model = self.model_type(
+            self.df,
+            config={
+                "sas_specs": sas_specs,
+                "solute_parameters": solute_parameters,
+                "options": options,
+            },
+            verbose=False,
+        )
 
         # Get SAS function according to flux and sas_name
         self.model.run()
@@ -746,7 +838,7 @@ class ModelInterfaceMesas:
 
         # Get SAS function according to flux and sas_name
         # for flux in self.model.fluxorder:
-        for flux in ['Q']: # TODO
+        for flux in ["Q"]:  # TODO
             pQ = self._sas_funcs[flux]
 
             for i, sol in enumerate(self.in_sol):
@@ -768,7 +860,9 @@ class ModelInterfaceMesas:
                     # C_J = self.R_prime[n,  : self._end_ind, i]
 
                     # TODO: I think this can be simplified
-                    for tt in range(self._end_ind - self._start_ind): # for given time period
+                    for tt in range(
+                        self._end_ind - self._start_ind
+                    ):  # for given time period
                         # actual time is t
                         t = tt + self._start_ind
                         # the maximum age is t

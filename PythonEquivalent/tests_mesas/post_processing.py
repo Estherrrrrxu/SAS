@@ -20,7 +20,7 @@ df
 # result_root = "/Users/esthersida/pMESAS/mesas/Results/rockfish"
 result_root = "/Users/esthersida/pMESAS/mesas/Results/Results"
 # case_names = ["invariant_q_u_et_u",  "storage_q_g_et_u", "invariant_q_u_et_u_5", "storage_q_g_et_u_5"]
-case_names = ["invariant_q_u_et_u",  "storage_q_g_et_u"]
+case_names = ["invariant_q_u_et_u"]
 
 for case_name in case_names:
     qscale = f"{result_root}/qscale_{case_name}.csv"
@@ -58,7 +58,7 @@ for case_name in case_names:
     burn_in = 10
 
 
-    # 
+    # %%
     # clean up raw output
     t = df.datetime
     C_in_hat = input_scenarios.values.T
@@ -84,6 +84,11 @@ for case_name in case_names:
 
     ax1_1 = ax[1].twinx()
     ax1_1.plot(t, df["Q"], color="C0", alpha=0.3, label="Flow rate")
+
+    std = output_scenarios.iloc[burn_in:,valid_ind_out].std(axis=0)
+    upper = output_scenarios.iloc[burn_in:,valid_ind_out].mean(axis=0) + 1.96*std
+    lower = output_scenarios.iloc[burn_in:,valid_ind_out].mean(axis=0) - 1.96*std
+    ax[1].fill_between(t.values[valid_ind_out], lower, upper, color = "gray", alpha = 0.3)
     ax[1].plot(t.values[valid_ind_out], output_scenarios.iloc[burn_in:,valid_ind_out].values.T,".", color = "gray", alpha = 0.01)
     ax[1].plot(t.values[valid_ind_out],convolved[valid_ind_out], color = color_convol, markersize=1, label= "Convolution")
     ax[1].plot(t.values[valid_ind_out], output_scenarios.iloc[burn_in:,valid_ind_out].mean(axis=0),"--" ,linewidth=1., color = "black", label = 'Prediction mean')
@@ -160,7 +165,7 @@ for case_name in case_names:
 
 
 
-    # 
+    # %%
     # make a normal distribution pdf plot
 
     fig, ax = plt.subplots(2, 3, figsize=(15, 8))
@@ -173,7 +178,7 @@ for case_name in case_names:
     loc, scale = sigma_filled_paper[0], sigma_filled_paper[1]
     pdf = norm(loc, scale).pdf(x)
     pdf[pdf<0] = 0.
-    ax[0,0].plot(x, pdf, label="Prior", color='red')
+    ax[0,0].plot(x, pdf, label="Prior", color='black')
     ax[0,0].set_title(r"Interpolated $\mathtt{C_{J}}$ uncertainty $\sigma_i$ (parameter $\theta_{r}$)", fontsize=14)
     ax[0,0].set_ylabel("Density", fontsize=14)
 
@@ -182,7 +187,7 @@ for case_name in case_names:
     x = np.linspace(sigma_observed_paper[0] - 3*sigma_observed_paper[1], sigma_observed_paper[0] + 3*sigma_observed_paper[1], 1000)
     pdf = norm(loc, scale).pdf(x)
     pdf[pdf<0] = 0.
-    ax[0,1].plot(x, pdf, label="Prior", color='red')
+    ax[0,1].plot(x, pdf, label="Prior", color='black')
     ax[0,1].set_title(r"Measured $\mathtt{C_{J}}$ uncertainty $\sigma_m$ (parameter $\theta_{r}$)", fontsize=14)
 
 
@@ -190,10 +195,8 @@ for case_name in case_names:
     loc, scale = sigma_output_paper[0], sigma_output_paper[1]
     pdf = norm(loc, scale).pdf(x)
     pdf[pdf<0] = 0.
-    ax[0,2].plot(x, pdf, label="Prior", color='red')
+    ax[0,2].plot(x, pdf, label="Prior", color='black')
     ax[0,2].set_title(r"Outflow uncertainty $\sigma_y$ (parameter $\theta_{y}$)", fontsize=14)
-
-    ax[0,1].legend(frameon=False, fontsize=14)
 
     #
     # =============================================================================
@@ -211,26 +214,70 @@ for case_name in case_names:
     x = np.linspace(7./10.*c_old_paper, 13./10.*c_old_paper, 1000)
     pdf = norm(c_old_paper, c_old_paper/10.).pdf(x)
     ax[1,0].hist(c_old.values[burn_in:],10, density=True, label="Posterior")
-    ax[1,0].plot(x, pdf, label="Prior", color='red')
+    ax[1,0].plot(x, pdf, label="Prior", color='black')
     ax[1,0].set_title(r"Initial condition $\mathcal{C}_{o}$ (parameter $\theta_{C}$)", fontsize=14)
 
     x = np.linspace(0.7*qscale_paper, 1.3*qscale_paper, 1000)
     pdf = norm(qscale_paper, qscale_paper/10.).pdf(x)
     ax[1,1].hist(qscale.values[burn_in:],10, density=True, label="Posterior")
-    ax[1,1].plot(x, pdf, label="Prior", color='red')
+    ax[1,1].plot(x, pdf, label="Prior", color='black')
     ax[1,1].set_title(r"SAS parameter $\mu_\mathtt{Q}$ (parameter $\theta_{x}$)", fontsize=14)
 
 
     x = np.linspace(0.7*etscale_paper, 1.3*etscale_paper, 1000)
     pdf = norm(etscale_paper, etscale_paper/10.).pdf(x)
     ax[1,2].hist(etscale.values[burn_in:],10, density=True, label="Posterior")
-    ax[1,2].plot(x, pdf, label="Prior", color='red')
+    ax[1,2].plot(x, pdf, label="Prior", color='black')
     ax[1,2].set_title(r"SAS parameter $\mu_\mathtt{ET}$ (parameter $\theta_{x}$)", fontsize=14)
 
     ax[1,0].set_ylabel("Density", fontsize=14)
 
+    mean = sigma_filled.values[burn_in:].mean()
+    ax[0,0].axvline(mean, color='red', linestyle='--', label='Posterior mean')
+    mean = sigma_observed.values[burn_in:].mean()
+    ax[0,1].axvline(mean, color='red', linestyle='--', label='Posterior mean')
+    mean = sigma_output.values[burn_in:].mean()
+    ax[0,2].axvline(mean, color='red', linestyle='--', label='Posterior mean')
+    mean = c_old.values[burn_in:].mean()
+    ax[1,0].axvline(mean, color='red', linestyle='--', label='Posterior mean')
+    mean = qscale.values[burn_in:].mean()
+    ax[1,1].axvline(mean, color='red', linestyle='--', label='Posterior mean')
+    mean = etscale.values[burn_in:].mean()
+    ax[1,2].axvline(mean, color='red', linestyle='--', label='Posterior mean')
+
+    ax[0,0].legend(fontsize=12, frameon=False, loc="upper left")
+
     fig.tight_layout()
     fig.savefig(f"{result_root}/parameter_posterior_{case_name}.pdf")
+
+
+
+# %%
+# make plot of SAS function
+fig, axes = plt.subplots(1, 2, figsize=(8, 4),sharey=True)
+ax = axes[0]
+ax1 = axes[1]  
+
+x = np.linspace(0, len(df), 1000)
+a = qscale.values[burn_in:]
+from scipy.stats import uniform
+for i in range(len(a)):
+    cdf = uniform.cdf(x, 0, a[i])
+    ax.plot(x, cdf, 'C0', alpha=0.08)
+ax.set_title(r"SAS function for $\mathtt{Q}$: $\Omega_{\mathtt{Q}}$")
+ax.set_xlabel(r"$S_T$")
+
+a = etscale.values[burn_in:]
+for i in range(len(a)):
+    cdf = uniform.cdf(x, 0, a[i])
+    ax1.plot(x, cdf, 'C0', alpha=0.08)
+ax1.set_title(r"SAS function for $\mathtt{ET}$: $\Omega_{\mathtt{ET}}$")
+ax1.set_xlabel(r"$S_T$")
+ax.set_ylim(-0.02, 1.02)
+
+
+fig.tight_layout()
+fig.savefig(f"{result_root}/sas_function_{case_name}.pdf")
 
 
 

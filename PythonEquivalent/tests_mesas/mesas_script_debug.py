@@ -22,6 +22,7 @@ from functions.utils import plot_MAP
 from model.ssm_model import SSModel
 from mesas.sas.model import Model as SAS_Model
 import argparse
+from mesas.sas.specs import Component
 
 from mesas_cases import *
 import seaborn as sns
@@ -42,13 +43,14 @@ args, unknown_args = parser.parse_known_args()
 case_name = args.case_name
 
 
-case_name = "storage_q_g_et_u"
+case_name = "storage_q_g_et_u_changing"
+# case_name = "storage_q_g_et_u"
 
 start_ind, end_ind = 2250, 3383
 
-num_input_scenarios = 5
-num_parameter_samples = 5
-len_parameter_MCMC = 1
+num_input_scenarios = 15
+num_parameter_samples = 15
+len_parameter_MCMC = 5
 
 
 df = pd.read_csv(f"{data_root}/data_preprocessed.csv", index_col=1, parse_dates=True)
@@ -105,8 +107,17 @@ elif case_name == "storage_q_g_et_u":
         config=config,
         theta_init=theta_storage_q_g_et_u,
     )
+elif case_name == "storage_q_g_et_u_changing":
+    model_interface = model_interface_class(
+        df=data,
+        customized_model=SAS_Model,
+        num_input_scenarios=num_input_scenarios,
+        config=config,
+        theta_init=theta_storage_q_g_et_u_changing,
+    )
 else:
     raise ValueError("Case name not found.")
+
 # %%
 
 # check input scenarios generation
@@ -185,16 +196,13 @@ model = SSModel(
 
 model.run_particle_Gibbs()
 
-
+# %%
 # SAVE RESULTS ================================================================
 # get estimated parameters
 #
-qscale = model.theta_record[:, 0]
-etscale = model.theta_record[:, 1]
-c_old = model.theta_record[:, 2]
-sigma_observed = model.theta_record[:, 3]
-sigma_filled = model.theta_record[:, 4]
-sigma_output = model.theta_record[:, 5]
+theta = model.theta_record
+theta_name = model_interface._theta_to_estimate
+theta_df = pd.DataFrame(theta, columns=theta_name)
 
 input_scenarios = model.input_record
 output_scenarios = model.output_record
@@ -239,12 +247,8 @@ for i in range(len_parameter_MCMC + 1):
 
 # %%
 # # save data as csv files
-np.savetxt(f"{result_root}/qscale_{case_name}.csv", qscale, delimiter=",")
-np.savetxt(f"{result_root}/etscale_{case_name}.csv", etscale, delimiter=",")
-np.savetxt(f"{result_root}/c_old_{case_name}.csv", c_old, delimiter=",")
-np.savetxt(f"{result_root}/sigma_observed_{case_name}.csv", sigma_observed, delimiter=",")
-np.savetxt(f"{result_root}/sigma_filled_{case_name}.csv", sigma_filled, delimiter=",")
-np.savetxt(f"{result_root}/sigma_output_{case_name}.csv", sigma_output, delimiter=",")
+theta_df.to_csv(f"{result_root}/theta_{case_name}.csv")
+
 np.savetxt(f"{result_root}/input_scenarios_{case_name}.csv", input_scenarios, delimiter=",")
 np.savetxt(f"{result_root}/output_scenarios_{case_name}.csv", output_scenarios, delimiter=",")
 
